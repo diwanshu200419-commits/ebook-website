@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Sign in | E-Book Market</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="stylesheet" href="auth.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="bg-icons">
+<i class="fa-solid fa-book"></i>
+<i class="fa-solid fa-graduation-cap"></i>
+<i class="fa-solid fa-indian-rupee-sign"></i>
+<i class="fa-solid fa-book-open"></i>
+<i class="fa-solid fa-chart-line"></i>
+</div>
+
+
+<div class="auth-wrapper">
+
+<div class="auth-card professional fade-in">
+
+<div class="brand">
+<span>E-BOOK MARKET</span>
+</div>
+
+<h1>Sign in to your account</h1>
+<p class="sub">
+Access your dashboard, earnings & content
+</p>
+
+<form id="loginForm">
+
+<label>Email address</label>
+
+<div class="input-group">
+<i class="fa fa-envelope"></i>
+<input
+type="email"
+id="email"
+placeholder="you@example.com"
+required
+/>
+</div>
+
+
+<label>Password</label>
+
+<div class="input-group">
+<i class="fa fa-lock"></i>
+<input
+type="password"
+id="password"
+placeholder="Enter your password"
+required
+/>
+</div>
+
+
+<div class="row-between">
+
+<label class="remember">
+<input type="checkbox"/> Remember me
+</label>
+
+<a class="link" href="#">Forgot password?</a>
+
+</div>
+
+
+<button class="primary-btn" id="loginBtn" type="submit">
+Sign in
+</button>
+
+</form>
+
+
+<div class="divider">
+<span>OR</span>
+</div>
+
+
+<button class="social-btn google" onclick="googleLogin()">
+<i class="fab fa-google"></i>
+Continue with Google
+</button>
+
+
+<button class="social-btn apple">
+<i class="fab fa-apple"></i>
+Continue with Apple
+</button>
+
+
+<p class="switch">
+Don’t have an account?
+<a href="register.html">Create one</a>
+</p>
+
+</div>
+
+</div>
+
+
+<script src="auth.js"></script>
+<script>
+
+/* ======================================
+AUTO REDIRECT IF ALREADY LOGGED IN
+====================================== */
+
+if(getToken()){
+redirectUser();
+}
+
+
+/* ======================================
+INIT LOGIN PAGE
+====================================== */
+
+document.addEventListener("DOMContentLoaded", initLogin);
+
+
+async function initLogin(){
+
+consumeTokenFromQuery();
+
+if(getToken()){
+await redirectUser();
+}
+
+}
+
+
+
+/* ======================================
+FORM LOGIN
+====================================== */
+
+document
+.getElementById("loginForm")
+.addEventListener("submit",loginUser);
+
+
+
+async function loginUser(e){
+
+e.preventDefault();
+
+const email =
+document.getElementById("email").value.trim();
+
+const password =
+document.getElementById("password").value.trim();
+
+const btn =
+document.getElementById("loginBtn");
+
+
+if(!email || !password){
+
+alert("Please fill all fields");
+
+return;
+
+}
+
+
+btn.disabled=true;
+btn.innerHTML="Signing in...";
+
+
+try{
+
+const data = await apiFetchJson("/api/auth/login",{
+method:"POST",
+body:JSON.stringify({email,password})
+});
+
+setSession(data.token,data.user);
+redirectUser();
+
+
+}catch(err){
+
+alert(err.message || "Unable to sign in");
+
+}
+
+
+btn.disabled=false;
+btn.innerHTML="Sign in";
+
+}
+
+
+
+/* ======================================
+REDIRECT BASED ON ROLE
+====================================== */
+
+async function redirectUser(){
+
+try{
+
+const data = await apiFetchJson("/api/user/profile");
+
+const user = data.user;
+
+setSession(getToken(),user);
+redirectForRole(user);
+
+
+}catch{
+
+clearSession();
+
+}
+
+}
+
+
+
+/* ======================================
+GOOGLE LOGIN
+====================================== */
+
+function googleLogin(){
+
+const btn=document.querySelector(".google");
+
+btn.disabled=true;
+
+btn.innerHTML="Redirecting...";
+
+
+window.location.href=
+`${API_BASE}/api/auth/google`;
+
+}
+
+</script>
+
+</body>
+</html>

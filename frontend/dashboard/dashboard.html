@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<title>Creator Dashboard | E-Book Market</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="dashboard.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../auth.js"></script>
+
+<style>
+body{visibility:visible;}
+</style>
+
+</head>
+
+<body>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+
+<aside class="sidebar">
+
+<h2 class="brand">E-BOOK MARKET</h2>
+
+<nav>
+
+<a href="dashboard.html" class="active">🏠 Overview</a>
+
+<a href="content.html">📚 My Content</a>
+
+<a href="upload.html">⬆ Upload Book</a>
+
+<a href="earning.html">💰 Earnings</a>
+
+<a href="analytics.html">📊 Analytics</a>
+
+<a href="setting.html">⚙ Settings</a>
+
+</nav>
+
+<div class="sidebar-footer">
+
+<button onclick="location.href='earning.html'" class="primary-btn">
+Withdraw
+</button>
+
+<button id="logoutBtn" class="logout-btn">
+Logout
+</button>
+
+</div>
+
+</aside>
+
+
+
+<!-- MAIN -->
+
+<main class="main">
+
+<header class="topbar">
+
+<div>
+
+<h1>
+Welcome back,
+<span id="userName">Creator</span> 👋
+</h1>
+
+<p>
+
+This month you earned
+<strong id="monthlyEarnings">₹0</strong>
+
+<span id="growthIndicator" class="growth positive">
++0%
+</span>
+
+</p>
+
+</div>
+
+<div class="top-actions">
+
+<span class="badge" id="roleBadge">CREATOR</span>
+
+<div class="wallet">
+
+💰 Wallet
+<strong id="walletBalance">₹0</strong>
+
+</div>
+
+</div>
+
+</header>
+
+
+
+<!-- CREATOR SCORE -->
+
+<section class="creator-score">
+
+<div class="score-card">
+
+<h3>Creator Score</h3>
+
+<div id="creatorScore">0</div>
+
+<p>Performance rating based on sales & activity</p>
+
+</div>
+
+</section>
+
+
+
+<!-- QUICK ACTIONS -->
+
+<section class="quick-actions">
+
+<button onclick="location.href='upload.html'">
++ Upload New Book
+</button>
+
+<button onclick="location.href='analytics.html'">
+View Analytics
+</button>
+
+<button onclick="location.href='earning.html'">
+Earnings Report
+</button>
+
+</section>
+
+
+
+<!-- STATS -->
+
+<section class="stats">
+
+<div class="card">
+<h3 id="totalEarnings">₹0</h3>
+<p>Total Earnings</p>
+</div>
+
+<div class="card">
+<h3 id="totalDownloads">0</h3>
+<p>Total Downloads</p>
+</div>
+
+<div class="card">
+<h3 id="totalBooks">0</h3>
+<p>Published Books</p>
+</div>
+
+<div class="card highlight">
+<h3 id="globalRank">—</h3>
+<p>Global Rank</p>
+</div>
+
+</section>
+
+
+
+<!-- EARNINGS CHART -->
+
+<section class="chart-section">
+
+<h2>Earnings Performance</h2>
+
+<canvas id="earningsChart"></canvas>
+
+</section>
+
+<!-- ================= CREATOR PERFORMANCE ================= -->
+
+<section class="chart-section">
+
+<div class="section-header">
+<h2>Creator Performance</h2>
+<span>AI Performance Radar</span>
+</div>
+
+<canvas id="creatorRadar"></canvas>
+
+</section>
+
+
+<!-- GLOBAL SALES -->
+
+<section class="chart-section">
+
+<h2>Global Sales</h2>
+
+<canvas id="globalSalesChart"></canvas>
+
+</section>
+
+
+
+<!-- DOWNLOAD HEATMAP -->
+
+<section class="chart-section">
+
+<h2>Download Activity</h2>
+
+<canvas id="downloadHeatmap"></canvas>
+
+</section>
+
+
+
+<!-- AI FORECAST -->
+
+<section class="ai-forecast">
+
+<h2>AI Revenue Forecast</h2>
+
+<div class="forecast-grid">
+
+<div class="forecast-card">
+<h3 id="forecastRevenue">₹0</h3>
+<p>Predicted Revenue</p>
+</div>
+
+<div class="forecast-card">
+<h3 id="forecastGrowth">0%</h3>
+<p>Growth Prediction</p>
+</div>
+
+<div class="forecast-card">
+<h3 id="salesMomentum">Low</h3>
+<p>Sales Momentum</p>
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- TOP BOOKS -->
+
+<section class="top-books">
+
+<h2>Top Performing Books</h2>
+
+<div id="topBooksContainer" class="books-grid">
+
+<p>Loading books...</p>
+
+</div>
+
+</section>
+
+
+
+<!-- RECENT SALES -->
+
+<section class="sales-feed">
+
+<h2>Recent Sales</h2>
+
+<div id="salesFeed">
+
+<p>No recent sales yet</p>
+
+</div>
+
+</section>
+
+
+
+<!-- CREATOR LEADERBOARD -->
+
+<section class="leaderboard">
+
+<h2>Creator Leaderboard</h2>
+
+<div id="leaderboardContainer"></div>
+
+</section>
+
+
+
+<!-- TRENDING AUTHORS -->
+
+<section class="leaderboard">
+
+<h2>Trending Authors</h2>
+
+<div id="trendingAuthors"></div>
+
+</section>
+
+
+
+<!-- AI BOOK RECOMMENDATIONS -->
+
+<section class="top-books">
+
+<h2>Recommended Books</h2>
+
+<div id="recommendedBooks" class="books-grid"></div>
+
+</section>
+
+
+
+<!-- NOTES MARKET -->
+
+<section class="notes-section">
+
+<h2>Handwritten Notes Marketplace</h2>
+
+<p>
+
+Upload handwritten notes and earn from students worldwide.
+
+</p>
+
+<button onclick="location.href='upload.html'" class="primary-btn">
+
+Upload Notes
+
+</button>
+
+</section>
+
+</main>
+
+</div>
+
+
+
+<script src="dashboard.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Content Review | E-Book Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <link rel="stylesheet" href="ai-review.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="ai-layout">
+  <header class="ai-header">
+    <div>
+      <h1>AI Content Review</h1>
+      <p>Automated quality, originality, and monetization analysis</p>
+    </div>
+    <span class="badge">ADMIN</span>
+  </header>
+
+  <section class="content-summary">
+    <h2 id="contentTitle">Loading content...</h2>
+    <p id="contentMeta">
+      Category: <strong>Loading</strong> • Type: <strong>Loading</strong> • Price: <strong>Loading</strong>
+    </p>
+    <p class="creator" id="creatorMeta">Uploaded by: <strong>Loading</strong></p>
+  </section>
+
+  <section class="ai-score-card">
+    <h3>Overall AI Score</h3>
+    <div class="score-circle">
+      <span id="overallScore">--</span>
+    </div>
+    <p class="score-status good" id="scoreStatus">Loading review</p>
+  </section>
+
+  <section class="metrics-grid">
+    <div class="metric">
+      <h4>Originality</h4>
+      <span class="good" id="metricOriginality">--</span>
+    </div>
+
+    <div class="metric">
+      <h4>Readability</h4>
+      <span class="good" id="metricReadability">--</span>
+    </div>
+
+    <div class="metric">
+      <h4>Relevance</h4>
+      <span class="good" id="metricRelevance">--</span>
+    </div>
+
+    <div class="metric">
+      <h4>Copyright Risk</h4>
+      <span class="safe" id="metricCopyright">--</span>
+    </div>
+
+    <div class="metric">
+      <h4>Spam Probability</h4>
+      <span class="safe" id="metricSpam">--</span>
+    </div>
+
+    <div class="metric">
+      <h4>Revenue Potential</h4>
+      <span class="good" id="metricRevenue">--</span>
+    </div>
+  </section>
+
+  <section class="ai-insights">
+    <h3>AI Insights</h3>
+    <ul id="insightList"></ul>
+  </section>
+
+  <section class="ai-recommendation" id="recommendationBox">
+    <h3>AI Recommendation</h3>
+    <p id="recommendationText">Loading recommendation</p>
+  </section>
+
+  <section class="admin-actions">
+    <button class="btn approve" onclick="approveContent()">Approve & Publish</button>
+    <button class="btn changes" onclick="requestChanges()">Request Changes</button>
+    <button class="btn reject" onclick="rejectContent()">Reject Content</button>
+  </section>
+
+  <a class="back" href="../admin/admin.html">← Back to Admin Dashboard</a>
+</div>
+
+<script src="../auth.js"></script>
+<script src="ai-review.js"></script>
+</body>
+</html>

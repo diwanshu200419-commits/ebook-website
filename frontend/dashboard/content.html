@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Content Studio | E-Book Market</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="content.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="../auth.js"></script>
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="logo">E-BOOK MARKET</div>
+    <nav>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="earning.html">Earnings</a>
+      <a class="active">Content</a>
+      <a href="setting.html">Settings</a>
+    </nav>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main class="content-container">
+
+    <!-- ===== PAGE HEADER ===== -->
+    <div class="content-header">
+      <div>
+        <h1>Content Studio</h1>
+        <p>Create, manage & monetize your digital books</p>
+      </div>
+
+      <button class="btn-primary" id="openUploadBtn">
+        + Upload New Book
+      </button>
+    </div>
+
+    <!-- ===== STATS ROW ===== -->
+    <div class="content-stats">
+
+      <div class="stat-card">
+        <h4>Total Books</h4>
+        <p id="totalBooks">0</p>
+      </div>
+
+      <div class="stat-card">
+        <h4>Total Sales</h4>
+        <p id="totalSales">0</p>
+      </div>
+
+      <div class="stat-card">
+        <h4>Total Revenue</h4>
+        <p id="totalRevenue">₹0</p>
+      </div>
+
+      <div class="stat-card">
+        <h4>Published</h4>
+        <p id="publishedCount">0</p>
+      </div>
+
+    </div>
+
+    <!-- ===== BOOK LIST ===== -->
+    <div class="content-card">
+
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th>Cover</th>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th>Sales</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody id="bookTable">
+          <!-- JS will load books here -->
+        </tbody>
+
+      </table>
+
+      <div id="emptyState" class="empty-state">
+        <p>No books yet.</p>
+        <span>Start by uploading your first book.</span>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+
+<!-- ================= UPLOAD MODAL ================= -->
+
+<div id="uploadModal" class="modal">
+
+  <div class="modal-content">
+
+    <h2>Upload New Book</h2>
+
+    <div class="form-group">
+      <label>Book Title</label>
+      <input type="text" id="bookTitle">
+    </div>
+
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="bookDescription"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Price (₹)</label>
+      <input type="number" id="bookPrice">
+    </div>
+
+    <div class="form-group">
+      <label>Status</label>
+      <select id="bookStatus">
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Upload PDF</label>
+      <input type="file" id="bookFile" accept=".pdf">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="closeModalBtn">
+        Cancel
+      </button>
+
+      <button class="btn-primary" id="saveBookBtn">
+        Save Book
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
+<script src="../auth.js"></script>
+<script src="content.js"></script>
+
+</body>
+</html>

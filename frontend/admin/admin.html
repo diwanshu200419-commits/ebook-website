@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard | E-Book Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <link rel="stylesheet" href="admin.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="admin-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="admin-sidebar">
+    <h2>E-BOOK MARKET</h2>
+
+    <nav class="sidebar-nav">
+      <a data-target="review" class="active">Content Review</a>
+      <a data-target="approved">Approved Library</a>
+      <a data-target="creators">Creators</a>
+      <a data-target="payouts">Payouts</a>
+      <a data-target="ai">AI Signals</a>
+      <a data-target="reports">Reports</a>
+      <a data-target="settings">Settings</a>
+    </nav>
+
+    <button class="logout" onclick="logoutUser()">Logout</button>
+  </aside>
+
+  <!-- ================= MAIN ================= -->
+  <main class="admin-main">
+
+    <!-- ================= HEADER ================= -->
+    <header class="admin-top">
+      <div>
+        <h1 id="pageTitle">Pending Content Review</h1>
+        <p class="sub" id="pageSub">
+          Review quality, originality & monetization potential
+        </p>
+      </div>
+      <span class="badge">ADMIN</span>
+    </header>
+
+    <!-- ================= SECTIONS ================= -->
+
+    <!-- 🔍 CONTENT REVIEW -->
+    <section id="review" class="admin-section active">
+      <div class="filter-bar">
+        <select>
+          <option>All Types</option>
+          <option>E-Books</option>
+          <option>Notes</option>
+          <option>Comics</option>
+          <option>AI Content</option>
+        </select>
+
+        <select>
+          <option>AI Score</option>
+          <option>Above 90%</option>
+          <option>70–90%</option>
+          <option>Below 70%</option>
+        </select>
+
+        <select>
+          <option>Sort By</option>
+          <option>Newest</option>
+          <option>Highest Revenue</option>
+          <option>High Risk</option>
+        </select>
+      </div>
+
+      <div id="contentList" class="content-list">
+        <!-- injected by admin.js -->
+      </div>
+    </section>
+
+    <!-- .aprroved section -->
+    <section id="approved" class="admin-section">
+  <h2>Approved Library</h2>
+
+  <div id="approvedList" class="content-list">
+    <!-- approved content injected by admin.js -->
+  </div>
+</section>
+
+
+    <!-- 👤 CREATORS -->
+    <section id="creators" class="admin-section">
+      <h2>Creators</h2>
+      <p>Creator profiles, uploads & performance.</p>
+    </section>
+
+    <!-- 💰 PAYOUTS -->
+    <section id="payouts" class="admin-section">
+      <h2>Payouts</h2>
+      <p>Pending, processed & failed payouts.</p>
+    </section>
+
+    <!-- 🤖 AI SIGNALS -->
+    <section id="ai" class="admin-section">
+      <h2>AI Signals</h2>
+      <p>Trending topics, demand & AI insights.</p>
+    </section>
+
+    <!-- 📊 REPORTS -->
+    <section id="reports" class="admin-section">
+      <h2>Reports</h2>
+      <p>Revenue, growth & platform analytics.</p>
+    </section>
+
+    <!-- ⚙ SETTINGS -->
+    <section id="settings" class="admin-section">
+      <h2>Settings</h2>
+      <p>Platform rules, commission & admin config.</p>
+    </section>
+
+  </main>
+</div>
+
+<script src="../auth.js"></script>
+<script src="admin.js"></script>
+
+</body>
+</html>

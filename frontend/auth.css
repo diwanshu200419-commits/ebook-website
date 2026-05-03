@@ -1,0 +1,286 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0b1020, #000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+/* Wrapper */
+.auth-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* Card */
+.auth-card {
+  width: 420px;
+  padding: 40px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  animation: floatUp 0.8s ease;
+}
+
+@keyframes floatUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-card h1 {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.sub {
+  text-align: center;
+  margin: 10px 0 28px;
+  color: #aaa;
+}
+
+/* Inputs */
+.input-group {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.input-group i {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: #aaa;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 14px 14px 42px;
+  border-radius: 14px;
+  border: none;
+  outline: none;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+select {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+/* Main Button */
+.primary-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 30px;
+  border: none;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6a5cff, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 0 30px rgba(139,92,246,0.5);
+  transition: transform 0.2s;
+}
+
+.primary-btn:hover {
+  transform: scale(1.03);
+}
+
+/* Divider */
+.divider {
+  text-align: center;
+  margin: 24px 0 16px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* Social Buttons */
+.social-row {
+  display: flex;
+  gap: 10px;
+}
+
+.social {
+  flex: 1;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.social:hover {
+  transform: translateY(-2px);
+}
+
+.google { border-color: #ea4335; }
+.apple { border-color: #fff; }
+.facebook { border-color: #1877f2; }
+
+/* Switch */
+.switch {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.switch a {
+  color: #8b5cf6;
+  text-decoration: none;
+}
+/* ===== WORLD-CLASS LOGIN POLISH ===== */
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.logo-dot {
+  width: 10px;
+  height: 10px;
+  background: #8b5cf6;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(139,92,246,0.8);
+}
+
+.brand-name {
+  color: #8b5cf6;
+  font-size: 14px;
+}
+
+.auth-card h1 {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.trust {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 10px;
+}
+
+.input-group input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(139,92,246,0.25);
+}
+
+.primary-btn {
+  margin-top: 10px;
+}
+
+.social-btn {
+  transition: background 0.2s ease, border 0.2s ease;
+}
+
+.social-btn.google:hover {
+  background: rgba(234,67,53,0.08);
+  border-color: #ea4335;
+}
+
+.social-btn.apple:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: #fff;
+}
+/* ===============================
+   BACKGROUND STORY ICONS
+================================ */
+
+.bg-icons {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-icons i {
+  position: absolute;
+  font-size: 80px;
+  color: rgba(255,255,255,0.06);
+  animation: floatSlow 18s infinite linear;
+}
+
+/* Individual positions */
+.bg-icons i:nth-child(1) {
+  top: 15%;
+  left: 10%;
+  animation-duration: 22s;
+}
+
+.bg-icons i:nth-child(2) {
+  top: 70%;
+  left: 15%;
+  font-size: 90px;
+  animation-duration: 26s;
+}
+
+.bg-icons i:nth-child(3) {
+  top: 25%;
+  right: 12%;
+  font-size: 70px;
+  animation-duration: 20s;
+}
+
+.bg-icons i:nth-child(4) {
+  bottom: 18%;
+  right: 20%;
+  font-size: 85px;
+  animation-duration: 24s;
+}
+
+.bg-icons i:nth-child(5) {
+  top: 50%;
+  left: 50%;
+  font-size: 110px;
+  transform: translate(-50%, -50%);
+  animation-duration: 30s;
+}
+
+/* Smooth floating animation */
+@keyframes floatSlow {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-25px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Make sure login card stays above */
+.auth-wrapper,
+.auth-card {
+  position: relative;
+  z-index: 2;
+}

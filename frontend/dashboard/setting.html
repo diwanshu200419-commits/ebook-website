@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<title>Account Settings | E-Book Market</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="setting.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="../auth.js"></script>
+</head>
+
+<body>
+
+<div class="cursor-glow"></div>
+
+<div class="dashboard-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<nav>
+<a href="dashboard.html">Dashboard</a>
+<a href="analytics.html">Analytics</a>
+<a href="earning.html">Earnings</a>
+<a href="content.html">Content</a>
+<a class="active">Settings</a>
+</nav>
+
+</aside>
+
+
+
+<!-- MAIN CONTENT -->
+
+<main class="settings-container">
+
+
+<!-- HEADER -->
+
+<div class="settings-header">
+
+<div>
+<h1>Account Settings</h1>
+<p>Manage your creator profile, earnings and payout details</p>
+</div>
+
+<div class="account-status">
+<span class="status-badge verified">Verified Creator</span>
+</div>
+
+</div>
+
+
+
+<!-- CREATOR SUMMARY -->
+
+<section class="summary-bar">
+
+<div class="summary-item">
+<h4>Account Type</h4>
+<p id="accountRole">Creator</p>
+</div>
+
+<div class="summary-item">
+<h4>Total Earnings</h4>
+<p id="accountEarnings">₹0</p>
+</div>
+
+<div class="summary-item">
+<h4>Total Sales</h4>
+<p id="totalSales">0</p>
+</div>
+
+<div class="summary-item">
+<h4>Payout Method</h4>
+<p id="payoutStatus">Manual (UPI / Bank)</p>
+</div>
+
+</section>
+
+
+
+<!-- PROFILE -->
+
+<section class="settings-card">
+
+<div class="card-header">
+<h3>Profile Information</h3>
+<span class="badge">Public</span>
+</div>
+
+<div class="profile-grid">
+
+<div class="profile-photo">
+
+<img
+id="profilePreview"
+src="../assets/default-avatar.png"
+alt="Profile"
+/>
+
+<input type="file" id="profileImage" hidden accept="image/*">
+
+<button
+class="btn-outline"
+onclick="document.getElementById('profileImage').click()">
+Update Photo
+</button>
+
+</div>
+
+
+
+<div class="profile-fields">
+
+<label>Full Name</label>
+<input type="text" id="fullName">
+
+<label>Email</label>
+<input type="email" id="email" disabled>
+
+<label>Creator Bio</label>
+
+<textarea
+id="bio"
+maxlength="200"
+placeholder="Tell readers about yourself..."></textarea>
+
+<div class="action-row">
+
+<button
+class="btn-primary"
+id="saveProfileBtn"
+onclick="updateProfile()">
+Save Profile
+</button>
+
+<span id="profileMsg" class="form-message"></span>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- SECURITY -->
+
+<section class="settings-card">
+
+<div class="card-header">
+<h3>Account Security</h3>
+<span class="badge secure">Protected</span>
+</div>
+
+<label>Current Password</label>
+<input type="password" id="currentPassword">
+
+<label>New Password</label>
+<input type="password" id="newPassword">
+
+<div class="action-row">
+
+<button
+class="btn-secondary"
+id="updatePasswordBtn"
+onclick="changePassword()">
+Update Password
+</button>
+
+<span id="passwordMsg" class="form-message"></span>
+
+</div>
+
+</section>
+
+
+
+<!-- STRIPE (OPTIONAL FEATURE) -->
+
+<section class="settings-card">
+
+<div class="card-header">
+<h3>Stripe Automatic Payout</h3>
+<span class="badge">Optional</span>
+</div>
+
+<p class="payout-info-box">
+
+Stripe payouts are currently limited in India.
+For now, creators receive payments through the manual payout system below.
+
+</p>
+
+<div class="action-row">
+
+<button class="btn-secondary" disabled>
+Stripe Coming Soon
+</button>
+
+<span class="form-message">
+Optional Feature
+</span>
+
+</div>
+
+</section>
+
+
+
+<!-- MANUAL PAYOUT (MAIN SYSTEM) -->
+
+<section class="settings-card">
+
+<div class="card-header">
+<h3>Manual Payout Details</h3>
+<span class="badge">Primary</span>
+</div>
+
+<p class="payout-info-box">
+Add your payout information to receive earnings via bank transfer or UPI.
+</p>
+
+<label>UPI ID</label>
+<input type="text" id="upiId" placeholder="example@upi">
+
+<label>Bank Account Number</label>
+<input type="text" id="bankAccount">
+
+<label>IFSC Code</label>
+<input type="text" id="ifscCode">
+
+<div class="action-row">
+
+<button
+class="btn-primary"
+id="savePayoutBtn"
+onclick="savePayout()">
+Save Payout Details
+</button>
+
+<span id="payoutMsg" class="form-message"></span>
+
+</div>
+
+</section>
+
+
+
+<!-- CREATOR ACTIVITY -->
+
+<section class="settings-card">
+
+<div class="card-header">
+<h3>Recent Activity</h3>
+<span class="badge">Logs</span>
+</div>
+
+<ul class="activity-log">
+
+<li>
+<span class="activity-time">2 hours ago</span>
+<span class="activity-text">Password updated</span>
+</li>
+
+<li>
+<span class="activity-time">1 day ago</span>
+<span class="activity-text">New book uploaded</span>
+</li>
+
+<li>
+<span class="activity-time">3 days ago</span>
+<span class="activity-text">Payout details updated</span>
+</li>
+
+</ul>
+
+</section>
+
+
+
+<!-- DANGER ZONE -->
+
+<section class="settings-card danger-zone">
+
+<div class="card-header">
+<h3>Danger Zone</h3>
+</div>
+
+<p class="danger-text">
+Deleting your account will permanently remove your profile, books and earnings data.
+This action cannot be undone.
+</p>
+
+<button
+class="btn-danger"
+onclick="deleteAccount()">
+Delete Account
+</button>
+
+<span id="deleteMsg" class="form-message"></span>
+
+</section>
+
+
+</main>
+
+</div>
+
+
+
+<!-- SCRIPTS -->
+
+<script src="../auth.js"></script>
+<script src="setting.js"></script>
+<script src="motion-system.js"></script>
+
+</body>
+</html>

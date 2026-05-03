@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Creator Wallet | E-Book Market</title>
+
+<link rel="stylesheet" href="earning.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../auth.js"></script>
+
+</head>
+
+<body>
+
+<div class="dashboard-layout">
+
+
+<!-- ================= SIDEBAR ================= -->
+
+<aside class="sidebar">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<nav>
+
+<a href="dashboard.html">Dashboard</a>
+<a href="analytics.html">Analytics</a>
+<a class="active">Earnings</a>
+<a href="content.html">Content</a>
+<a href="setting.html">Settings</a>
+
+</nav>
+
+</aside>
+
+
+
+<!-- ================= MAIN ================= -->
+
+<main class="earnings-container">
+
+
+<!-- ================= HEADER ================= -->
+
+<header class="earnings-header">
+
+<div>
+
+<h1>Creator Wallet</h1>
+<p>Track your revenue, withdrawals and creator earnings</p>
+
+</div>
+
+<div class="wallet-badge">
+
+<span>💰 Creator Earnings</span>
+
+<div class="creator-score">
+Creator Score: <strong id="creatorScore">0</strong>/100
+</div>
+
+</div>
+
+</header>
+
+
+
+<!-- ================= WALLET STATS ================= -->
+
+<section class="wallet-grid">
+
+<div class="wallet-card pending">
+<h2>₹ <span id="pendingAmount">0</span></h2>
+<span>Pending Earnings</span>
+</div>
+
+<div class="wallet-card available">
+<h2>₹ <span id="availableAmount">0</span></h2>
+<span>Available Balance</span>
+</div>
+
+<div class="wallet-card withdrawn">
+<h2>₹ <span id="withdrawnAmount">0</span></h2>
+<span>Total Withdrawn</span>
+</div>
+
+<div class="wallet-card lifetime">
+<h2>₹ <span id="lifetimeAmount">0</span></h2>
+<span>Lifetime Earnings</span>
+</div>
+
+</section>
+
+
+
+<!-- ================= WITHDRAW ACTION ================= -->
+
+<section class="withdraw-box">
+
+<button id="withdrawBtn" class="btn-primary">
+Request Withdrawal
+</button>
+
+<p>
+Minimum ₹500 • Withdrawals processed within 3-5 working days
+</p>
+
+</section>
+
+
+
+<!-- ================= CHARTS ================= -->
+
+<section class="charts-grid">
+
+
+<!-- ===== EARNINGS CHART ===== -->
+
+<div class="chart-section">
+
+<div class="section-header">
+<h2>Earnings Growth</h2>
+<span>Last 6 months</span>
+</div>
+
+<canvas id="earningChart"></canvas>
+
+</div>
+
+
+
+<!-- ===== GLOBAL SALES ===== -->
+
+<div class="chart-section">
+
+<div class="section-header">
+<h2>Global Sales</h2>
+<span>Country wise revenue</span>
+</div>
+
+<canvas id="globalSalesChart"></canvas>
+
+</div>
+
+</section>
+<!-- ================= AI REVENUE FORECAST ================= -->
+
+<section class="ai-forecast">
+
+<div class="forecast-header">
+
+<h2>AI Revenue Forecast</h2>
+
+<span>Next Month Prediction</span>
+
+</div>
+
+<div class="forecast-grid">
+
+<div class="forecast-card">
+
+<h3 id="forecastRevenue">₹0</h3>
+
+<p>Predicted Revenue</p>
+
+</div>
+
+<div class="forecast-card">
+
+<h3 id="forecastGrowth">0%</h3>
+
+<p>Growth Prediction</p>
+
+</div>
+
+<div class="forecast-card">
+
+<h3 id="salesMomentum">Low</h3>
+
+<p>Sales Momentum</p>
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- ================= TOP EARNING BOOKS ================= -->
+
+<section class="table-section">
+
+<h2>Top Earning Books</h2>
+
+<table>
+
+<thead>
+
+<tr>
+<th>Book</th>
+<th>Sales</th>
+<th>Earnings</th>
+</tr>
+
+</thead>
+
+<tbody id="topEarningBooks">
+
+<tr>
+<td colspan="3">Loading...</td>
+</tr>
+
+</tbody>
+
+</table>
+
+</section>
+
+
+
+<!-- ================= TRANSACTION HISTORY ================= -->
+
+<section class="table-section">
+
+<h2>Transaction History</h2>
+
+<table>
+
+<thead>
+
+<tr>
+<th>Date</th>
+<th>Book</th>
+<th>Amount</th>
+<th>Status</th>
+</tr>
+
+</thead>
+
+<tbody id="transactionList">
+
+<tr>
+<td colspan="4">Loading transactions...</td>
+</tr>
+
+</tbody>
+
+</table>
+
+</section>
+
+
+
+<!-- ================= PAYOUT METHOD ================= -->
+
+<section class="payout-section">
+
+<h2>Payout Method</h2>
+
+<div class="payout-card">
+
+<p id="paymentMethod">
+No payout method configured
+</p>
+
+<button class="btn-secondary">
+Update Payout Details
+</button>
+
+</div>
+
+</section>
+
+
+</main>
+
+</div>
+
+
+
+<!-- ================= SCRIPTS ================= -->
+
+<script src="../auth.js"></script>
+<script src="earning.js"></script>
+
+</body>
+</html>
