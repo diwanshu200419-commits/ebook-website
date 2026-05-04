@@ -309,7 +309,6 @@ border-radius:20px;
 border:1px solid rgba(255,255,255,0.05);
 
 margin-bottom:40px;
-overflow-x:auto;
 
 }
 
@@ -320,7 +319,6 @@ margin-bottom:20px;
 table{
 width:100%;
 border-collapse:collapse;
-min-width:560px;
 }
 
 th,td{
@@ -443,44 +441,12 @@ padding:40px;
 
 @media(max-width:768px){
 
-.dashboard-layout{
-flex-direction:column;
-}
-
 .sidebar{
-width:100%;
-padding:18px 16px;
-border-right:none;
-border-bottom:1px solid rgba(255,255,255,0.05);
-position:sticky;
-top:0;
-z-index:20;
-}
-
-.sidebar nav{
-flex-direction:row;
-overflow-x:auto;
-white-space:nowrap;
-}
-
-.sidebar a{
-flex:0 0 auto;
+display:none;
 }
 
 .earnings-container{
-padding:24px 16px;
-}
-
-.earnings-header,
-.payout-card,
-.forecast-header{
-flex-direction:column;
-align-items:flex-start;
-gap:14px;
-}
-
-.wallet-badge{
-width:100%;
+padding:25px;
 }
 
 } .creator-score{

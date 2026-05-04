@@ -37,12 +37,7 @@ router.put("/profile", protect, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
 
     user.name = req.body.name || user.name;
-    user.bio = req.body.bio ?? user.bio;
-    user.website = req.body.website ?? user.website;
-
-    if (typeof req.body.profileImage === "string") {
-      user.profileImage = req.body.profileImage;
-    }
+    user.bio = req.body.bio || user.bio;
 
     await user.save();
 

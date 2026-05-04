@@ -444,7 +444,6 @@ margin-bottom:35px;
 border:1px solid rgba(255,255,255,.05);
 
 transition:.25s;
-overflow-x:auto;
 
 }
 
@@ -561,28 +560,7 @@ flex-direction:column;
 
 width:100%;
 height:auto;
-position:sticky;
-top:0;
-z-index:20;
-padding:18px 16px;
 
-}
-
-.sidebar nav{
-flex-direction:row;
-flex-wrap:nowrap;
-overflow-x:auto;
-padding-bottom:4px;
-}
-
-.sidebar nav a{
-white-space:nowrap;
-flex:0 0 auto;
-}
-
-.sidebar-footer{
-flex-direction:row;
-margin-top:16px;
 }
 
 .stats{
@@ -595,18 +573,6 @@ grid-template-columns:1fr;
 
 padding:25px;
 
-}
-
-.topbar{
-flex-direction:column;
-align-items:flex-start;
-gap:16px;
-}
-
-.top-actions{
-width:100%;
-justify-content:space-between;
-flex-wrap:wrap;
 }
 
 }

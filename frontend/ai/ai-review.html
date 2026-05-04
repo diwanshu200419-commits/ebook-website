@@ -11,82 +11,136 @@
 <body>
 
 <div class="ai-layout">
+
+  <!-- HEADER -->
   <header class="ai-header">
     <div>
       <h1>AI Content Review</h1>
-      <p>Automated quality, originality, and monetization analysis</p>
+      <p>Automated quality, originality & monetization analysis</p>
     </div>
     <span class="badge">ADMIN</span>
   </header>
 
+  <!-- CONTENT INFO -->
   <section class="content-summary">
-    <h2 id="contentTitle">Loading content...</h2>
-    <p id="contentMeta">
-      Category: <strong>Loading</strong> • Type: <strong>Loading</strong> • Price: <strong>Loading</strong>
+    <h2 id="contentTitle">Advanced Java Handwritten Notes</h2>
+    <p>
+      Category: <strong>Handwritten Notes</strong> •
+      Type: <strong>Notes</strong> •
+      Price: <strong>₹99</strong>
     </p>
-    <p class="creator" id="creatorMeta">Uploaded by: <strong>Loading</strong></p>
+    <p class="creator">
+      Uploaded by: <strong>Yash Parmar</strong>
+    </p>
   </section>
 
+  <!-- AI SCORE -->
   <section class="ai-score-card">
     <h3>Overall AI Score</h3>
     <div class="score-circle">
-      <span id="overallScore">--</span>
+      <span id="overallScore">92%</span>
     </div>
-    <p class="score-status good" id="scoreStatus">Loading review</p>
+    <p class="score-status good">High Quality Content</p>
   </section>
 
+  <!-- METRICS -->
   <section class="metrics-grid">
+
     <div class="metric">
       <h4>Originality</h4>
-      <span class="good" id="metricOriginality">--</span>
+      <span class="good">94%</span>
     </div>
 
     <div class="metric">
       <h4>Readability</h4>
-      <span class="good" id="metricReadability">--</span>
+      <span class="good">88%</span>
     </div>
 
     <div class="metric">
       <h4>Relevance</h4>
-      <span class="good" id="metricRelevance">--</span>
+      <span class="good">90%</span>
     </div>
 
     <div class="metric">
       <h4>Copyright Risk</h4>
-      <span class="safe" id="metricCopyright">--</span>
+      <span class="safe">Low</span>
     </div>
 
     <div class="metric">
       <h4>Spam Probability</h4>
-      <span class="safe" id="metricSpam">--</span>
+      <span class="safe">Low</span>
     </div>
 
     <div class="metric">
       <h4>Revenue Potential</h4>
-      <span class="good" id="metricRevenue">--</span>
+      <span class="good">High</span>
     </div>
+
   </section>
 
+  <!-- AI INSIGHTS -->
   <section class="ai-insights">
     <h3>AI Insights</h3>
-    <ul id="insightList"></ul>
+    <ul>
+      <li>✔ Content appears original with no major plagiarism detected</li>
+      <li>✔ Suitable for global audience</li>
+      <li>⚠ Minor formatting improvements suggested</li>
+      <li>💰 High earning potential in Technology & Education categories</li>
+    </ul>
   </section>
 
-  <section class="ai-recommendation" id="recommendationBox">
+  <!-- AI RECOMMENDATION -->
+  <section class="ai-recommendation approve">
     <h3>AI Recommendation</h3>
-    <p id="recommendationText">Loading recommendation</p>
+    <p>Recommended for publishing</p>
   </section>
 
+  <!-- ADMIN ACTIONS -->
   <section class="admin-actions">
-    <button class="btn approve" onclick="approveContent()">Approve & Publish</button>
-    <button class="btn changes" onclick="requestChanges()">Request Changes</button>
-    <button class="btn reject" onclick="rejectContent()">Reject Content</button>
+    <button class="btn approve" onclick="approveContent()">
+      Approve & Publish
+    </button>
+    <button class="btn changes" onclick="requestChanges()">
+      Request Changes
+    </button>
+    <button class="btn reject" onclick="rejectContent()">
+      Reject Content
+    </button>
   </section>
 
-  <a class="back" href="../admin/admin.html">← Back to Admin Dashboard</a>
+  <!-- BACK -->
+  <a class="back" href="../admin/admin.html">
+    ← Back to Admin Dashboard
+  </a>
+
 </div>
 
 <script src="../auth.js"></script>
 <script src="ai-review.js"></script>
+
+<script>
+  // ADMIN PROTECTION
+  protectPage(["admin"]);
+
+  // Demo admin actions
+  function approveContent() {
+    alert("✅ Content approved based on AI & admin review");
+  }
+
+  function requestChanges() {
+    const reason = prompt("Enter changes required for creator:");
+    if (reason) {
+      alert("✏️ Changes requested from creator");
+    }
+  }
+
+  function rejectContent() {
+    const reason = prompt("Reason for rejection:");
+    if (reason) {
+      alert("❌ Content rejected and creator notified");
+    }
+  }
+</script>
+
 </body>
 </html>

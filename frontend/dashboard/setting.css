@@ -467,41 +467,12 @@ grid-template-columns:1fr;
 
 @media(max-width:768px){
 
-.dashboard-layout{
-flex-direction:column;
-}
-
 .sidebar{
-width:100%;
-padding:18px 16px;
-border-right:none;
-border-bottom:1px solid rgba(255,255,255,0.05);
-position:sticky;
-top:0;
-z-index:20;
-}
-
-.sidebar nav{
-flex-direction:row;
-overflow-x:auto;
-white-space:nowrap;
-}
-
-.sidebar nav a{
-flex:0 0 auto;
+display:none;
 }
 
 .settings-container{
-padding:24px 16px;
-}
-
-.settings-header,
-.card-header,
-.action-row,
-.activity-log li{
-flex-direction:column;
-align-items:flex-start;
-gap:12px;
+padding:30px;
 }
 
 }

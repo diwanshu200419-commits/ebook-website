@@ -1,135 +1,322 @@
-async function loadCreatorProfile() {
-  const params = new URLSearchParams(window.location.search);
-  const username = params.get("username");
+/* =========================
+CREATOR MARKETPLACE SYSTEM
+E-BOOK MARKET STARTUP
+========================= */
 
-  if (!username) {
-    renderCreatorError("Creator profile not found.");
-    return;
-  }
+const API_BASE = "http://localhost:5000";
 
-  try {
-    const data = await apiFetchJson(`/api/creator/${username}`);
-    renderCreator(data.creator, data.books || []);
+/* =========================
+GET USER TOKEN
+========================= */
 
-    if (getToken()) {
-      await syncFollowState(username);
-    }
-  } catch (error) {
-    renderCreatorError(error.message || "Unable to load creator profile.");
-  }
+const token = localStorage.getItem("token");
+
+let currentUser = null;
+
+try{
+currentUser = JSON.parse(localStorage.getItem("user"));
+}catch{}
+
+
+/* =========================
+GET CREATOR USERNAME
+========================= */
+
+const params = new URLSearchParams(window.location.search);
+const username = params.get("username");
+
+
+/* =========================
+LOAD CREATOR PROFILE
+========================= */
+
+async function loadCreatorProfile(){
+
+try{
+
+const res = await fetch(`${API_BASE}/api/creator/${username}`);
+
+const data = await res.json();
+
+const creator = data.creator;
+
+
+/* PROFILE INFO */
+
+document.getElementById("creatorName").innerText = creator.name;
+
+document.getElementById("creatorBio").innerText =
+creator.bio || "Creator on E-Book Market";
+
+document.getElementById("creatorAbout").innerText =
+creator.about || "Sharing knowledge through digital books.";
+
+document.getElementById("creatorAvatar").src =
+creator.avatar || "../assets/avatar.png";
+
+
+/* VERIFIED BADGE */
+
+if(!creator.verified){
+
+document.getElementById("verifiedBadge").style.display = "none";
+
 }
 
-function renderCreator(creator, books) {
-  document.getElementById("creatorName").textContent = creator.name;
-  document.getElementById("creatorBio").textContent = creator.bio;
-  document.getElementById("creatorAbout").textContent = creator.bio;
-  document.getElementById("creatorAvatar").src =
-    creator.avatar || "../assets/default-avatar.png";
 
-  const verifiedBadge = document.getElementById("verifiedBadge");
-  verifiedBadge.style.display = creator.verified ? "inline-flex" : "none";
+/* STATS */
 
-  document.getElementById("booksCount").textContent = creator.stats.books;
-  document.getElementById("followersCount").textContent = creator.followers;
-  document.getElementById("salesCount").textContent = creator.stats.sales;
-  document.getElementById("earnings").textContent = formatCurrency(
-    creator.stats.earnings
-  );
+document.getElementById("booksCount").innerText =
+creator.booksCount || 0;
 
-  const website = document.getElementById("creatorWebsite");
-  if (creator.website) {
-    website.href = creator.website;
-    website.style.display = "inline-flex";
-  } else {
-    website.style.display = "none";
-  }
+document.getElementById("followersCount").innerText =
+creator.followers || 0;
 
-  renderCreatorBooks(books);
+document.getElementById("salesCount").innerText =
+creator.sales || 0;
+
+document.getElementById("earnings").innerText =
+"₹" + (creator.earnings || 0);
+
+
+/* WEBSITE */
+
+if(creator.website){
+
+document.getElementById("creatorWebsite").href =
+creator.website;
+
+}else{
+
+document.getElementById("creatorWebsite").style.display="none";
+
 }
 
-function renderCreatorBooks(books) {
-  const grid = document.getElementById("booksGrid");
 
-  if (!books.length) {
-    grid.innerHTML = "<p>No approved books published yet.</p>";
-    return;
-  }
+/* BOOKS */
 
-  grid.innerHTML = books
-    .map((book) => {
-      return `
-        <article class="book-card">
-          <img src="${book.coverImage}" class="book-cover" alt="${escapeHtml(book.title)}">
-          <div class="book-info">
-            <h3>${escapeHtml(book.title)}</h3>
-            <p class="price">${formatCurrency(book.price)}</p>
-            <a href="../book_view.html?id=${book._id}" class="btn-outline">
-              View Book
-            </a>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
+renderBooks(data.books);
+
+
+/* FOLLOW STATE */
+
+checkFollowState(creator._id);
+
+
+}catch(err){
+
+console.error("Creator load error:",err);
+
 }
 
-function renderCreatorError(message) {
-  document.getElementById("creatorName").textContent = "Creator unavailable";
-  document.getElementById("creatorBio").textContent = message;
-  document.getElementById("creatorAbout").textContent = message;
-  document.getElementById("booksGrid").innerHTML = `<p>${escapeHtml(message)}</p>`;
 }
 
-async function syncFollowState(username) {
-  try {
-    const data = await apiFetchJson(`/api/creator/${username}/follow-state`);
-    updateFollowButton(data.following, data.followers);
-  } catch (error) {
-    updateFollowButton(false);
-  }
+
+
+/* =========================
+RENDER CREATOR BOOKS
+========================= */
+
+function renderBooks(books){
+
+const grid = document.getElementById("booksGrid");
+
+grid.innerHTML = "";
+
+if(!books.length){
+
+grid.innerHTML = "<p>No books published yet.</p>";
+return;
+
 }
 
-function updateFollowButton(isFollowing, followerCount) {
-  const button = document.getElementById("followBtn");
-  if (!button) {
-    return;
-  }
+books.forEach(book=>{
 
-  button.textContent = isFollowing ? "Following" : "Follow Creator";
-  button.classList.toggle("following", Boolean(isFollowing));
+grid.innerHTML += `
 
-  if (typeof followerCount === "number") {
-    document.getElementById("followersCount").textContent = followerCount;
-  }
-}
+<div class="book-card">
 
-async function handleFollow() {
-  if (!getToken()) {
-    redirectToLogin();
-    return;
-  }
+<img src="/uploads/${book.cover}" class="book-cover">
 
-  const params = new URLSearchParams(window.location.search);
-  const username = params.get("username");
-  if (!username) {
-    return;
-  }
+<div class="book-info">
 
-  try {
-    const data = await apiFetchJson(`/api/creator/${username}/follow`, {
-      method: "POST",
-    });
-    updateFollowButton(data.following, data.followers);
-  } catch (error) {
-    alert(error.message || "Unable to update follow state.");
-  }
-}
+<h3>${book.title}</h3>
 
-document.addEventListener("DOMContentLoaded", () => {
-  const followBtn = document.getElementById("followBtn");
-  if (followBtn) {
-    followBtn.addEventListener("click", handleFollow);
-  }
+<p class="price">₹${book.price}</p>
 
-  loadCreatorProfile();
+<a href="../book_view.html?id=${book._id}" class="btn-outline">
+
+View Book
+
+</a>
+
+</div>
+
+</div>
+
+`;
+
 });
+
+}
+
+
+
+/* =========================
+FOLLOW SYSTEM
+========================= */
+
+async function followCreator(){
+
+if(!token){
+
+window.location.href="../login.html";
+return;
+
+}
+
+try{
+
+const res = await fetch(`${API_BASE}/api/follow/${username}`,{
+
+method:"POST",
+
+headers:{
+Authorization:`Bearer ${token}`
+}
+
+});
+
+const data = await res.json();
+
+updateFollowButton(data.following);
+
+}catch(err){
+
+console.error("Follow error",err);
+
+}
+
+}
+
+
+
+function updateFollowButton(following){
+
+const btn = document.getElementById("followBtn");
+
+if(following){
+
+btn.innerText="Following";
+btn.classList.add("following");
+
+}else{
+
+btn.innerText="Follow Creator";
+btn.classList.remove("following");
+
+}
+
+}
+
+
+
+async function checkFollowState(creatorId){
+
+if(!token) return;
+
+try{
+
+const res = await fetch(`${API_BASE}/api/follow/state/${creatorId}`,{
+
+headers:{
+Authorization:`Bearer ${token}`
+}
+
+});
+
+const data = await res.json();
+
+updateFollowButton(data.following);
+
+}catch(err){
+
+console.log(err);
+
+}
+
+}
+
+
+
+/* =========================
+TRENDING CREATORS
+========================= */
+
+async function loadTrendingCreators(){
+
+try{
+
+const res = await fetch(`${API_BASE}/api/creator/trending`);
+
+const creators = await res.json();
+
+const container = document.getElementById("trendingCreators");
+
+if(!container) return;
+
+container.innerHTML="";
+
+creators.forEach(c=>{
+
+container.innerHTML += `
+
+<div class="creator-card">
+
+<img src="${c.avatar || "../assets/avatar.png"}">
+
+<h4>${c.name}</h4>
+
+<p>${c.booksCount} books</p>
+
+<a href="creator.html?username=${c.username}">
+View Profile
+</a>
+
+</div>
+
+`;
+
+});
+
+}catch(err){
+
+console.log("Trending creators error",err);
+
+}
+
+}
+
+
+
+/* =========================
+FOLLOW BUTTON EVENT
+========================= */
+
+const followBtn = document.getElementById("followBtn");
+
+if(followBtn){
+
+followBtn.addEventListener("click",followCreator);
+
+}
+
+
+
+/* =========================
+INIT PAGE
+========================= */
+
+loadCreatorProfile();
+
+loadTrendingCreators();

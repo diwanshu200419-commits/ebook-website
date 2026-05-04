@@ -240,12 +240,8 @@ Already have an account? <a href="login.html">Sign in</a>
 
 </div>
 
-<script src="auth.js"></script>
 <script>
-
-if(getToken() && getCurrentUser()){
-redirectForRole(getCurrentUser());
-}
+const API_BASE="http://localhost:5000";
 
 /* Strength Logic */
 const pass=document.getElementById("password");
@@ -299,17 +295,24 @@ btn.disabled=true;
 btn.innerText="Creating...";
 
 try{
-const data=await apiFetchJson("/api/auth/register",{
+const res=await fetch(`${API_BASE}/api/auth/register`,{
 method:"POST",
+headers:{"Content-Type":"application/json"},
 body:JSON.stringify({name,email,password,role})
 });
 
-setSession(data.token,data.user);
-message.innerHTML="<span class='success'>Account created! Redirecting...</span>";
-setTimeout(()=>redirectForRole(data.user),900);
+const data=await res.json();
+
+if(!res.ok){
+message.innerHTML=`<span class='error'>${data.msg||"Registration failed"}</span>`;
+return;
+}
+
+message.innerHTML="<span class='success'>Account created! Redirecting to login...</span>";
+setTimeout(()=>window.location.href="login.html",1500);
 
 }catch(err){
-message.innerHTML=`<span class='error'>${err.message || "Registration failed"}</span>`;
+message.innerHTML="<span class='error'>Server error</span>";
 }
 finally{
 btn.disabled=false;

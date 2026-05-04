@@ -331,15 +331,11 @@ button{font-family:inherit;border:none;cursor:pointer}
     width:100%;
     flex-direction:row;
     overflow-x:auto;
-    align-items:flex-start;
   }
   .sidebar-nav{
     flex-direction:row;
-    flex-wrap:nowrap;
   }
-  .sidebar-nav a{white-space:nowrap;flex:0 0 auto}
   .admin-main{padding:20px}
-  .admin-top{flex-direction:column;gap:14px}
   .content-card{flex-direction:column;align-items:flex-start}
   .actions{margin-top:12px}
 }

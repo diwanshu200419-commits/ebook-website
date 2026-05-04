@@ -1,257 +1,295 @@
-const uploadState = {
-  tags: [],
-  uploading: false,
-};
+/* =====================================
+   CONFIG
+===================================== */
+
+const API_BASE = "http://localhost:5000";
+const token = localStorage.getItem("token");
+
+if (!token || token === "null" || token === "undefined") {
+  redirectToLogin();
+}
+
+protectPage(["creator", "author"]);
+
+/* =====================================
+   ELEMENTS
+===================================== */
+
+const form = document.getElementById("uploadForm");
+const tagInput = document.getElementById("tagInput");
+const tagContainer = document.getElementById("tagContainer");
+const thumbnailInput = document.getElementById("thumbnail");
+const thumbnailBox = document.getElementById("thumbnailBox");
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("file");
+const priceInput = document.getElementById("price");
+const earnPreview = document.getElementById("earnPreview");
+const progressBar = document.getElementById("progressBar");
+const aiScoreEl = document.getElementById("aiScore");
+const statusMessage = document.getElementById("statusMessage");
+
+let tags = [];
+let isUploading = false;
+
+/* =====================================
+   SMART TAG SYSTEM
+===================================== */
+
+tagInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+
+    const value = tagInput.value.trim().toLowerCase();
+
+    if (!value) return;
+    if (tags.includes(value)) return showError("Tag already added");
+    if (tags.length >= 5) return showError("Maximum 5 tags allowed");
+
+    tags.push(value);
+    tagInput.value = "";
+    renderTags();
+  }
+});
 
 function renderTags() {
-  const tagContainer = document.getElementById("tagContainer");
-  const tagInput = document.getElementById("tagInput");
-  if (!tagContainer || !tagInput) {
-    return;
-  }
-
   tagContainer.innerHTML = "";
 
-  uploadState.tags.forEach((tag, index) => {
+  tags.forEach((tag, index) => {
     const chip = document.createElement("div");
     chip.className = "tag-chip";
-    chip.innerHTML = `${escapeHtml(tag)} <span>×</span>`;
+    chip.innerHTML = `${tag} <span>×</span>`;
+
     chip.querySelector("span").addEventListener("click", () => {
-      uploadState.tags.splice(index, 1);
+      tags.splice(index, 1);
       renderTags();
     });
+
     tagContainer.appendChild(chip);
   });
 
   tagContainer.appendChild(tagInput);
 }
 
-function showStatus(message, type = "info") {
-  const status = document.getElementById("statusMessage");
-  if (!status) {
-    return;
-  }
+/* =====================================
+   THUMBNAIL PREVIEW
+===================================== */
 
-  status.textContent = message;
-  status.className = `status-message ${type}`;
-}
+thumbnailBox?.addEventListener("click", () => {
+  thumbnailInput.click();
+});
 
-function updateRoyaltyPreview() {
-  const price = Number(document.getElementById("price").value || 0);
-  const earning = price > 0 ? Math.round(price * 0.81) : 0;
-  document.getElementById("earnPreview").textContent = earning.toLocaleString("en-IN");
-}
+thumbnailInput?.addEventListener("change", () => {
+  const file = thumbnailInput.files[0];
+  if (!file) return;
 
-function previewThumbnail() {
-  const input = document.getElementById("thumbnail");
-  const box = document.getElementById("thumbnailBox");
-  const file = input.files[0];
-
-  if (!file) {
-    return;
+  if (!file.type.startsWith("image/")) {
+    return showError("Only image files allowed");
   }
 
   const reader = new FileReader();
-  reader.onload = (event) => {
-    box.innerHTML = `<img src="${event.target.result}" alt="Thumbnail preview">`;
+  reader.onload = (e) => {
+    thumbnailBox.innerHTML = `<img src="${e.target.result}" />`;
   };
   reader.readAsDataURL(file);
-}
+});
 
-function updateSelectedPdf(file) {
-  const dropZone = document.getElementById("dropZone");
-  dropZone.innerHTML = `
-    <p>${escapeHtml(file.name)}</p>
-    <small>${Math.round(file.size / 1024 / 1024)} MB selected</small>
-  `;
-}
+/* =====================================
+   DRAG & DROP PDF
+===================================== */
 
-function collectUploadData() {
+dropZone?.addEventListener("click", () => fileInput.click());
+
+dropZone?.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropZone.classList.add("dragging");
+});
+
+dropZone?.addEventListener("dragleave", () => {
+  dropZone.classList.remove("dragging");
+});
+
+dropZone?.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("dragging");
+
+  const file = e.dataTransfer.files[0];
+
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    return showError("Only PDF files allowed");
+  }
+
+  if (file.size > 50 * 1024 * 1024) {
+    return showError("Max file size 50MB");
+  }
+
+  fileInput.files = e.dataTransfer.files;
+  dropZone.innerHTML = `<p>${file.name}</p>`;
+});
+
+/* =====================================
+   ROYALTY CALCULATION
+===================================== */
+
+priceInput?.addEventListener("input", () => {
+  const price = Number(priceInput.value || 0);
+
+  let royalty = 0.81;
+  if (price > 1000) royalty = 0.85;
+  if (price === 0) royalty = 0;
+
+  earnPreview.innerText = Math.floor(price * royalty);
+});
+
+/* =====================================
+   MAIN SUBMIT HANDLER
+===================================== */
+
+form?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  uploadContent();
+});
+
+async function uploadContent() {
+
+  if (isUploading) return;
+
   const title = document.getElementById("title").value.trim();
   const type = document.getElementById("type").value;
   const category = document.getElementById("category").value;
   const language = document.getElementById("language").value;
-  const price = Number(document.getElementById("price").value || 0);
+  const price = Number(priceInput.value || 0);
   const description = document.getElementById("description").value.trim();
-  const file = document.getElementById("file").files[0];
-  const thumbnail = document.getElementById("thumbnail").files[0];
-  const copyrightConfirmed = document.getElementById("copyright").checked;
+  const file = fileInput.files[0];
+  const thumbnail = thumbnailInput.files[0];
+  const copyright = document.getElementById("copyright").checked;
 
-  if (!title || title.length < 5) {
-    throw new Error("Title must be at least 5 characters");
-  }
+  /* ---------- VALIDATION ---------- */
 
-  if (!type) {
-    throw new Error("Select a content type");
-  }
+  if (!title || title.length < 5)
+    return showError("Title must be at least 5 characters");
 
-  if (!category) {
-    throw new Error("Select a category");
-  }
+  if (!type)
+    return showError("Select content type");
 
-  if (!file) {
-    throw new Error("Upload a PDF file");
-  }
+  if (!category)
+    return showError("Select category");
 
-  if (!description || description.length < 30) {
-    throw new Error("Description should be at least 30 characters");
-  }
+  if (!file)
+    return showError("Upload PDF file");
 
-  if (!copyrightConfirmed) {
-    throw new Error("You must confirm the content is original");
-  }
+  if (tags.length === 0)
+    return showError("Add at least 1 tag");
 
-  return {
-    title,
-    type,
-    category,
-    language,
-    price,
-    description,
-    file,
-    thumbnail,
-  };
-}
+  if (description.length < 30)
+    return showError("Description too short");
 
-async function submitUpload(status = "AI_Review") {
-  if (uploadState.uploading) {
-    return;
-  }
+  if (!copyright)
+    return showError("You must confirm ownership");
+
+  /* ---------- UPLOAD ---------- */
+
+  isUploading = true;
+  showStatus("Uploading... Please wait.", "info");
+
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("type", type);
+  formData.append("category", category);
+  formData.append("language", language);
+  formData.append("price", price);
+  formData.append("description", description);
+  formData.append("tags", JSON.stringify(tags));
+  formData.append("bookFile", file);
+  if (thumbnail) formData.append("thumbnail", thumbnail);
 
   try {
-    const payload = collectUploadData();
-    uploadState.uploading = true;
-    showStatus(
-      status === "Draft" ? "Saving draft..." : "Uploading content for review...",
-      "info"
-    );
 
-    const formData = new FormData();
-    formData.append("title", payload.title);
-    formData.append("type", payload.type);
-    formData.append("category", payload.category);
-    formData.append("language", payload.language);
-    formData.append("price", String(payload.price));
-    formData.append("description", payload.description);
-    formData.append("status", status);
-    formData.append("tags", JSON.stringify(uploadState.tags));
-    formData.append("bookFile", payload.file);
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE}/api/books/upload`, true);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
-    if (payload.thumbnail) {
-      formData.append("thumbnail", payload.thumbnail);
-    }
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = (e.loaded / e.total) * 100;
+        progressBar.style.width = percent + "%";
+      }
+    };
 
-    const progressBar = document.getElementById("progressBar");
-    progressBar.style.width = "25%";
+    xhr.onload = () => {
 
-    const response = await apiFetch("/api/books/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await response.json();
+      isUploading = false;
 
-    if (!response.ok) {
-      throw new Error(data.message || "Upload failed");
-    }
+      if (xhr.status === 201) {
 
-    progressBar.style.width = "100%";
-    document.getElementById("aiScore").textContent = `${data.aiScore || "--"}%`;
-    showStatus(data.message || "Upload completed successfully.", "success");
-    document.getElementById("uploadForm").reset();
-    uploadState.tags = [];
-    renderTags();
-    document.getElementById("dropZone").innerHTML = `
-      <p>Drag & Drop PDF here</p>
-      <small>or click to browse (Max 50MB)</small>
-    `;
-    document.getElementById("thumbnailBox").innerHTML =
-      "<span>Click to Upload Thumbnail</span>";
-    updateRoyaltyPreview();
-  } catch (error) {
-    showStatus(error.message || "Upload failed", "error");
-  } finally {
-    uploadState.uploading = false;
+        const response = JSON.parse(xhr.responseText);
+
+        if (response.aiScore) {
+          aiScoreEl.innerText = response.aiScore + "%";
+        } else {
+          simulateAIScore();
+        }
+
+        showStatus("Submitted successfully for AI review 🚀", "success");
+        resetForm();
+
+      } else if (xhr.status === 401) {
+        redirectToLogin();
+      } else {
+        showStatus("Upload failed. Try again.", "error");
+      }
+    };
+
+    xhr.onerror = () => {
+      isUploading = false;
+      showStatus("Network error. Try again.", "error");
+    };
+
+    xhr.send(formData);
+
+  } catch (err) {
+    isUploading = false;
+    console.error(err);
+    showStatus("Unexpected error occurred.", "error");
   }
 }
 
-function saveDraft() {
-  submitUpload("Draft");
+/* =====================================
+   STATUS HANDLER
+===================================== */
+
+function showStatus(message, type) {
+  if (!statusMessage) return;
+
+  statusMessage.innerText = message;
+  statusMessage.className = "status-message " + type;
 }
 
-function uploadContent() {
-  submitUpload("AI_Review");
-}
+/* =====================================
+   RESET FORM
+===================================== */
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const user = await protectPage(["creator", "author", "admin"]);
-  if (!user) {
-    return;
-  }
-
-  const tagInput = document.getElementById("tagInput");
-  tagInput.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") {
-      return;
-    }
-
-    event.preventDefault();
-    const tag = tagInput.value.trim();
-
-    if (!tag) {
-      return;
-    }
-
-    if (uploadState.tags.includes(tag) || uploadState.tags.length >= 5) {
-      return;
-    }
-
-    uploadState.tags.push(tag);
-    tagInput.value = "";
-    renderTags();
-  });
-
-  document.getElementById("price").addEventListener("input", updateRoyaltyPreview);
-  document.getElementById("thumbnailBox").addEventListener("click", () => {
-    document.getElementById("thumbnail").click();
-  });
-  document.getElementById("thumbnail").addEventListener("change", previewThumbnail);
-  document.getElementById("description").addEventListener("input", (event) => {
-    document.getElementById("descCount").textContent = `${event.target.value.length} / 300`;
-  });
-
-  const fileInput = document.getElementById("file");
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files[0];
-    if (file) {
-      updateSelectedPdf(file);
-    }
-  });
-
-  const dropZone = document.getElementById("dropZone");
-  dropZone.addEventListener("click", () => fileInput.click());
-  dropZone.addEventListener("dragover", (event) => {
-    event.preventDefault();
-    dropZone.classList.add("dragging");
-  });
-  dropZone.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragging");
-  });
-  dropZone.addEventListener("drop", (event) => {
-    event.preventDefault();
-    dropZone.classList.remove("dragging");
-    const file = event.dataTransfer.files[0];
-
-    if (!file || !file.name.toLowerCase().endsWith(".pdf")) {
-      showStatus("Please drop a PDF file.", "error");
-      return;
-    }
-
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    fileInput.files = dataTransfer.files;
-    updateSelectedPdf(file);
-  });
-
+function resetForm() {
+  form.reset();
+  tags = [];
   renderTags();
-  updateRoyaltyPreview();
-});
+  progressBar.style.width = "0%";
+}
+
+/* =====================================
+   REDIRECT
+===================================== */
+
+function redirectToLogin() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  window.location.href = "../login.html";
+}
+
+/* =====================================
+   AI SCORE (TEMP)
+===================================== */
+
+function simulateAIScore() {
+  const score = Math.floor(Math.random() * 20) + 80;
+  aiScoreEl.innerText = score + "%";
+}

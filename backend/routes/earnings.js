@@ -1,145 +1,117 @@
 const express = require("express");
-const Book = require("../models/book");
-const User = require("../models/user");
-const WithdrawRequest = require("../models/WithdrawRequest");
-const { protect } = require("../middleware/auth");
-const {
-  serializeBook,
-  buildLastMonthsSeries,
-  buildCountrySales,
-} = require("../services/bookData");
-
 const router = express.Router();
+const { protect } = require("../middleware/auth");
+const Book = require("../models/book");
+
+/* =====================================
+   GET USER EARNINGS
+   GET /api/earnings/user
+===================================== */
 
 router.get("/user", protect, async (req, res) => {
   try {
-    const [books, user, withdrawals] = await Promise.all([
-      Book.find({ author: req.user.id }).sort({ createdAt: -1 }),
-      User.findById(req.user.id).select("payout"),
-      WithdrawRequest.find({ user: req.user.id }).sort({ requestedAt: -1 }),
-    ]);
 
-    const normalizedBooks = books.map(serializeBook);
+    const userId = req.user.id;
 
-    const lifetime = normalizedBooks.reduce(
-      (sum, book) => sum + Number(book.earnings || 0),
-      0
-    );
-    const withdrawn = withdrawals
-      .filter((request) => ["approved", "paid"].includes(request.status))
-      .reduce((sum, request) => sum + Number(request.amount || 0), 0);
-    const pending = withdrawals
-      .filter((request) => request.status === "pending")
-      .reduce((sum, request) => sum + Number(request.amount || 0), 0);
-    const available = Math.max(0, lifetime - withdrawn - pending);
+    // Get all books by this creator
+    const books = await Book.find({ author: userId });
 
-    const category = normalizedBooks.reduce(
-      (accumulator, book) => {
-        const key = (book.type || "book").toLowerCase();
-        if (!accumulator[key]) {
-          accumulator[key] = 0;
-        }
+    let pending = 0;
+    let available = 0;
+    let withdrawn = 0;
+    let lifetime = 0;
 
-        accumulator[key] += Number(book.earnings || 0);
-        return accumulator;
-      },
-      { book: 0, notes: 0, comics: 0, ai: 0 }
-    );
+    let category = {
+      books: 0,
+      notes: 0,
+      study: 0,
+      ai: 0
+    };
 
-    const chart = buildLastMonthsSeries(
-      normalizedBooks,
-      (book) => book.earnings || 0
-    );
+    let transactions = [];
 
-    const transactions = normalizedBooks.map((book) => ({
-      title: book.title,
-      type: book.type || "Book",
-      amount: Number(book.earnings || 0),
-      status: book.earnings > 0 ? "available" : "pending",
-      date: book.updatedAt || book.createdAt || new Date(),
-    }));
+    books.forEach(book => {
 
-    const topBooks = [...normalizedBooks]
-      .sort((left, right) => Number(right.earnings || 0) - Number(left.earnings || 0))
-      .slice(0, 5)
-      .map((book) => ({
+      const earnings = book.earnings || 0;
+      const downloads = book.downloads || 0;
+
+      lifetime += earnings;
+
+      // Simple payout logic
+      available += earnings;
+
+      // Category breakdown
+      if (book.category === "Book") category.books += earnings;
+      if (book.category === "Notes") category.notes += earnings;
+      if (book.category === "Study") category.study += earnings;
+      if (book.category === "AI") category.ai += earnings;
+
+      // Add transaction entry
+      transactions.push({
         title: book.title,
-        sales: book.salesCount,
-        earnings: book.earnings,
-      }));
+        type: book.category || "Book",
+        amount: earnings,
+        status: "available",
+        date: book.createdAt || new Date()
+      });
 
-    return res.json({
-      success: true,
+    });
+
+    // Monthly chart (dummy for now — later DB based)
+    const chart = {
+      labels: ["Jan","Feb","Mar","Apr","May","Jun"],
+      values: [1200, 2100, 1800, 2600, 3200, 2800]
+    };
+
+    res.json({
       pending,
       available,
       withdrawn,
       lifetime,
-      totalBooks: normalizedBooks.length,
-      totalSales: normalizedBooks.reduce(
-        (sum, book) => sum + Number(book.salesCount || 0),
-        0
-      ),
       transactions,
       chart,
-      category,
-      topBooks,
-      payout: user?.payout || null,
-      countrySales: buildCountrySales(normalizedBooks),
+      category
     });
-  } catch (error) {
-    console.error("Earnings route error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+
+  } catch (err) {
+    console.error("Earnings Route Error:", err);
+    res.status(500).json({ message: "Server Error" });
   }
 });
 
+/* =====================================
+   REQUEST WITHDRAWAL
+   POST /api/earnings/withdraw
+===================================== */
+
 router.post("/withdraw", protect, async (req, res) => {
   try {
-    const books = await Book.find({ author: req.user.id });
-    const user = await User.findById(req.user.id).select("payout");
+
+    const userId = req.user.id;
+
+    const books = await Book.find({ author: userId });
 
     const totalAvailable = books.reduce(
-      (sum, book) => sum + Number(book.earnings || 0),
+      (sum, book) => sum + (book.earnings || 0),
       0
     );
 
     if (totalAvailable < 500) {
       return res.status(400).json({
-        success: false,
-        message: "Minimum Rs.500 required to withdraw",
+        message: "Minimum ₹500 required to withdraw"
       });
     }
 
-    const payoutConfigured = Boolean(
-      user?.payout?.upiId || user?.payout?.bankAccount
-    );
+    // Future: create WithdrawRequest model
+    // For now we just simulate success
 
-    if (!payoutConfigured) {
-      return res.status(400).json({
-        success: false,
-        message: "Please add payout details before requesting a withdrawal",
-      });
-    }
-
-    await WithdrawRequest.create({
-      user: req.user.id,
-      amount: totalAvailable,
-      method: user.payout.upiId ? "upi" : "bank",
-      accountDetails: user.payout,
+    res.json({
+      message: "Withdrawal request submitted successfully"
     });
 
-    return res.json({
-      success: true,
-      message: "Withdrawal request submitted successfully",
-    });
-  } catch (error) {
-    console.error("Withdraw error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+  } catch (err) {
+    console.error("Withdraw Error:", err);
+    res.status(500).json({ message: "Server Error" });
   }
 });
 

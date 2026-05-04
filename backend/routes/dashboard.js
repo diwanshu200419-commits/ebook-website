@@ -1,159 +1,139 @@
+// =====================================
+// 📊 USER DASHBOARD ROUTES
+// =====================================
+
 const express = require("express");
-const Book = require("../models/book");
-const { protect } = require("../middleware/auth");
-const {
-  serializeBook,
-  buildLastMonthsSeries,
-  buildCountrySales,
-} = require("../services/bookData");
-
 const router = express.Router();
+const { protect } = require("../middleware/auth");
+const Book = require("../models/book");
 
-function buildDownloadHeatmap(books) {
-  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const counts = labels.reduce((accumulator, label) => {
-    accumulator[label] = 0;
-    return accumulator;
-  }, {});
-
-  books.forEach((book) => {
-    const date = new Date(book.createdAt || Date.now());
-    const label = labels[(date.getDay() + 6) % 7];
-    counts[label] += Number(book.downloads || 0);
-  });
-
-  return counts;
-}
+/* =====================================
+   GET USER DASHBOARD DATA
+   GET /api/dashboard/user
+===================================== */
 
 router.get("/user", protect, async (req, res) => {
   try {
-    const userBooks = await Book.find({ author: req.user.id })
-      .sort({ createdAt: -1 })
-      .populate("author", "name username");
+    const userId = req.user.id;
 
-    const approvedBooks = await Book.find({ status: "Approved" })
-      .sort({ downloads: -1, salesCount: -1, createdAt: -1 })
-      .limit(20)
-      .populate("author", "name username");
+    // =====================================
+    // 1️⃣ GET USER BOOKS
+    // =====================================
 
-    const books = userBooks.map(serializeBook);
-    const publicBooks = approvedBooks.map(serializeBook);
+    const books = await Book.find({ author: userId });
 
     const totalBooks = books.length;
+
     const totalDownloads = books.reduce(
-      (sum, book) => sum + Number(book.downloads || 0),
+      (sum, book) => sum + (book.downloads || 0),
       0
     );
+
     const totalEarnings = books.reduce(
-      (sum, book) => sum + Number(book.earnings || 0),
+      (sum, book) => sum + (book.earnings || 0),
       0
     );
-    const chart = buildLastMonthsSeries(books, (book) => book.earnings || 0);
-    const monthlyEarnings = chart.values.at(-1) || 0;
-    const previousMonth = chart.values.at(-2) || 0;
-    const growthPercent =
-      previousMonth > 0
-        ? Math.round(((monthlyEarnings - previousMonth) / previousMonth) * 100)
-        : monthlyEarnings > 0
-          ? 100
-          : 0;
 
-    const topBooks = [...books]
-      .sort((left, right) => {
-        return (
-          Number(right.downloads || 0) - Number(left.downloads || 0) ||
-          Number(right.earnings || 0) - Number(left.earnings || 0)
-        );
-      })
-      .slice(0, 5)
-      .map((book) => ({
-        id: book._id,
-        title: book.title,
-        downloads: book.downloads,
-        earnings: book.earnings,
-        salesCount: book.salesCount,
-        status: book.status,
-      }));
+    // =====================================
+    // 2️⃣ MONTHLY EARNINGS CALCULATION
+    // =====================================
 
-    const recentSales = [...books]
-      .filter((book) => book.salesCount > 0 || book.downloads > 0)
-      .slice(0, 5)
-      .map((book) => ({
-        book: book.title,
-        amount: book.earnings || book.price,
-        date: book.updatedAt || book.createdAt,
-      }));
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
 
-    const authorSummary = {};
+    const monthlyEarnings = books.reduce((sum, book) => {
+      if (!book.createdAt) return sum;
 
-    publicBooks.forEach((book) => {
-      const key = String(book.authorId || "unknown");
-      if (!authorSummary[key]) {
-        authorSummary[key] = {
-          id: book.authorId,
-          name: book.authorName,
-          username: book.authorUsername,
-          earnings: 0,
-          books: 0,
-          downloads: 0,
-        };
+      const bookDate = new Date(book.createdAt);
+
+      if (
+        bookDate.getMonth() === currentMonth &&
+        bookDate.getFullYear() === currentYear
+      ) {
+        return sum + (book.earnings || 0);
       }
 
-      authorSummary[key].earnings += Number(book.earnings || 0);
-      authorSummary[key].books += 1;
-      authorSummary[key].downloads += Number(book.downloads || 0);
-    });
+      return sum;
+    }, 0);
 
-    const sortedAuthors = Object.values(authorSummary).sort((left, right) => {
-      return (
-        right.earnings - left.earnings ||
-        right.downloads - left.downloads ||
-        right.books - left.books
-      );
-    });
+    // =====================================
+    // 3️⃣ WALLET BALANCE (Future payout logic)
+    // =====================================
 
-    const leaderboard = sortedAuthors.slice(0, 5);
-    const rankIndex = sortedAuthors.findIndex(
-      (author) => String(author.id) === String(req.user.id)
-    );
+    const walletBalance = totalEarnings; // Later: subtract withdrawn amount
 
-    const recommendedBooks = publicBooks
-      .filter((book) => String(book.authorId) !== String(req.user.id))
-      .slice(0, 4)
+    // =====================================
+    // 4️⃣ REAL CHART DATA (Last 6 Months)
+    // =====================================
+
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const chartData = {
+      labels: [],
+      values: []
+    };
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+
+      const month = date.getMonth();
+      const year = date.getFullYear();
+
+      const monthlyValue = books.reduce((sum, book) => {
+        if (!book.createdAt) return sum;
+
+        const bookDate = new Date(book.createdAt);
+
+        if (
+          bookDate.getMonth() === month &&
+          bookDate.getFullYear() === year
+        ) {
+          return sum + (book.earnings || 0);
+        }
+
+        return sum;
+      }, 0);
+
+      chartData.labels.push(monthNames[month]);
+      chartData.values.push(monthlyValue);
+    }
+
+    // =====================================
+    // 5️⃣ TOP PERFORMING BOOKS
+    // =====================================
+
+    const topBooks = books
+      .sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
+      .slice(0, 5)
       .map((book) => ({
         id: book._id,
         title: book.title,
-        category: book.category,
-        coverImage: book.coverImage,
-        price: book.price,
+        downloads: book.downloads || 0,
+        earnings: book.earnings || 0,
       }));
 
-    return res.status(200).json({
+    // =====================================
+    // 6️⃣ FINAL RESPONSE
+    // =====================================
+
+    res.status(200).json({
       success: true,
       totalEarnings,
       monthlyEarnings,
-      growthPercent,
       totalDownloads,
       totalBooks,
-      walletBalance: totalEarnings,
-      globalRank: rankIndex >= 0 ? rankIndex + 1 : null,
-      chart,
+      walletBalance,
+      chart: chartData,
       topBooks,
-      recentSales,
-      countrySales: buildCountrySales(books),
-      downloadHeatmap: buildDownloadHeatmap(books),
-      leaderboard,
-      trendingAuthors: leaderboard.slice(0, 3).map((author) => ({
-        name: author.name,
-        books: author.books,
-      })),
-      recommendedBooks,
     });
+
   } catch (error) {
-    console.error("Dashboard error:", error);
-    return res.status(500).json({
+    console.error("🔥 Dashboard Error:", error.message);
+    res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Server Error",
     });
   }
 });

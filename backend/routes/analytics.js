@@ -1,95 +1,63 @@
 const express = require("express");
-const Book = require("../models/book");
-const { protect } = require("../middleware/auth");
-const {
-  serializeBook,
-  buildLastMonthsSeries,
-  buildCountrySales,
-} = require("../services/bookData");
-
 const router = express.Router();
+const { protect } = require("../middleware/auth");
+const Book = require("../models/book");
+const User = require("../models/user");
 
+/* ======================================
+   TEST ROUTE
+====================================== */
 router.get("/test", (req, res) => {
-  res.json({ success: true, message: "Analytics working" });
+  res.json({ message: "Analytics working" });
 });
 
+/* ======================================
+   CREATOR ANALYTICS
+====================================== */
 router.get("/creator", protect, async (req, res) => {
   try {
-    const books = await Book.find({ author: req.user.id })
-      .sort({ createdAt: 1 })
-      .populate("author", "name username");
+    const userId = req.user._id;
 
-    const normalizedBooks = books.map(serializeBook);
+    const books = await Book.find({ author: userId });
 
-    const totalBooks = normalizedBooks.length;
-    const totalSales = normalizedBooks.reduce(
-      (sum, book) => sum + Number(book.salesCount || 0),
-      0
-    );
-    const totalRevenue = normalizedBooks.reduce(
-      (sum, book) => sum + Number(book.earnings || 0),
-      0
-    );
-    const totalViews = normalizedBooks.reduce(
-      (sum, book) => sum + Number(book.downloads || 0),
-      0
-    );
+    const totalBooks = books.length;
 
-    const revenueSeries = buildLastMonthsSeries(
-      normalizedBooks,
-      (book) => book.earnings || 0
-    );
-    const salesSeries = buildLastMonthsSeries(
-      normalizedBooks,
-      (book) => book.salesCount || 0
-    );
+    const totalSales = books.reduce((sum, b) => {
+      return sum + (b.sales || 0);
+    }, 0);
 
-    const topBooks = [...normalizedBooks]
-      .sort((left, right) => {
-        return (
-          Number(right.earnings || 0) - Number(left.earnings || 0) ||
-          Number(right.salesCount || 0) - Number(left.salesCount || 0)
-        );
-      })
-      .slice(0, 5)
-      .map((book) => ({
-        title: book.title,
-        sales: book.salesCount,
-        revenue: book.earnings,
-      }));
+    const totalRevenue = books.reduce((sum, b) => {
+      return sum + (b.revenue || 0);
+    }, 0);
 
-    const latestRevenue = revenueSeries.values.at(-1) || 0;
-    const forecastRevenue = [
-      Math.round(latestRevenue * 1.08),
-      Math.round(latestRevenue * 1.14),
-      Math.round(latestRevenue * 1.2),
-    ];
+    const totalViews = books.reduce((sum, b) => {
+      return sum + (b.views || 0);
+    }, 0);
 
-    const creatorScore = Math.min(
-      100,
-      Math.round(totalSales * 4 + totalBooks * 6 + totalRevenue / 200)
-    );
+    // Temporary Monthly Demo Data
+    const monthlyRevenue = [1200, 2100, 1800, 2600, 3200, 4100];
+    const monthlySales = [5, 8, 6, 10, 12, 15];
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       totalBooks,
       totalSales,
       totalRevenue,
       totalViews,
-      monthlyRevenue: revenueSeries.values,
-      monthlySales: salesSeries.values,
-      forecastRevenue,
-      countrySales: buildCountrySales(normalizedBooks),
-      topBooks,
-      creatorScore,
+      monthlyRevenue,
+      monthlySales
     });
-  } catch (error) {
-    console.error("Analytics error:", error);
-    return res.status(500).json({
+
+  } catch (err) {
+    console.error("Analytics Error:", err);
+    res.status(500).json({
       success: false,
-      message: "Analytics error",
+      message: "Analytics error"
     });
   }
 });
 
+/* ======================================
+   EXPORT ROUTER (VERY IMPORTANT)
+====================================== */
 module.exports = router;

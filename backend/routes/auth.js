@@ -1,38 +1,36 @@
+// routes/auth.js
+
 const express = require("express");
+const router = express.Router();
+const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
-const User = require("../models/user");
 
-const router = express.Router();
+/* =========================================
+   USERNAME GENERATOR (AUTO)
+========================================= */
 
-const googleEnabled = Boolean(
-  process.env.GOOGLE_CLIENT_ID &&
-  process.env.GOOGLE_CLIENT_SECRET &&
-  process.env.GOOGLE_CALLBACK_URL
-);
+const generateUsername = async (name) => {
 
-function getFrontendBase(req) {
-  return `${req.protocol}://${req.get("host")}`;
-}
+  let base = name.toLowerCase().replace(/\s+/g,"");
 
-async function generateUsername(name) {
-  const base = String(name || "user")
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[^a-z0-9]/g, "");
+  let username = base;
+  let count = 1;
 
-  let username = base || "user";
-  let counter = 1;
-
-  while (await User.findOne({ username })) {
-    username = `${base || "user"}${counter}`;
-    counter += 1;
+  while(await User.findOne({ username })){
+    username = base + count;
+    count++;
   }
 
   return username;
-}
 
-function generateToken(user) {
+};
+
+/* =========================================
+   JWT GENERATOR
+========================================= */
+
+const generateToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
@@ -44,16 +42,21 @@ function generateToken(user) {
       expiresIn: process.env.JWT_EXPIRE || "7d",
     }
   );
-}
+};
+
+/* =========================================
+   REGISTER (LOCAL)
+========================================= */
 
 router.post("/register", async (req, res) => {
   try {
+
     let { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email, and password are required",
+        message: "All fields are required",
       });
     }
 
@@ -63,7 +66,7 @@ router.post("/register", async (req, res) => {
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: "Email is already registered",
+        message: "Email already registered",
       });
     }
 
@@ -74,9 +77,9 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    const normalizedRole = ["reader", "creator", "author"].includes(role)
-      ? role
-      : "reader";
+    /* =============================
+       AUTO USERNAME GENERATION
+    ============================== */
 
     const username = await generateUsername(name);
 
@@ -85,14 +88,13 @@ router.post("/register", async (req, res) => {
       username,
       email,
       password,
-      role: normalizedRole,
+      role: role || "reader",
       provider: "local",
-      verified: true,
     });
 
     const token = generateToken(user);
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       message: "Registration successful",
       token,
@@ -104,23 +106,32 @@ router.post("/register", async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (error) {
-    console.error("Register error:", error);
-    return res.status(500).json({
+
+    console.error("Register Error:", error);
+
+    res.status(500).json({
       success: false,
       message: "Server error",
     });
+
   }
 });
 
+/* =========================================
+   LOGIN (LOCAL)
+========================================= */
+
 router.post("/login", async (req, res) => {
   try {
+
     let { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Email & password required",
       });
     }
 
@@ -138,14 +149,15 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    if (user.status !== "active" || user.isDeleted) {
+    if (user.status !== "active") {
       return res.status(403).json({
         success: false,
-        message: "Account is not active",
+        message: "Account not active",
       });
     }
 
     const isMatch = await user.matchPassword(password);
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -153,12 +165,9 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    user.lastLogin = new Date();
-    await user.save();
-
     const token = generateToken(user);
 
-    return res.json({
+    res.json({
       success: true,
       message: "Login successful",
       token,
@@ -170,62 +179,66 @@ router.post("/login", async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (error) {
-    console.error("Login error:", error);
-    return res.status(500).json({
+
+    console.error("Login Error:", error);
+
+    res.status(500).json({
       success: false,
       message: "Server error",
     });
+
   }
 });
 
+/* =========================================
+   GOOGLE LOGIN START
+========================================= */
+
 router.get(
   "/google",
-  (req, res, next) => {
-    if (!googleEnabled) {
-      return res.status(503).json({
-        success: false,
-        message: "Google login is not configured",
-      });
-    }
-
-    return next();
-  },
   passport.authenticate("google", {
     scope: ["profile", "email"],
   })
 );
 
+/* =========================================
+   GOOGLE CALLBACK
+========================================= */
+
 router.get(
   "/google/callback",
-  (req, res, next) => {
-    if (!googleEnabled) {
-      return res.redirect("/login.html");
-    }
-
-    return next();
-  },
   passport.authenticate("google", {
     session: false,
-    failureRedirect: "/login.html",
+    failureRedirect: process.env.FRONTEND_URL + "/login.html",
   }),
   async (req, res) => {
     try {
+
       const token = generateToken(req.user);
-      const frontendBase = getFrontendBase(req);
 
-      return res.redirect(`${frontendBase}/login.html?token=${token}`);
+      res.redirect(
+        `${process.env.FRONTEND_URL}/dashboard/dashboard.html?token=${token}`
+      );
+
     } catch (error) {
-      console.error("Google callback error:", error);
-      const frontendBase = getFrontendBase(req);
 
-      return res.redirect(`${frontendBase}/login.html`);
+      console.error("Google Callback Error:", error);
+
+      res.redirect(process.env.FRONTEND_URL + "/login.html");
+
     }
   }
 );
 
+/* =========================================
+   CREATE ADMIN
+========================================= */
+
 router.post("/create-admin", async (req, res) => {
   try {
+
     const { secret } = req.body;
 
     if (secret !== process.env.ADMIN_SECRET) {
@@ -236,6 +249,7 @@ router.post("/create-admin", async (req, res) => {
     }
 
     const exists = await User.findOne({ email: "admin@ebook.com" });
+
     if (exists) {
       return res.json({
         success: true,
@@ -243,26 +257,29 @@ router.post("/create-admin", async (req, res) => {
       });
     }
 
-    await User.create({
+    const admin = await User.create({
       name: "Admin",
       username: "admin",
       email: "admin@ebook.com",
       password: "admin123",
       role: "admin",
       provider: "local",
-      verified: true,
     });
 
-    return res.json({
+    res.json({
       success: true,
       message: "Admin created successfully",
     });
+
   } catch (error) {
-    console.error("Admin create error:", error);
-    return res.status(500).json({
+
+    console.error("Admin Create Error:", error);
+
+    res.status(500).json({
       success: false,
       message: "Server error",
     });
+
   }
 });
 

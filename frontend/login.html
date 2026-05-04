@@ -109,15 +109,18 @@ Don’t have an account?
 </div>
 
 
-<script src="auth.js"></script>
 <script>
+
+const API_BASE = "http://localhost:5000";
 
 /* ======================================
 AUTO REDIRECT IF ALREADY LOGGED IN
 ====================================== */
 
-if(getToken()){
-redirectUser();
+const existingToken = localStorage.getItem("token");
+
+if(existingToken){
+redirectUser(existingToken);
 }
 
 
@@ -130,10 +133,17 @@ document.addEventListener("DOMContentLoaded", initLogin);
 
 async function initLogin(){
 
-consumeTokenFromQuery();
+const params = new URLSearchParams(window.location.search);
+const googleToken = params.get("token");
 
-if(getToken()){
-await redirectUser();
+if(googleToken){
+
+localStorage.setItem("token",googleToken);
+
+window.history.replaceState({},document.title,"login.html");
+
+await redirectUser(googleToken);
+
 }
 
 }
@@ -179,18 +189,41 @@ btn.innerHTML="Signing in...";
 
 try{
 
-const data = await apiFetchJson("/api/auth/login",{
+const res = await fetch(`${API_BASE}/api/auth/login`,{
+
 method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
 body:JSON.stringify({email,password})
+
 });
 
-setSession(data.token,data.user);
-redirectUser();
+
+const data = await res.json();
+
+
+if(!res.ok){
+
+alert(data.msg || "Invalid credentials");
+
+return;
+
+}
+
+
+localStorage.setItem("token",data.token);
+localStorage.setItem("user",JSON.stringify(data.user));
+
+
+redirectUser(data.token);
 
 
 }catch(err){
 
-alert(err.message || "Unable to sign in");
+alert("Server error. Backend running?");
 
 }
 
@@ -206,21 +239,43 @@ btn.innerHTML="Sign in";
 REDIRECT BASED ON ROLE
 ====================================== */
 
-async function redirectUser(){
+async function redirectUser(token){
 
 try{
 
-const data = await apiFetchJson("/api/user/profile");
+const res = await fetch(`${API_BASE}/api/user/profile`,{
+
+headers:{
+Authorization:`Bearer ${token}`
+}
+
+});
+
+
+if(!res.ok) throw new Error();
+
+
+const data = await res.json();
 
 const user = data.user;
 
-setSession(getToken(),user);
-redirectForRole(user);
+localStorage.setItem("user",JSON.stringify(user));
+
+
+if(user.role==="admin"){
+
+window.location.href="admin/admin.html";
+
+}else{
+
+window.location.href="dashboard/dashboard.html";
+
+}
 
 
 }catch{
 
-clearSession();
+localStorage.clear();
 
 }
 

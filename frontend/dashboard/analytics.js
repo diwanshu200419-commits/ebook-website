@@ -1,170 +1,323 @@
-let revenueChart = null;
-let salesChart = null;
-let forecastChart = null;
-let countryChart = null;
+const API_BASE = "http://localhost:5000";
 
-async function loadAnalytics() {
-  try {
-    const data = await apiFetchJson("/api/analytics/creator");
-    renderAnalytics(data);
-  } catch (error) {
-    document.getElementById("topBooksTable").innerHTML = `
-      <tr><td colspan="3">${escapeHtml(error.message || "Unable to load analytics.")}</td></tr>
-    `;
-  }
-}
+/* ===============================
+INIT
+=============================== */
 
-function renderAnalytics(data) {
-  document.getElementById("totalBooks").textContent = Number(
-    data.totalBooks || 0
-  ).toLocaleString("en-IN");
-  document.getElementById("totalSales").textContent = Number(
-    data.totalSales || 0
-  ).toLocaleString("en-IN");
-  document.getElementById("totalRevenue").textContent = formatCurrency(
-    data.totalRevenue || 0
-  );
+document.addEventListener("DOMContentLoaded", initAnalytics);
 
-  const conversionRate =
-    Number(data.totalViews || 0) > 0
-      ? ((Number(data.totalSales || 0) / Number(data.totalViews || 0)) * 100).toFixed(1)
-      : "0.0";
-  document.getElementById("conversionRate").textContent = `${conversionRate}%`;
+async function initAnalytics(){
 
-  const growthEl = document.getElementById("revenueGrowth");
-  const monthlyRevenue = data.monthlyRevenue || [];
-  if (monthlyRevenue.length >= 2) {
-    const current = Number(monthlyRevenue.at(-1) || 0);
-    const previous = Number(monthlyRevenue.at(-2) || 0);
-    const growth =
-      previous > 0 ? (((current - previous) / previous) * 100).toFixed(1) : "0.0";
+  const token = localStorage.getItem("token");
 
-    growthEl.textContent = `${Number(growth) >= 0 ? "+" : ""}${growth}%`;
-    growthEl.classList.toggle("up", Number(growth) >= 0);
-    growthEl.classList.toggle("down", Number(growth) < 0);
-  } else {
-    growthEl.textContent = "+0.0%";
-  }
-
-  document.getElementById("creatorScore").textContent = Number(
-    data.creatorScore || 0
-  );
-
-  renderAnalyticsCharts(data);
-  renderTopBooks(data.topBooks || []);
-}
-
-function renderAnalyticsCharts(data) {
-  if (typeof Chart === "undefined") {
+  if(!token){
+    window.location.href = "../login.html";
     return;
   }
 
-  revenueChart = createOrReplaceChart(revenueChart, "revenueChart", "line", {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    datasets: [
-      {
-        label: "Revenue",
-        data: data.monthlyRevenue || [],
-        borderColor: "#6366f1",
-        backgroundColor: "rgba(99,102,241,0.2)",
-        fill: true,
-        tension: 0.35,
-      },
-    ],
-  });
+  try{
 
-  salesChart = createOrReplaceChart(salesChart, "salesChart", "bar", {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    datasets: [
-      {
-        label: "Sales",
-        data: data.monthlySales || [],
-        backgroundColor: "#22c55e",
-      },
-    ],
-  });
+    const res = await fetch(`${API_BASE}/api/analytics/creator`,{
+      headers:{
+        Authorization:`Bearer ${token}`
+      }
+    });
 
-  forecastChart = createOrReplaceChart(forecastChart, "forecastChart", "line", {
-    labels: ["Next 1", "Next 2", "Next 3"],
-    datasets: [
-      {
-        label: "Forecast",
-        data: data.forecastRevenue || [],
-        borderColor: "#f59e0b",
-        backgroundColor: "rgba(245,158,11,0.2)",
-        fill: true,
-        tension: 0.35,
-      },
-    ],
-  });
+    if(!res.ok) throw new Error("Unauthorized");
 
-  countryChart = createOrReplaceChart(countryChart, "countryChart", "pie", {
-    labels: Object.keys(data.countrySales || {}),
-    datasets: [
-      {
-        data: Object.values(data.countrySales || {}),
-        backgroundColor: ["#6366f1", "#22c55e", "#f59e0b", "#ef4444"],
-      },
-    ],
-  });
+    const data = await res.json();
+
+    loadKPI(data);
+    loadCreatorScore(data);
+    loadCharts(data);
+    loadForecastChart(data.forecastRevenue || []);
+    loadCountryChart(data.countrySales || {});
+    loadTopBooks(data.topBooks || []);
+
+    startLiveIndicator();
+
+  }catch(err){
+
+    console.error(err);
+    localStorage.clear();
+    window.location.href="../login.html";
+
+  }
+
 }
 
-function createOrReplaceChart(existingChart, canvasId, type, data) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) {
-    return existingChart;
+
+/* ===============================
+KPI CARDS
+=============================== */
+
+function loadKPI(data){
+
+  animateCounter("totalBooks", data.totalBooks);
+  animateCounter("totalSales", data.totalSales);
+  animateCounter("totalRevenue", data.totalRevenue, true);
+
+  const conversion =
+    data.totalViews > 0
+    ? ((data.totalSales / data.totalViews) * 100).toFixed(1)
+    : 0;
+
+  document.getElementById("conversionRate").innerText =
+    conversion + "%";
+
+
+  /* Revenue Growth */
+
+  if(data.monthlyRevenue?.length >= 2){
+
+    const last = data.monthlyRevenue.at(-1);
+    const prev = data.monthlyRevenue.at(-2);
+
+    const growth = ((last-prev)/prev*100).toFixed(1);
+
+    const el = document.getElementById("revenueGrowth");
+
+    el.innerText = (growth > 0 ? "+" : "") + growth + "%";
+
+    el.classList.remove("up","down");
+    el.classList.add(growth >= 0 ? "up" : "down");
+
   }
 
-  if (existingChart) {
-    existingChart.destroy();
+}
+
+
+/* ===============================
+CREATOR PERFORMANCE SCORE
+=============================== */
+
+function loadCreatorScore(data){
+
+  let score = data.creatorScore;
+
+  if(!score){
+
+    const salesFactor = data.totalSales || 0;
+    const revenueFactor = data.totalRevenue || 0;
+
+    score = Math.min(100,
+      Math.floor((salesFactor*2 + revenueFactor/100) % 100)
+    );
+
   }
 
-  return new Chart(canvas, {
-    type,
-    data,
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          labels: { color: "#fff" },
-        },
-      },
-      scales:
-        type === "pie"
-          ? {}
-          : {
-              x: { ticks: { color: "#94a3b8" } },
-              y: { ticks: { color: "#94a3b8" } },
-            },
+  document.getElementById("creatorScore").innerText = score;
+
+}
+
+
+/* ===============================
+COUNTER ANIMATION
+=============================== */
+
+function animateCounter(id,value,currency=false){
+
+  const el = document.getElementById(id);
+
+  let start = 0;
+
+  const duration = 1000;
+  const step = value / (duration/16);
+
+  const timer = setInterval(()=>{
+
+    start += step;
+
+    if(start >= value){
+      start = value;
+      clearInterval(timer);
+    }
+
+    el.innerText =
+      currency
+      ? "₹" + Math.floor(start)
+      : Math.floor(start);
+
+  },16);
+
+}
+
+
+/* ===============================
+CHARTS
+=============================== */
+
+function loadCharts(data){
+
+  createRevenueChart(data.monthlyRevenue || []);
+  createSalesChart(data.monthlySales || []);
+
+}
+
+
+/* Revenue Chart */
+
+function createRevenueChart(monthlyRevenue){
+
+  const ctx = document.getElementById("revenueChart");
+
+  new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:["Jan","Feb","Mar","Apr","May","Jun"],
+      datasets:[{
+        label:"Revenue",
+        data:monthlyRevenue,
+        borderColor:"#6366f1",
+        backgroundColor:"rgba(99,102,241,0.2)",
+        fill:true,
+        tension:.4
+      }]
     },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} }
+    }
   });
+
 }
 
-function renderTopBooks(books) {
+
+/* Sales Chart */
+
+function createSalesChart(monthlySales){
+
+  const ctx = document.getElementById("salesChart");
+
+  new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:["Jan","Feb","Mar","Apr","May","Jun"],
+      datasets:[{
+        label:"Sales",
+        data:monthlySales,
+        backgroundColor:"#22c55e"
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false} }
+    }
+  });
+
+}
+
+
+/* ===============================
+FORECAST CHART
+=============================== */
+
+function loadForecastChart(forecast){
+
+  const ctx = document.getElementById("forecastChart");
+
+  if(!ctx || !forecast.length) return;
+
+  new Chart(ctx,{
+    type:"line",
+    data:{
+      labels:["Next 1","Next 2","Next 3"],
+      datasets:[{
+        label:"Revenue Forecast",
+        data:forecast,
+        borderColor:"#f59e0b",
+        backgroundColor:"rgba(245,158,11,0.2)",
+        fill:true,
+        tension:.4
+      }]
+    }
+  });
+
+}
+
+
+/* ===============================
+COUNTRY SALES CHART
+=============================== */
+
+function loadCountryChart(countrySales){
+
+  const ctx = document.getElementById("countryChart");
+
+  if(!ctx) return;
+
+  const labels = Object.keys(countrySales);
+  const values = Object.values(countrySales);
+
+  new Chart(ctx,{
+    type:"pie",
+    data:{
+      labels:labels,
+      datasets:[{
+        data:values,
+        backgroundColor:[
+          "#6366f1",
+          "#22c55e",
+          "#f59e0b",
+          "#ef4444",
+          "#3b82f6"
+        ]
+      }]
+    }
+  });
+
+}
+
+
+/* ===============================
+TOP BOOKS TABLE
+=============================== */
+
+function loadTopBooks(books){
+
   const tbody = document.getElementById("topBooksTable");
-  if (!books.length) {
-    tbody.innerHTML = "<tr><td colspan='3'>No sales data yet.</td></tr>";
+
+  if(!books.length){
+
+    tbody.innerHTML =
+      "<tr><td colspan='3'>No sales data</td></tr>";
+
     return;
   }
 
-  tbody.innerHTML = books
-    .map((book) => {
-      return `
-        <tr>
-          <td>${escapeHtml(book.title)}</td>
-          <td>${Number(book.sales || 0).toLocaleString("en-IN")}</td>
-          <td>${formatCurrency(book.revenue || 0)}</td>
-        </tr>
-      `;
-    })
-    .join("");
+  tbody.innerHTML = "";
+
+  books.forEach(book=>{
+
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${book.title}</td>
+      <td>${book.sales}</td>
+      <td>₹${book.revenue}</td>
+    `;
+
+    tbody.appendChild(row);
+
+  });
+
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const user = await protectPage(["creator", "author", "admin", "reader"]);
-  if (!user) {
-    return;
-  }
 
-  loadAnalytics();
-});
+/* ===============================
+LIVE SALES INDICATOR
+=============================== */
+
+function startLiveIndicator(){
+
+  setInterval(()=>{
+
+    const dot = document.querySelector(".live-dot");
+
+    if(!dot) return;
+
+    dot.classList.toggle("active");
+
+  },1000);
+
+}

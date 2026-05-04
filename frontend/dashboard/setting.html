@@ -135,7 +135,6 @@ placeholder="Tell readers about yourself..."></textarea>
 
 <button
 class="btn-primary"
-id="saveProfileBtn"
 onclick="updateProfile()">
 Save Profile
 </button>
@@ -171,7 +170,6 @@ Save Profile
 
 <button
 class="btn-secondary"
-id="updatePasswordBtn"
 onclick="changePassword()">
 Update Password
 </button>
@@ -242,7 +240,6 @@ Add your payout information to receive earnings via bank transfer or UPI.
 
 <button
 class="btn-primary"
-id="savePayoutBtn"
 onclick="savePayout()">
 Save Payout Details
 </button>
@@ -322,6 +319,10 @@ Delete Account
 <script src="../auth.js"></script>
 <script src="setting.js"></script>
 <script src="motion-system.js"></script>
+
+<script>
+protectPage(["creator","author","reader"]);
+</script>
 
 </body>
 </html>

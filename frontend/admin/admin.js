@@ -1,181 +1,191 @@
+/* ================================
+   ADMIN DASHBOARD – REAL WORKING
+================================ */
+
+/* ========= AUTH ========= */
+if (typeof protectPage === "function") {
+  protectPage(["admin"]);
+}
+
+/* ========= DOM ========= */
 const navLinks = document.querySelectorAll(".sidebar-nav a");
 const sections = document.querySelectorAll(".admin-section");
+
 const pageTitle = document.getElementById("pageTitle");
 const pageSub = document.getElementById("pageSub");
+
 const reviewList = document.getElementById("contentList");
 const approvedList = document.getElementById("approvedList");
 
+/* ========= HEADER TEXT ========= */
 const HEADERS = {
   review: {
     title: "Pending Content Review",
-    sub: "Review quality, originality, and monetization potential",
+    sub: "Review quality, originality & monetization potential",
   },
   approved: {
     title: "Approved Library",
-    sub: "Live and published content",
+    sub: "Live & published content",
   },
   creators: {
     title: "Creators",
-    sub: "Creator profiles and uploads",
+    sub: "Creator profiles & uploads",
   },
   payouts: {
     title: "Payouts",
-    sub: "Pending and completed payout requests",
+    sub: "Pending, processed & failed payouts",
   },
   ai: {
     title: "AI Signals",
-    sub: "AI scoring and content moderation signals",
+    sub: "Demand, risk & AI insights",
   },
   reports: {
     title: "Reports",
-    sub: "Platform growth and content activity",
+    sub: "Revenue & platform analytics",
   },
   settings: {
     title: "Settings",
-    sub: "Rules and admin configuration",
+    sub: "Rules & admin configuration",
   },
 };
 
-function initAdminNavigation() {
-  navLinks.forEach((link) => {
-    link.addEventListener("click", () => {
-      const target = link.dataset.target;
+/* ========= SIDEBAR NAV ========= */
+navLinks.forEach((link) => {
+  link.addEventListener("click", () => {
+    const target = link.dataset.target;
 
-      navLinks.forEach((item) => item.classList.remove("active"));
-      sections.forEach((section) => section.classList.remove("active"));
+    navLinks.forEach((l) => l.classList.remove("active"));
+    link.classList.add("active");
 
-      link.classList.add("active");
-      document.getElementById(target).classList.add("active");
+    sections.forEach((s) => s.classList.remove("active"));
+    document.getElementById(target).classList.add("active");
 
-      pageTitle.textContent = HEADERS[target].title;
-      pageSub.textContent = HEADERS[target].sub;
-    });
+    pageTitle.textContent = HEADERS[target].title;
+    pageSub.textContent = HEADERS[target].sub;
   });
-}
-
-async function loadReviewQueue() {
-  reviewList.innerHTML = "<p>Loading review queue...</p>";
-
-  try {
-    const data = await apiFetchJson("/api/books/admin/review");
-    renderReviewQueue(data.books || []);
-  } catch (error) {
-    reviewList.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
-  }
-}
-
-async function loadApprovedLibrary() {
-  approvedList.innerHTML = "<p>Loading approved library...</p>";
-
-  try {
-    const data = await apiFetchJson("/api/books/admin/library?status=Approved");
-    renderApprovedLibrary(data.books || []);
-  } catch (error) {
-    approvedList.innerHTML = `<p>${escapeHtml(error.message)}</p>`;
-  }
-}
-
-function renderReviewQueue(books) {
-  if (!books.length) {
-    reviewList.innerHTML = "<p style='opacity:.7'>No pending content.</p>";
-    return;
-  }
-
-  reviewList.innerHTML = books
-    .map((book) => {
-      return `
-        <article class="content-card">
-          <div class="content-info">
-            <h3>${escapeHtml(book.title)}</h3>
-            <p>
-              ${escapeHtml(book.type)} • ${formatCurrency(book.price)}<br>
-              Creator: <strong>${escapeHtml(book.authorName)}</strong><br>
-              Status: ${escapeHtml(book.status)}
-            </p>
-            <div class="signals">
-              <span class="signal ai">AI ${book.aiScore}%</span>
-            </div>
-          </div>
-
-          <div class="actions">
-            <button class="approve" data-action="approve" data-id="${book._id}">Approve</button>
-            <button class="reject" data-action="changes" data-id="${book._id}">Request Changes</button>
-            <button data-action="review" data-id="${book._id}">Open Review</button>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-
-  reviewList.querySelectorAll("button[data-action]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const action = button.dataset.action;
-      const bookId = button.dataset.id;
-
-      if (action === "review") {
-        window.location.href = `../ai/ai-review.html?id=${bookId}`;
-        return;
-      }
-
-      if (action === "approve") {
-        await updateBookStatus(bookId, "Approved");
-        return;
-      }
-
-      const adminNotes = prompt("What should the creator change?");
-      if (!adminNotes) {
-        return;
-      }
-
-      await updateBookStatus(bookId, "Changes_Requested", adminNotes);
-    });
-  });
-}
-
-function renderApprovedLibrary(books) {
-  if (!books.length) {
-    approvedList.innerHTML = "<p style='opacity:.7'>No approved content yet.</p>";
-    return;
-  }
-
-  approvedList.innerHTML = books
-    .map((book) => {
-      return `
-        <article class="content-card">
-          <div class="content-info">
-            <h3>${escapeHtml(book.title)}</h3>
-            <p>
-              ${escapeHtml(book.type)} • ${formatCurrency(book.price)}<br>
-              Creator: <strong>${escapeHtml(book.authorName)}</strong><br>
-              Approved on: ${book.publishedAt ? new Date(book.publishedAt).toLocaleDateString("en-IN") : "Recently"}
-            </p>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-}
-
-async function updateBookStatus(bookId, status, adminNotes = "") {
-  try {
-    await apiFetchJson(`/api/books/admin/status/${bookId}`, {
-      method: "PUT",
-      body: JSON.stringify({ status, adminNotes }),
-    });
-
-    await Promise.all([loadReviewQueue(), loadApprovedLibrary()]);
-  } catch (error) {
-    alert(error.message || "Unable to update book status.");
-  }
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const user = await protectPage(["admin"]);
-  if (!user) {
-    return;
-  }
-
-  initAdminNavigation();
-  loadReviewQueue();
-  loadApprovedLibrary();
 });
+
+/* ========= DATA ========= */
+let pendingContent = [
+  {
+    id: 1,
+    title: "Advanced Java Handwritten Notes",
+    creator: "Yash Parmar",
+    type: "Notes",
+    price: 99,
+    aiScore: 91,
+  },
+  {
+    id: 2,
+    title: "AI for Beginners",
+    creator: "Nishant Chopra",
+    type: "E-Book",
+    price: 199,
+    aiScore: 88,
+  },
+];
+
+let approvedContent = [];
+
+/* ========= RENDER PENDING ========= */
+function renderPending() {
+  reviewList.innerHTML = "";
+
+  if (pendingContent.length === 0) {
+    reviewList.innerHTML = "<p style='opacity:.7'>No pending content</p>";
+    return;
+  }
+
+  pendingContent.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "content-card";
+
+    card.innerHTML = `
+      <div class="content-info">
+        <h3>${item.title}</h3>
+        <p>
+          ${item.type} • ₹${item.price}<br/>
+          Creator: <strong>${item.creator}</strong>
+        </p>
+        <div class="signals">
+          <span class="signal ai">AI ${item.aiScore}%</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="approve">Approve</button>
+        <button class="reject">Reject</button>
+      </div>
+    `;
+
+    card.querySelector(".approve").onclick = () =>
+      approveContent(item.id);
+    card.querySelector(".reject").onclick = () =>
+      rejectContent(item.id);
+
+    reviewList.appendChild(card);
+  });
+}
+
+/* ========= RENDER APPROVED ========= */
+function renderApproved() {
+  approvedList.innerHTML = "";
+
+  if (approvedContent.length === 0) {
+    approvedList.innerHTML =
+      "<p style='opacity:.7'>No approved content yet</p>";
+    return;
+  }
+
+  approvedContent.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "content-card";
+
+    card.innerHTML = `
+      <div class="content-info">
+        <h3>${item.title}</h3>
+        <p>
+          ${item.type} • ₹${item.price}<br/>
+          Creator: <strong>${item.creator}</strong><br/>
+          Approved on: ${item.approvedAt}
+        </p>
+      </div>
+    `;
+
+    approvedList.appendChild(card);
+  });
+}
+
+/* ========= ACTIONS ========= */
+function approveContent(id) {
+  const item = pendingContent.find((i) => i.id === id);
+  if (!item) return;
+
+  approvedContent.push({
+    ...item,
+    approvedAt: new Date().toLocaleDateString(),
+  });
+
+  pendingContent = pendingContent.filter((i) => i.id !== id);
+
+  renderPending();
+  renderApproved();
+}
+
+function rejectContent(id) {
+  const reason = prompt("Reason for rejection?");
+  if (!reason) return;
+
+  pendingContent = pendingContent.filter((i) => i.id !== id);
+  renderPending();
+}
+
+/* ========= LOGOUT ========= */
+function logoutUser() {
+  localStorage.clear();
+  window.location.href = "../login.html";
+}
+
+/* ========= INIT ========= */
+renderPending();
+renderApproved();

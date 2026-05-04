@@ -1,203 +1,506 @@
-let earningsChart = null;
-let countryChart = null;
+/* =====================================
+E-BOOK MARKET – CREATOR WALLET JS
+Production Version (Clean + Bug Free)
+===================================== */
 
-async function loadWallet() {
-  try {
-    const data = await apiFetchJson("/api/earnings/user");
-    renderWallet(data);
-  } catch (error) {
-    document.getElementById("transactionList").innerHTML = `
-      <tr><td colspan="4">${escapeHtml(error.message || "Unable to load earnings.")}</td></tr>
-    `;
-  }
-}
+const API_BASE = "http://localhost:5000";
+const token = localStorage.getItem("token");
 
-function renderWallet(data) {
-  document.getElementById("pendingAmount").textContent = Number(
-    data.pending || 0
-  ).toLocaleString("en-IN");
-  document.getElementById("availableAmount").textContent = Number(
-    data.available || 0
-  ).toLocaleString("en-IN");
-  document.getElementById("withdrawnAmount").textContent = Number(
-    data.withdrawn || 0
-  ).toLocaleString("en-IN");
-  document.getElementById("lifetimeAmount").textContent = Number(
-    data.lifetime || 0
-  ).toLocaleString("en-IN");
-  document.getElementById("creatorScore").textContent = Math.min(
-    100,
-    Math.round(
-      Number(data.totalSales || 0) * 3 +
-        Number(data.totalBooks || 0) * 5 +
-        Number(data.lifetime || 0) / 200
-    )
-  );
+let earningChart = null;
+let globalSalesChart = null;
+let refreshTimer = null;
 
-  renderPayout(data.payout);
-  renderTopBooks(data.topBooks || []);
-  renderTransactions(data.transactions || []);
-  renderCharts(data.chart || { labels: [], values: [] }, data.countrySales || {});
-  renderForecast(data.chart || { values: [] });
-}
+/* =====================================
+AUTH CHECK
+===================================== */
 
-function renderPayout(payout) {
-  const paymentMethod = document.getElementById("paymentMethod");
-  if (!payout || (!payout.upiId && !payout.bankAccount)) {
-    paymentMethod.textContent = "No payout method configured";
-    return;
-  }
+if (!token) redirectToLogin();
 
-  if (payout.upiId) {
-    paymentMethod.textContent = `UPI • ${payout.upiId}`;
-    return;
-  }
+/* =====================================
+INIT
+===================================== */
 
-  paymentMethod.textContent = `Bank • ${payout.bankAccount}`;
-}
+document.addEventListener("DOMContentLoaded", () => {
 
-function renderTopBooks(books) {
-  const tbody = document.getElementById("topEarningBooks");
-  if (!books.length) {
-    tbody.innerHTML = "<tr><td colspan='3'>No earnings yet.</td></tr>";
-    return;
-  }
-
-  tbody.innerHTML = books
-    .map((book) => {
-      return `
-        <tr>
-          <td>${escapeHtml(book.title)}</td>
-          <td>${Number(book.sales || 0).toLocaleString("en-IN")}</td>
-          <td>${formatCurrency(book.earnings || 0)}</td>
-        </tr>
-      `;
-    })
-    .join("");
-}
-
-function renderTransactions(transactions) {
-  const tbody = document.getElementById("transactionList");
-  if (!transactions.length) {
-    tbody.innerHTML = "<tr><td colspan='4'>No transactions yet.</td></tr>";
-    return;
-  }
-
-  tbody.innerHTML = transactions
-    .map((transaction) => {
-      return `
-        <tr>
-          <td>${new Date(transaction.date).toLocaleDateString("en-IN")}</td>
-          <td>${escapeHtml(transaction.title)}</td>
-          <td>${formatCurrency(transaction.amount || 0)}</td>
-          <td class="status ${escapeHtml(transaction.status)}">${escapeHtml(transaction.status)}</td>
-        </tr>
-      `;
-    })
-    .join("");
-}
-
-function renderCharts(chart, countrySales) {
-  if (typeof Chart === "undefined") {
-    return;
-  }
-
-  if (earningsChart) {
-    earningsChart.destroy();
-  }
-  if (countryChart) {
-    countryChart.destroy();
-  }
-
-  earningsChart = new Chart(document.getElementById("earningChart"), {
-    type: "line",
-    data: {
-      labels: chart.labels || [],
-      datasets: [
-        {
-          label: "Earnings",
-          data: chart.values || [],
-          borderColor: "#8b5cf6",
-          backgroundColor: "rgba(139,92,246,0.2)",
-          fill: true,
-          tension: 0.35,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          labels: { color: "#fff" },
-        },
-      },
-      scales: {
-        x: { ticks: { color: "#94a3b8" } },
-        y: { ticks: { color: "#94a3b8" } },
-      },
-    },
-  });
-
-  countryChart = new Chart(document.getElementById("globalSalesChart"), {
-    type: "doughnut",
-    data: {
-      labels: Object.keys(countrySales),
-      datasets: [
-        {
-          data: Object.values(countrySales),
-          backgroundColor: ["#6366f1", "#8b5cf6", "#22c55e", "#f59e0b"],
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          labels: { color: "#fff" },
-        },
-      },
-    },
-  });
-}
-
-function renderForecast(chart) {
-  const values = chart.values || [];
-  const lastMonth = Number(values.at(-1) || 0);
-  const previousMonth = Number(values.at(-2) || 0);
-  const growth =
-    previousMonth > 0
-      ? ((lastMonth - previousMonth) / previousMonth) * 100
-      : 0;
-  const projected = Math.round(lastMonth * (1 + growth / 100));
-
-  document.getElementById("forecastRevenue").textContent = formatCurrency(projected);
-  document.getElementById("forecastGrowth").textContent = `${growth >= 0 ? "+" : ""}${growth.toFixed(1)}%`;
-  document.getElementById("salesMomentum").textContent =
-    growth > 15 ? "High" : growth > 5 ? "Medium" : "Building";
-}
-
-async function requestWithdrawal() {
-  try {
-    const data = await apiFetchJson("/api/earnings/withdraw", {
-      method: "POST",
-    });
-    alert(data.message || "Withdrawal requested.");
-    loadWallet();
-  } catch (error) {
-    alert(error.message || "Unable to request withdrawal.");
-  }
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  const user = await protectPage(["creator", "author", "admin", "reader"]);
-  if (!user) {
-    return;
-  }
+  initWallet();
+  startAutoRefresh();
 
   const withdrawBtn = document.getElementById("withdrawBtn");
-  if (withdrawBtn) {
-    withdrawBtn.addEventListener("click", requestWithdrawal);
+  if (withdrawBtn) withdrawBtn.addEventListener("click", withdraw);
+
+});
+
+/* =====================================
+AUTO REFRESH
+===================================== */
+
+function startAutoRefresh(){
+
+  if(refreshTimer) clearInterval(refreshTimer);
+
+  refreshTimer = setInterval(()=>{
+    initWallet();
+  },30000);
+
+}
+
+/* =====================================
+LOAD WALLET
+===================================== */
+
+async function initWallet(){
+
+  try{
+
+    showLoading();
+
+    const res = await fetch(`${API_BASE}/api/earnings/user`,{
+      headers:{ Authorization:`Bearer ${token}` }
+    });
+
+    if(res.status === 401) return redirectToLogin();
+
+    if(!res.ok) throw new Error("API Error");
+
+    const data = await res.json();
+
+    renderBalances(data);
+    renderChart(data.chart);
+    renderTopBooks(data.topBooks || []);
+    renderTransactions(data.transactions || []);
+    renderPayout(data.payout);
+    renderGlobalSalesMap(data.countrySales || {});
+    calculateCreatorScore(data);
+    calculateForecast(data.chart);
+
+  }catch(err){
+
+    console.error("Wallet Error:",err);
+    showError();
+
   }
 
-  loadWallet();
-});
+}
+
+/* =====================================
+BALANCE CARDS
+===================================== */
+
+function renderBalances(data){
+
+  animateCurrency("pendingAmount", data.pending || 0);
+  animateCurrency("availableAmount", data.available || 0);
+  animateCurrency("withdrawnAmount", data.withdrawn || 0);
+  animateCurrency("lifetimeAmount", data.lifetime || 0);
+
+}
+
+/* =====================================
+CREATOR SCORE
+===================================== */
+
+function calculateCreatorScore(data){
+
+  const el = document.getElementById("creatorScore");
+  if(!el) return;
+
+  const score =
+    (data.totalSales || 0) * 2 +
+    (data.totalBooks || 0) * 5 +
+    (data.lifetime || 0) / 100;
+
+  el.innerText = Math.min(100, Math.floor(score));
+
+}
+
+/* =====================================
+TOP BOOKS
+===================================== */
+
+function renderTopBooks(books){
+
+  const tbody = document.getElementById("topEarningBooks");
+  if(!tbody) return;
+
+  if(!books.length){
+
+    tbody.innerHTML = `<tr><td colspan="3">No earnings yet</td></tr>`;
+    return;
+
+  }
+
+  tbody.innerHTML="";
+
+  books.forEach(book=>{
+
+    const row=document.createElement("tr");
+
+    row.innerHTML=`
+      <td>${escapeHTML(book.title)}</td>
+      <td>${book.sales}</td>
+      <td>₹${formatCurrency(book.earnings)}</td>
+    `;
+
+    tbody.appendChild(row);
+
+  });
+
+}
+
+/* =====================================
+TRANSACTIONS
+===================================== */
+
+function renderTransactions(transactions){
+
+  const tbody=document.getElementById("transactionList");
+  if(!tbody) return;
+
+  if(!transactions.length){
+
+    tbody.innerHTML=`<tr><td colspan="4">No transactions</td></tr>`;
+    return;
+
+  }
+
+  tbody.innerHTML="";
+
+  transactions.forEach(tx=>{
+
+    const row=document.createElement("tr");
+
+    row.innerHTML=`
+      <td>${formatDate(tx.date)}</td>
+      <td>${escapeHTML(tx.title)}</td>
+      <td>₹${formatCurrency(tx.amount)}</td>
+      <td class="status ${tx.status}">
+        ${tx.status}
+      </td>
+    `;
+
+    tbody.appendChild(row);
+
+  });
+
+}
+
+/* =====================================
+EARNINGS CHART
+===================================== */
+
+function renderChart(chart){
+
+  if(!chart || !chart.labels) return;
+
+  const canvas=document.getElementById("earningChart");
+  if(!canvas) return;
+
+  const ctx=canvas.getContext("2d");
+
+  if(earningChart) earningChart.destroy();
+
+  const forecast = chart.values.map(v=>v*1.15);
+
+  earningChart=new Chart(ctx,{
+    type:"line",
+
+    data:{
+      labels:chart.labels,
+      datasets:[
+      {
+        label:"Earnings",
+        data:chart.values,
+        borderColor:"#8b5cf6",
+        backgroundColor:"rgba(139,92,246,0.2)",
+        fill:true,
+        tension:0.4
+      },
+      {
+        label:"AI Forecast",
+        data:forecast,
+        borderColor:"#22c55e",
+        borderDash:[5,5],
+        fill:false
+      }
+      ]
+    },
+
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{ labels:{ color:"#fff" } }
+      },
+      scales:{
+        x:{ ticks:{ color:"#94a3b8" } },
+        y:{ ticks:{ color:"#94a3b8" } }
+      }
+    }
+
+  });
+
+}
+
+/* =====================================
+GLOBAL SALES MAP
+===================================== */
+
+function renderGlobalSalesMap(countrySales){
+
+  const canvas = document.getElementById("globalSalesChart");
+  if(!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  const countries = Object.keys(countrySales);
+  const values = Object.values(countrySales);
+
+  if(globalSalesChart) globalSalesChart.destroy();
+
+  globalSalesChart = new Chart(ctx,{
+    type:"doughnut",
+
+    data:{
+      labels:countries,
+      datasets:[{
+        data:values,
+        backgroundColor:[
+          "#6366f1",
+          "#8b5cf6",
+          "#22c55e",
+          "#f59e0b",
+          "#ef4444",
+          "#06b6d4",
+          "#3b82f6"
+        ]
+      }]
+    },
+
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{
+          position:"bottom",
+          labels:{ color:"#e6e9f0" }
+        }
+      }
+    }
+
+  });
+
+}
+
+/* =====================================
+WITHDRAW
+===================================== */
+
+async function withdraw(){
+
+  const availableText=document.getElementById("availableAmount")?.innerText || "0";
+
+  const available=parseInt(
+    availableText.replace(/[₹,]/g,"")
+  );
+
+  if(available < 500){
+
+    toast("Minimum ₹500 required","error");
+    return;
+
+  }
+
+  if(!confirm(`Withdraw ₹${formatCurrency(available)} ?`)) return;
+
+  try{
+
+    const res=await fetch(`${API_BASE}/api/earnings/withdraw`,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:`Bearer ${token}`
+      }
+    });
+
+    if(!res.ok) throw new Error();
+
+    toast("Withdrawal request sent","success");
+
+    initWallet();
+
+  }catch(err){
+
+    toast("Withdrawal failed","error");
+
+  }
+
+}
+
+/* =====================================
+PAYOUT METHOD
+===================================== */
+
+function renderPayout(payout){
+
+  const el=document.getElementById("paymentMethod");
+  if(!el) return;
+
+  if(!payout){
+    el.innerText="No payout method configured";
+    return;
+  }
+
+  if(payout.upi){
+    el.innerText=`UPI • ${payout.upi}`;
+  }
+  else if(payout.bank){
+    el.innerText=`Bank • ${payout.bank}`;
+  }
+
+}
+
+/* =====================================
+ANIMATED CURRENCY
+===================================== */
+
+function animateCurrency(id,value){
+
+  const el=document.getElementById(id);
+  if(!el) return;
+
+  let start=0;
+  const duration=800;
+  const step=value/(duration/16);
+
+  const timer=setInterval(()=>{
+
+    start+=step;
+
+    if(start>=value){
+      start=value;
+      clearInterval(timer);
+    }
+
+    el.innerText=formatCurrency(Math.floor(start));
+
+  },16);
+
+}
+
+/* =====================================
+UTILS
+===================================== */
+
+function formatCurrency(num){
+  return num.toLocaleString("en-IN");
+}
+
+function formatDate(date){
+  return new Date(date).toLocaleDateString("en-IN");
+}
+
+function escapeHTML(str){
+  return str.replace(/[&<>"']/g,m=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[m]));
+}
+
+/* =====================================
+UI STATES
+===================================== */
+
+function showLoading(){
+
+  ["pendingAmount","availableAmount","withdrawnAmount","lifetimeAmount"]
+  .forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerText="...";
+  });
+
+}
+
+function showError(){
+
+  const table=document.getElementById("transactionList");
+
+  if(table){
+    table.innerHTML=`
+      <tr>
+        <td colspan="4">⚠ Unable to load data</td>
+      </tr>
+    `;
+  }
+
+}
+
+/* =====================================
+NAVIGATION
+===================================== */
+
+function redirectToLogin(){
+  localStorage.clear();
+  window.location.href="../login.html";
+}
+
+/* =====================================
+TOAST
+===================================== */
+
+function toast(message,type="info"){
+
+  const div=document.createElement("div");
+  div.className=`toast ${type}`;
+  div.innerText=message;
+
+  document.body.appendChild(div);
+
+  setTimeout(()=>{
+    div.remove();
+  },3000);
+
+}
+/* =====================================
+AI REVENUE FORECAST
+===================================== */
+
+function calculateForecast(chart){
+
+  if(!chart || !chart.values) return;
+
+  const values = chart.values;
+
+  const lastMonth = values[values.length - 1] || 0;
+  const prevMonth = values[values.length - 2] || 0;
+
+  const growthRate = prevMonth > 0
+    ? ((lastMonth - prevMonth) / prevMonth) * 100
+    : 0;
+
+  const predicted = Math.round(lastMonth * (1 + growthRate/100));
+
+  const forecastRevenue = document.getElementById("forecastRevenue");
+  const forecastGrowth = document.getElementById("forecastGrowth");
+  const momentum = document.getElementById("salesMomentum");
+
+  if(forecastRevenue)
+    forecastRevenue.innerText = "₹" + predicted.toLocaleString("en-IN");
+
+  if(forecastGrowth)
+    forecastGrowth.innerText = growthRate.toFixed(1) + "%";
+
+  if(momentum){
+
+    if(growthRate > 20)
+      momentum.innerText = "🔥 High";
+
+    else if(growthRate > 5)
+      momentum.innerText = "📈 Medium";
+
+    else
+      momentum.innerText = "⚠ Slow";
+
+  }
+
+}

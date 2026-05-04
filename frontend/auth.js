@@ -1,176 +1,136 @@
-(function bootstrapAuthHelpers() {
+/* =========================
+GLOBAL AUTH SYSTEM
+E-BOOK MARKET STARTUP
+========================= */
 
-  // ✅ FIXED API BASE (MAIN BUG FIX)
-  const API_BASE =
-    window.location.hostname === "localhost"
-      ? "http://localhost:5000"
-      : "https://ebook-website-v2mj.onrender.com";
+const API_BASE = "http://localhost:5000";
 
 
-  function toRootPath(target) {
-    const path = window.location.pathname.replace(/\\/g, "/");
-    const isNested = /\/(dashboard|admin|creator|ai)\//.test(path);
-    return isNested ? `../${target}` : target;
-  }
+/* =========================
+PROTECT PAGE
+========================= */
 
-  function getToken() {
-    const token = localStorage.getItem("token");
-    if (!token || token === "null" || token === "undefined") {
-      return null;
-    }
-    return token;
-  }
+async function protectPage(){
 
-  function getCurrentUser() {
-    try {
-      const raw = localStorage.getItem("user");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }
+const token = localStorage.getItem("token");
 
-  function setSession(token, user) {
-    if (token) localStorage.setItem("token", token);
-    if (user) localStorage.setItem("user", JSON.stringify(user));
-  }
+/* If no token → login */
+if(!token){
 
-  function clearSession() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-  }
+redirectLogin();
+return;
 
-  function redirectToLogin() {
-    window.location.href = toRootPath("login.html");
-  }
+}
 
-  function redirectToHome() {
-    window.location.href = toRootPath("index.html");
-  }
+try{
 
-  function redirectForRole(user) {
-    if (!user) return redirectToLogin();
+const res = await fetch(`${API_BASE}/api/user/profile`,{
+headers:{
+Authorization:`Bearer ${token}`
+}
+});
 
-    if (user.role === "admin") {
-      window.location.href = toRootPath("admin/admin.html");
-      return;
-    }
+/* Invalid token */
+if(!res.ok){
+throw new Error("Token invalid");
+}
 
-    window.location.href = toRootPath("dashboard/dashboard.html");
-  }
+const data = await res.json();
 
-  function logoutUser() {
-    clearSession();
-    redirectToLogin();
-  }
+/* Save fresh user data */
+localStorage.setItem("user",JSON.stringify(data.user));
 
-  function consumeTokenFromQuery() {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+}catch(err){
 
-    if (!token) return null;
+console.log("Auth error:",err);
 
-    localStorage.setItem("token", token);
-    params.delete("token");
+/* Logout if token invalid */
+logoutUser();
 
-    const nextUrl =
-      window.location.pathname +
-      (params.toString() ? `?${params.toString()}` : "") +
-      window.location.hash;
+}
 
-    window.history.replaceState({}, document.title, nextUrl);
-    return token;
-  }
+}
 
-  async function apiFetch(path, options = {}) {
-    const headers = new Headers(options.headers || {});
-    const hasBody = options.body !== undefined;
 
-    if (hasBody && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
+/* =========================
+REDIRECT LOGIN
+========================= */
 
-    const token = getToken();
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
+function redirectLogin(){
 
-    return fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers,
-    });
-  }
+/* detect correct path */
+if(window.location.pathname.includes("/dashboard/")){
+window.location.href="../login.html";
+}else{
+window.location.href="login.html";
+}
 
-  async function apiFetchJson(path, options = {}) {
-    const res = await apiFetch(path, options);
-    const data = await res.json().catch(() => ({}));
+}
 
-    if (!res.ok) {
-      throw new Error(data.message || "Request failed");
-    }
 
-    return data;
-  }
+/* =========================
+LOGOUT SYSTEM
+========================= */
 
-  async function protectPage(roles = []) {
-    consumeTokenFromQuery();
+function logoutUser(){
 
-    const token = getToken();
-    if (!token) {
-      redirectToLogin();
-      return null;
-    }
+localStorage.removeItem("token");
+localStorage.removeItem("user");
 
-    try {
-      const data = await apiFetchJson("/api/user/profile");
-      const user = data.user;
+/* redirect safely */
+redirectLogin();
 
-      localStorage.setItem("user", JSON.stringify(user));
+}
 
-      if (roles.length && !roles.includes(user.role)) {
-        redirectForRole(user);
-        return null;
-      }
 
-      return user;
+/* =========================
+GET CURRENT USER
+========================= */
 
-    } catch {
-      clearSession();
-      redirectToLogin();
-      return null;
-    }
-  }
+function getCurrentUser(){
 
-  function formatCurrency(value) {
-    return `Rs.${Number(value || 0).toLocaleString("en-IN")}`;
-  }
+const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  function escapeHtml(value) {
-    return String(value || "").replace(/[&<>"']/g, (c) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[c]));
-  }
+return user;
 
-  // EXPORTS
-  window.API_BASE = API_BASE;
-  window.apiFetch = apiFetch;
-  window.apiFetchJson = apiFetchJson;
-  window.getToken = getToken;
-  window.getCurrentUser = getCurrentUser;
-  window.setSession = setSession;
-  window.clearSession = clearSession;
-  window.redirectToLogin = redirectToLogin;
-  window.redirectToHome = redirectToHome;
-  window.redirectForRole = redirectForRole;
-  window.logoutUser = logoutUser;
-  window.consumeTokenFromQuery = consumeTokenFromQuery;
-  window.protectPage = protectPage;
-  window.formatCurrency = formatCurrency;
-  window.escapeHtml = escapeHtml;
-  window.toRootPath = toRootPath;
+}
 
-})();
+
+/* =========================
+CHECK ROLE
+========================= */
+
+function isAdmin(){
+
+const user = getCurrentUser();
+
+return user && user.role === "admin";
+
+}
+
+
+function isCreator(){
+
+const user = getCurrentUser();
+
+return user && user.role === "creator";
+
+}
+
+
+/* =========================
+CHECK LOGIN STATE
+========================= */
+
+function isLoggedIn(){
+
+return !!localStorage.getItem("token");
+
+}
+
+
+/* =========================
+AUTO RUN AUTH GUARD
+========================= */
+
+protectPage();
