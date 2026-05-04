@@ -1,8 +1,11 @@
 (function bootstrapAuthHelpers() {
-  const isFileProtocol = window.location.protocol === "file:";
-  const API_BASE = isFileProtocol
-    ? "http://localhost:5000"
-    : window.location.origin;
+
+  // ✅ FIXED API BASE (MAIN BUG FIX)
+  const API_BASE =
+    window.location.hostname === "localhost"
+      ? "http://localhost:5000"
+      : "https://ebook-website-v2mj.onrender.com";
+
 
   function toRootPath(target) {
     const path = window.location.pathname.replace(/\\/g, "/");
@@ -15,7 +18,6 @@
     if (!token || token === "null" || token === "undefined") {
       return null;
     }
-
     return token;
   }
 
@@ -23,19 +25,14 @@
     try {
       const raw = localStorage.getItem("user");
       return raw ? JSON.parse(raw) : null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
 
   function setSession(token, user) {
-    if (token) {
-      localStorage.setItem("token", token);
-    }
-
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    }
+    if (token) localStorage.setItem("token", token);
+    if (user) localStorage.setItem("user", JSON.stringify(user));
   }
 
   function clearSession() {
@@ -52,10 +49,7 @@
   }
 
   function redirectForRole(user) {
-    if (!user) {
-      redirectToLogin();
-      return;
-    }
+    if (!user) return redirectToLogin();
 
     if (user.role === "admin") {
       window.location.href = toRootPath("admin/admin.html");
@@ -74,9 +68,7 @@
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
 
-    if (!token) {
-      return null;
-    }
+    if (!token) return null;
 
     localStorage.setItem("token", token);
     params.delete("token");
@@ -92,16 +84,14 @@
 
   async function apiFetch(path, options = {}) {
     const headers = new Headers(options.headers || {});
-    const hasBody = options.body !== undefined && options.body !== null;
-    const isFormData =
-      typeof FormData !== "undefined" && options.body instanceof FormData;
+    const hasBody = options.body !== undefined;
 
-    if (hasBody && !isFormData && !headers.has("Content-Type")) {
+    if (hasBody && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
 
     const token = getToken();
-    if (token && !headers.has("Authorization")) {
+    if (token) {
       headers.set("Authorization", `Bearer ${token}`);
     }
 
@@ -112,25 +102,11 @@
   }
 
   async function apiFetchJson(path, options = {}) {
-    const response = await apiFetch(path, options);
-    let data = {};
+    const res = await apiFetch(path, options);
+    const data = await res.json().catch(() => ({}));
 
-    try {
-      data = await response.json();
-    } catch (error) {
-      data = {};
-    }
-
-    if (!response.ok) {
-      const message =
-        data.message ||
-        data.msg ||
-        `Request failed with status ${response.status}`;
-
-      const failure = new Error(message);
-      failure.status = response.status;
-      failure.data = data;
-      throw failure;
+    if (!res.ok) {
+      throw new Error(data.message || "Request failed");
     }
 
     return data;
@@ -147,21 +123,18 @@
 
     try {
       const data = await apiFetchJson("/api/user/profile");
-      const user = data.user || null;
-
-      if (!user) {
-        throw new Error("User profile is unavailable");
-      }
+      const user = data.user;
 
       localStorage.setItem("user", JSON.stringify(user));
 
-      if (roles.length > 0 && !roles.includes(user.role)) {
+      if (roles.length && !roles.includes(user.role)) {
         redirectForRole(user);
         return null;
       }
 
       return user;
-    } catch (error) {
+
+    } catch {
       clearSession();
       redirectToLogin();
       return null;
@@ -173,17 +146,16 @@
   }
 
   function escapeHtml(value) {
-    return String(value || "").replace(/[&<>"']/g, (character) => {
-      return {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;",
-      }[character];
-    });
+    return String(value || "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[c]));
   }
 
+  // EXPORTS
   window.API_BASE = API_BASE;
   window.apiFetch = apiFetch;
   window.apiFetchJson = apiFetchJson;
@@ -201,5 +173,4 @@
   window.escapeHtml = escapeHtml;
   window.toRootPath = toRootPath;
 
-  consumeTokenFromQuery();
 })();
