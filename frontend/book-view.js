@@ -1,3 +1,7 @@
+// ==============================
+// LOAD BOOK VIEW
+// ==============================
+
 async function loadBookView() {
   const params = new URLSearchParams(window.location.search);
   const bookId = params.get("id");
@@ -15,6 +19,11 @@ async function loadBookView() {
   }
 }
 
+
+// ==============================
+// RENDER BOOK
+// ==============================
+
 function renderBook(book) {
   const title = document.getElementById("bookTitle");
   const meta = document.getElementById("bookMeta");
@@ -24,52 +33,155 @@ function renderBook(book) {
   const note = document.getElementById("bookNote");
   const downloadBtn = document.getElementById("downloadBtn");
   const secondaryBtn = document.getElementById("secondaryBtn");
+
+  const paymentBox = document.getElementById("paymentBox");
+
   const user = getCurrentUser();
+  const token = getToken();
+
+  // ==================
+  // SET DATA
+  // ==================
 
   title.textContent = book.title;
   meta.textContent = `${book.type} • ${book.category} • by ${book.authorName}`;
-  price.textContent =
-    Number(book.price || 0) > 0 ? formatCurrency(book.price) : "FREE";
+
+  const isPaid = Number(book.price || 0) > 0;
+
+  price.textContent = isPaid
+    ? formatCurrency(book.price)
+    : "FREE";
+
   description.textContent =
-    book.description || "No description has been added for this book yet.";
+    book.description || "No description available.";
+
   preview.src = `${API_BASE}${book.previewPdf}`;
+
   note.textContent =
-    "Preview is available publicly. Signed-in users can download approved books.";
+    isPaid
+      ? "Preview only. Purchase required to download."
+      : "Free book. You can download after login.";
+
+  // ==================
+  // DOWNLOAD BUTTON LOGIC
+  // ==================
 
   downloadBtn.onclick = () => {
-    if (!getToken()) {
+
+    // 🔐 NOT LOGGED IN
+    if (!token) {
       redirectToLogin();
       return;
     }
 
-    window.location.href = `${API_BASE}/api/books/${book._id}/download`;
+    // 🟢 FREE BOOK
+    if (!isPaid) {
+      window.location.href =
+        `${API_BASE}/api/books/${book._id}/download?token=${token}`;
+      return;
+    }
+
+    // 💰 PAID BOOK → SHOW PAYMENT
+    if (paymentBox) {
+      paymentBox.style.display = "block";
+      localStorage.setItem("bookId", book._id);
+    }
+
   };
 
+  // ==================
+  // SECOND BUTTON
+  // ==================
+
   if (user) {
-    secondaryBtn.textContent = user.role === "admin" ? "Open Admin" : "Dashboard";
+    secondaryBtn.textContent =
+      user.role === "admin" ? "Admin Panel" : "Dashboard";
+
     secondaryBtn.onclick = () => {
       redirectForRole(user);
     };
+  } else {
+    secondaryBtn.textContent = "Sign In";
+
+    secondaryBtn.onclick = () => {
+      redirectToLogin();
+    };
+  }
+}
+
+
+// ==============================
+// PAYMENT SUBMIT (IMPORTANT)
+// ==============================
+
+async function submitPayment() {
+
+  const fileInput = document.getElementById("screenshot");
+
+  if (!fileInput || !fileInput.files.length) {
+    alert("Upload payment screenshot");
     return;
   }
 
-  secondaryBtn.textContent = "Sign In";
-  secondaryBtn.onclick = () => {
-    redirectToLogin();
-  };
+  const bookId = localStorage.getItem("bookId");
+  const token = getToken();
+
+  if (!bookId || !token) {
+    alert("Session expired. Please login again.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("screenshot", fileInput.files[0]);
+  formData.append("bookId", bookId);
+
+  try {
+
+    const res = await fetch(`${API_BASE}/api/payment/submit`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("✅ Payment submitted! Wait for approval.");
+      document.getElementById("paymentBox").style.display = "none";
+    } else {
+      alert(data.message || "Payment failed");
+    }
+
+  } catch (err) {
+    alert("Server error");
+  }
 }
 
+
+// ==============================
+// FALLBACK
+// ==============================
+
 function renderFallback(message = "Book preview not available.") {
-  document.getElementById("bookTitle").textContent = "Book preview unavailable";
-  document.getElementById("bookMeta").textContent = "Approved books appear here";
-  document.getElementById("bookPrice").textContent = "Preview unavailable";
+  document.getElementById("bookTitle").textContent = "Book unavailable";
+  document.getElementById("bookMeta").textContent = "";
+  document.getElementById("bookPrice").textContent = "";
   document.getElementById("bookDescription").textContent = message;
+
   document.getElementById("downloadBtn").onclick = () => {
     redirectToLogin();
   };
+
   document.getElementById("secondaryBtn").onclick = () => {
     redirectToHome();
   };
 }
+
+
+// ==============================
+// INIT
+// ==============================
 
 document.addEventListener("DOMContentLoaded", loadBookView);

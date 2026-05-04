@@ -1,5 +1,5 @@
 // ==============================
-// ✅ FIXED API BASE (IMPORTANT)
+// ✅ API BASE (FIXED HTTPS)
 // ==============================
 
 const API_BASE =
@@ -59,13 +59,11 @@ function initNavbar() {
     <a class="btn" href="#" id="logoutBtn">Logout</a>
   `;
 
-  document
-    .getElementById("logoutBtn")
-    ?.addEventListener("click", (e) => {
-      e.preventDefault();
-      localStorage.clear();
-      window.location.href = "index.html";
-    });
+  document.getElementById("logoutBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    localStorage.clear();
+    window.location.href = "index.html";
+  });
 }
 
 
@@ -105,6 +103,64 @@ async function loadFeaturedBooks() {
 
   } catch (err) {
     container.innerHTML = `<p>Backend not connected</p>`;
+  }
+}
+
+
+// ==============================
+// PAYMENT SUBMIT (GLOBAL)
+// ==============================
+
+async function submitPayment(){
+
+  const fileInput = document.getElementById("screenshot");
+
+  if(!fileInput || !fileInput.files.length){
+    alert("Upload payment screenshot");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+
+  if(!token){
+    alert("Login required");
+    window.location.href = "login.html";
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const bookId = params.get("id");
+
+  if(!bookId){
+    alert("Book not found");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("screenshot", fileInput.files[0]);
+  formData.append("bookId", bookId);
+
+  try{
+
+    const res = await fetch(`${API_BASE}/api/payment/submit`,{
+      method: "POST",
+      headers:{
+        Authorization: "Bearer " + token
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if(data.success){
+      alert("✅ Payment submitted. Wait for approval.");
+      document.getElementById("paymentBox").style.display = "none";
+    }else{
+      alert(data.message || "Error");
+    }
+
+  }catch(err){
+    alert("❌ Server error");
   }
 }
 

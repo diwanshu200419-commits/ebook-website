@@ -431,6 +431,7 @@ router.get("/:id", async (req, res) => {
 
 router.get("/:id/download", protect, async (req, res) => {
   try {
+
     const book = await Book.findById(req.params.id);
 
     if (!book) {
@@ -440,33 +441,49 @@ router.get("/:id/download", protect, async (req, res) => {
       });
     }
 
+    // 🔐 OWNER OR ADMIN CHECK
     if (!isOwnerOrAdmin(book, req.user) && book.status !== "Approved") {
       return res.status(403).json({
         success: false,
-        message: "You do not have access to this file",
+        message: "Access denied",
       });
     }
 
+    // 💰 PAYMENT CHECK (IMPORTANT)
+    const Payment = require("../models/Payment");
+
+    if (book.isPaid) {
+      const hasAccess = await Payment.findOne({
+        userId: req.user.id,
+        bookId: book._id,
+        status: "approved",
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          message: "Please complete payment first",
+        });
+      }
+    }
+
+    // 📁 FILE PATH
     const sanitized = book.filePath.replace(/^\//, "");
     const absolutePath = path.resolve(__dirname, "..", sanitized);
 
     if (!fs.existsSync(absolutePath)) {
       return res.status(404).json({
         success: false,
-        message: "Stored file not found",
+        message: "File not found",
       });
     }
 
+    // 📥 ONLY DOWNLOAD COUNT
     book.downloads += 1;
-    if (book.isPaid) {
-      book.salesCount += 1;
-      const creatorShare = Math.round(book.price * 0.81);
-      book.earnings += creatorShare;
-      book.platformRevenue += Math.max(0, book.price - creatorShare);
-    }
     await book.save();
 
     return res.download(absolutePath, `${book.title}.pdf`);
+
   } catch (error) {
     console.error("Download error:", error);
     return res.status(500).json({

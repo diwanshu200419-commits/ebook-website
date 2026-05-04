@@ -1,112 +1,88 @@
 const express = require("express");
 const router = express.Router();
-const Stripe = require("stripe");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16"
-});
+const Payment = require("../models/Payment");
 
-/* =====================================
-   AUTH MIDDLEWARE
-===================================== */
+
+// ==============================
+// AUTH MIDDLEWARE
+// ==============================
 
 function auth(req, res, next) {
 
   const token =
-    req.headers.authorization?.split(" ")[1] ||
-    req.query.token;
+    req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({
-      message: "Unauthorized"
-    });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-
     next();
-
-  } catch (err) {
-
-    return res.status(401).json({
-      message: "Invalid token"
-    });
-
+  } catch {
+    return res.status(401).json({ message: "Invalid token" });
   }
 }
 
 
-/* =====================================
-   CREATE STRIPE CHECKOUT
-===================================== */
+// ==============================
+// FILE UPLOAD (SCREENSHOT)
+// ==============================
 
-router.post("/create-checkout", auth, async (req, res) => {
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
+
+
+// ==============================
+// SUBMIT PAYMENT (QR METHOD)
+// ==============================
+
+router.post("/submit", auth, upload.single("screenshot"), async (req, res) => {
 
   try {
 
-    const { title, price, bookId } = req.body;
+    const { bookId } = req.body;
 
-    // Validate input
-    if (!title || !price || !bookId) {
+    if (!bookId || !req.file) {
       return res.status(400).json({
-        message: "Missing book data"
+        success: false,
+        message: "Missing data"
       });
     }
 
-    if (isNaN(price)) {
-      return res.status(400).json({
-        message: "Invalid price"
-      });
-    }
-
-    const session = await stripe.checkout.sessions.create({
-
-      mode: "payment",
-
-      payment_method_types: ["card"],
-
-      line_items: [
-        {
-          price_data: {
-            currency: "inr",
-            product_data: {
-              name: title
-            },
-            unit_amount: Math.round(price * 100)
-          },
-          quantity: 1
-        }
-      ],
-
-      metadata: {
-        bookId: String(bookId),
-        userId: String(req.user.id)
-      },
-
-      success_url:
-        `http://127.0.0.1:5501/frontend/success.html?session_id={CHECKOUT_SESSION_ID}`,
-
-      cancel_url:
-        `http://127.0.0.1:5501/frontend/cancel.html`
-
+    const payment = new Payment({
+      userId: req.user.id,
+      bookId,
+      screenshot: req.file.filename,
+      status: "pending"
     });
 
-    return res.json({
+    await payment.save();
+
+    res.json({
       success: true,
-      url: session.url
+      message: "Payment submitted"
     });
 
   } catch (err) {
 
-    console.error("Stripe Checkout Error:", err);
+    console.error(err);
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      message: "Stripe checkout failed"
+      message: "Server error"
     });
 
   }
@@ -114,52 +90,77 @@ router.post("/create-checkout", auth, async (req, res) => {
 });
 
 
-/* =====================================
-   VERIFY PAYMENT SESSION
-===================================== */
+// ==============================
+// GET USER PAYMENT STATUS
+// ==============================
 
-router.get("/verify-session", auth, async (req, res) => {
+router.get("/status/:bookId", auth, async (req, res) => {
 
   try {
 
-    const { session_id } = req.query;
+    const payment = await Payment.findOne({
+      userId: req.user.id,
+      bookId: req.params.bookId,
+      status: "approved"
+    });
 
-    if (!session_id) {
-      return res.status(400).json({
-        message: "Session ID missing"
-      });
-    }
-
-    const session =
-      await stripe.checkout.sessions.retrieve(session_id);
-
-    if (session.payment_status === "paid") {
-
+    if (payment) {
       return res.json({
         success: true,
-        payment: "completed",
-        bookId: session.metadata.bookId,
-        userId: session.metadata.userId
+        access: true
       });
-
     }
 
-    return res.json({
+    res.json({
       success: false,
-      payment: "pending"
+      access: false
     });
 
   } catch (err) {
 
-    console.error("Stripe Verify Error:", err);
-
-    return res.status(500).json({
-      success: false,
-      message: "Payment verification failed"
+    res.status(500).json({
+      success: false
     });
 
   }
 
 });
+
+
+// ==============================
+// ADMIN APPROVE PAYMENT
+// ==============================
+
+router.post("/approve/:id", async (req, res) => {
+
+  try {
+
+    const payment = await Payment.findById(req.params.id);
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Payment not found"
+      });
+    }
+
+    payment.status = "approved";
+    await payment.save();
+
+    res.json({
+      success: true,
+      message: "Payment approved"
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      success: false
+    });
+
+  }
+
+});
+
 
 module.exports = router;

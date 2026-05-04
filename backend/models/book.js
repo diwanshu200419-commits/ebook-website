@@ -14,6 +14,7 @@ const BookSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // 👤 CREATOR (USE THIS)
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -112,6 +113,7 @@ const BookSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // 💰 SALES DATA
     salesCount: {
       type: Number,
       default: 0,
