@@ -5,7 +5,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/auth");
-const Book = require("../models/book");
+const Book = require("../models/Book");
 
 /* =====================================
    GET USER DASHBOARD DATA
