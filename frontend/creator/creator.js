@@ -3,7 +3,7 @@ CREATOR MARKETPLACE SYSTEM
 E-BOOK MARKET STARTUP
 ========================= */
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://ebook-website-v2mj.onrender.com";
 
 /* =========================
 GET USER TOKEN

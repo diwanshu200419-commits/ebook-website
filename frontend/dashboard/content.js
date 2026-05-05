@@ -2,7 +2,7 @@
    CONFIG
 ===================================== */
 
-const API_BASE = "http://localhost:5000";
+const API_BASE = "https://ebook-website-v2mj.onrender.com";
 const token = localStorage.getItem("token");
 
 if (!token) {
