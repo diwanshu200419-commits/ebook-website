@@ -2,7 +2,7 @@
 🚀 DASHBOARD JS – ULTRA SaaS VERSION
 ===================================*/
 
-const API_BASE = "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 
 let earningsChartInstance = null;
 let globalSalesChartInstance = null;

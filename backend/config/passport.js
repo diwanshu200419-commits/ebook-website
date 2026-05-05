@@ -5,12 +5,22 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 
+const backendBaseUrl =
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  `http://localhost:${process.env.PORT || 5000}`;
+
+const callbackUrl =
+  process.env.GOOGLE_CALLBACK_URL ||
+  `${backendBaseUrl.replace(/\/$/, "")}/api/auth/google/callback`;
+
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: callbackUrl,
+      proxy: true
     },
 
     async (accessToken, refreshToken, profile, done) => {

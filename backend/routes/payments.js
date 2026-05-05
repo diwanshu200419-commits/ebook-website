@@ -82,8 +82,8 @@ router.post("/create-checkout", protect, async (req, res) => {
         userId: req.user.id.toString(),
         creatorId: book.author.toString()
       },
-      success_url: `${process.env.FRONTEND_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.FRONTEND_URL}/cancel.html`
+      success_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/cancel.html`
     });
 
     return res.json({ success: true, url: session.url });

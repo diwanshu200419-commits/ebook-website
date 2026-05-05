@@ -3,7 +3,7 @@ E-BOOK MARKET – CREATOR WALLET JS
 Production Version (Clean + Bug Free)
 ===================================== */
 
-const API_BASE = "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 const token = localStorage.getItem("token");
 
 let earningChart = null;

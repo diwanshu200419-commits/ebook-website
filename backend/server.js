@@ -28,6 +28,8 @@ const app = express();
 // ❌ hide express info
 app.disable("x-powered-by");
 
+const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL;
+
 // 🔐 security headers (adjusted for frontend compatibility)
 app.use(helmet({
   contentSecurityPolicy: {
@@ -37,7 +39,7 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL]
+      connectSrc: ["'self'", clientUrl].filter(Boolean)
     }
   },
   crossOriginEmbedderPolicy: false,
@@ -70,7 +72,7 @@ requiredEnv.forEach((key) => {
    ✅ PASSPORT
 =================================== */
 
-/*require("./config/passport");
+require("./config/passport");
 
 /* ===================================
    ✅ MIDDLEWARE
@@ -94,7 +96,13 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const isVercelApp = typeof origin === "string" && /^https:\/\/.*\.vercel\.app$/.test(origin);
+      const allow =
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        (clientUrl && origin === clientUrl) ||
+        isVercelApp;
+      if (allow) {
         callback(null, true);
       } else {
         callback(new Error("CORS blocked"));

@@ -198,9 +198,16 @@ router.post("/login", async (req, res) => {
 
 router.get(
   "/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-  })
+  (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.status(503).json({
+        success: false,
+        message: "Google login is not configured on the server",
+      });
+    }
+    return next();
+  },
+  passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
 /* =========================================
@@ -211,22 +218,23 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: process.env.FRONTEND_URL + "/login.html",
+    failureRedirect: (process.env.CLIENT_URL || process.env.FRONTEND_URL) + "/login.html",
   }),
   async (req, res) => {
     try {
 
       const token = generateToken(req.user);
 
+      // Use URL fragment instead of querystring to reduce token leakage via referrers/logs
       res.redirect(
-        `${process.env.FRONTEND_URL}/dashboard/dashboard.html?token=${token}`
+        `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/login.html#token=${token}`
       );
 
     } catch (error) {
 
       console.error("Google Callback Error:", error);
 
-      res.redirect(process.env.FRONTEND_URL + "/login.html");
+      res.redirect((process.env.CLIENT_URL || process.env.FRONTEND_URL) + "/login.html");
 
     }
   }

@@ -3,7 +3,7 @@ GLOBAL AUTH SYSTEM
 E-BOOK MARKET STARTUP
 ========================= */
 
-const API_BASE = "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 
 
 /* =========================
