@@ -1,3 +1,5 @@
+const API_BASE = "https://ebook-website-v2mj.onrender.com";
+
 /* =========================
    3D BOOK CARD EFFECT
 ========================= */
@@ -203,7 +205,7 @@ async function loadFeaturedBooks(){
 
   try{
 
-    const res = await fetch("http://localhost:5000/api/books/featured");
+    const res = await fetch(`${API_BASE}/api/books`);
 
     const books = await res.json();
 
@@ -519,10 +521,10 @@ if(!container) return;
 
 try{
 
-const res = await fetch("http://localhost:5000/api/marketplace/trending");
+const res = await fetch(`${API_BASE}/api/books`);
 
-const books = await res.json();
-const data = data.books;
+const result = await res.json();
+const books = result.books || [];
 
 container.innerHTML = "";
 
