@@ -1,33 +1,37 @@
-// routes/books.js
-
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { protect } = require("../middleware/auth");
+const path = require("path");
+const fs = require("fs");
+const mongoose = require("mongoose");
+const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
 const Payment = require("../models/Payment");
-const fs = require("fs");
-const path = require("path");
-const mongoose = require("mongoose");
+const User = require("../models/user");
 
-/* ============================
-   📂 Ensure upload folder
-============================ */
-const uploadPath = path.join(__dirname, "../uploads/books");
-
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
+// Ensure upload folders exist
+const booksUploadPath = path.join(__dirname, "../uploads/books");
+const coversUploadPath = path.join(__dirname, "../uploads/covers");
+if (!fs.existsSync(booksUploadPath)) {
+  fs.mkdirSync(booksUploadPath, { recursive: true });
+}
+if (!fs.existsSync(coversUploadPath)) {
+  fs.mkdirSync(coversUploadPath, { recursive: true });
 }
 
-/* ============================
-   🔐 MULTER (SECURE)
-============================ */
+// Multer storage for PDFs and covers
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadPath),
+  destination: (req, file, cb) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, booksUploadPath);
+    } else if (file.mimetype.startsWith("image/")) {
+      cb(null, coversUploadPath);
+    } else {
+      cb(new Error("Invalid file type"), false);
+    }
+  },
   filename: (req, file, cb) => {
-    const safeName = file.originalname
-      .replace(/\s+/g, "_")
-      .replace(/[^a-zA-Z0-9._-]/g, "");
+    const safeName = file.originalname.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
     cb(null, `${Date.now()}-${safeName}`);
   }
 });
@@ -36,167 +40,163 @@ const upload = multer({
   storage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype !== "application/pdf") {
-      return cb(new Error("Only PDF allowed"), false);
+    if (file.mimetype === "application/pdf" || file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF and image files allowed"), false);
     }
-    cb(null, true);
   }
 });
 
-/* ============================
-   📤 UPLOAD BOOK
-============================ */
-router.post("/upload", protect, upload.single("pdf"), async (req, res) => {
+/* =====================================
+   📤 UPLOAD BOOK (PDF + Cover)
+===================================== */
+router.post("/upload", protect, upload.fields([{ name: "pdf", maxCount: 1 }, { name: "cover", maxCount: 1 }]), async (req, res) => {
   try {
-    const { title, description, price } = req.body;
+    const { title, description, price, category, authorName } = req.body;
 
-    if (!title || !req.file) {
-      return res.status(400).json({ msg: "Title & PDF required" });
+    if (!title || !req.files?.pdf) {
+      return res.status(400).json({ success: false, message: "Title and PDF are required" });
     }
 
-    const relativePath = `/uploads/books/${req.file.filename}`;
+    const pdfPath = `/uploads/books/${req.files.pdf[0].filename}`;
+    const coverPath = req.files?.cover ? `/uploads/covers/${req.files.cover[0].filename}` : "";
 
     const book = await Book.create({
       title,
+      authorName: authorName || req.user.name,
+      author: req.user.id,
+      category: category || "Book",
       description,
       price: Number(price) || 0,
-      author: req.user.id,
-      filePath: relativePath,
-      previewPath: relativePath,
+      filePath: pdfPath,
+      previewPath: pdfPath,
+      coverImage: coverPath,
       isPaid: Number(price) > 0,
-      status: "Approved",
-      views: 0,
-      sales: 0,
-      rating: 0
+      status: "AI_Review"
     });
 
-    res.json({ success: true, book });
+    res.status(201).json({ success: true, book });
 
   } catch (err) {
-    console.error("Upload error:", err.message);
-    res.status(500).json({ msg: "Upload failed" });
+    console.error("Upload Error:", err.message);
+    res.status(500).json({ success: false, message: "Upload failed" });
   }
 });
 
-/* ============================
-   🌍 GET BOOKS (PAGINATION)
-============================ */
+/* =====================================
+   🌍 GET ALL APPROVED BOOKS
+===================================== */
 router.get("/", async (req, res) => {
   try {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = 10;
+    const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const category = req.query.category;
+    const search = req.query.search;
+
+    let filter = { status: "Approved" };
+    if (category) filter.category = category;
+    if (search) filter.title = { $regex: search, $options: "i" };
 
     const [books, total] = await Promise.all([
-      Book.find({ status: "Approved" })
+      Book.find(filter)
         .skip(skip)
         .limit(limit)
-        .populate("author", "name"),
-      Book.countDocuments({ status: "Approved" })
+        .populate("author", "name username")
+        .sort({ createdAt: -1 }),
+      Book.countDocuments(filter)
     ]);
-
-    const formatted = books.map(b => ({
-      _id: b._id,
-      title: b.title,
-      price: b.price,
-      authorName: b.author?.name || "Unknown",
-      cover: b.coverImage
-        ? `${process.env.BASE_URL || ""}${b.coverImage}`
-        : null
-    }));
 
     res.json({
       success: true,
       page,
+      limit,
       total,
       pages: Math.ceil(total / limit),
-      books: formatted
+      books
     });
 
   } catch (err) {
-    res.status(500).json({ msg: "Server error" });
+    console.error("Get Books Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-/* ============================
+/* =====================================
    📘 GET SINGLE BOOK
-============================ */
+===================================== */
 router.get("/:id", async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ msg: "Invalid ID" });
+      return res.status(400).json({ success: false, message: "Invalid book ID" });
     }
 
-    const book = await Book.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { views: 1 } },
-      { new: true }
-    );
-
+    const book = await Book.findById(req.params.id).populate("author", "name username bio");
     if (!book) {
-      return res.status(404).json({ msg: "Book not found" });
+      return res.status(404).json({ success: false, message: "Book not found" });
     }
 
-    res.json({
-      success: true,
-      book: {
-        _id: book._id,
-        title: book.title,
-        description: book.description,
-        price: book.price,
-        previewPath: `${process.env.BASE_URL || ""}${book.previewPath}`
-      }
-    });
+    res.json({ success: true, book });
 
   } catch (err) {
-    res.status(500).json({ msg: "Server error" });
+    console.error("Get Book Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-/* ============================
-   📥 SECURE DOWNLOAD (FIXED)
-============================ */
+/* =====================================
+   📥 DOWNLOAD BOOK
+===================================== */
 router.get("/:id/download", protect, async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({ msg: "Book not found" });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid book ID" });
     }
 
-    // 🔥 Check payment if paid book
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    // Check if user has purchased if it's a paid book
     if (book.isPaid) {
       const payment = await Payment.findOne({
         user: req.user.id,
         book: book._id,
         status: "approved"
       });
-
       if (!payment) {
-        return res.status(403).json({
-          msg: "Purchase required"
-        });
+        return res.status(403).json({ success: false, message: "Purchase required to download" });
       }
     }
 
     const filePath = path.join(__dirname, "..", book.filePath);
-
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ msg: "File missing" });
+      return res.status(404).json({ success: false, message: "File not found" });
     }
 
-    // 🔥 Increase sales for paid books
-    if (book.isPaid) {
-      await Book.findByIdAndUpdate(book._id, {
-        $inc: { sales: 1 }
-      });
-    }
+    // Increment download count
+    await Book.findByIdAndUpdate(book._id, { $inc: { downloads: 1 } });
 
     res.download(filePath, `${book.title}.pdf`);
 
   } catch (err) {
-    console.error("Download error:", err.message);
-    res.status(500).json({ msg: "Server error" });
+    console.error("Download Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =====================================
+   👤 GET MY BOOKS (Creator)
+===================================== */
+router.get("/my/books", protect, async (req, res) => {
+  try {
+    const books = await Book.find({ author: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, books });
+  } catch (err) {
+    console.error("Get My Books Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 

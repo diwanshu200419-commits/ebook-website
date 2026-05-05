@@ -17,6 +17,7 @@ const rateLimit = require("express-rate-limit");
 // ROUTES
 const marketplaceRoutes = require("./routes/marketplace");
 const creatorRoutes = require("./routes/creator");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 
@@ -129,8 +130,10 @@ app.use("/api/books", require("./routes/books"));
 app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/earnings", require("./routes/earnings"));
+app.use("/api/payments", require("./routes/payments"));
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/creator", creatorRoutes);
+app.use("/api/admin", adminRoutes);
 
 /* ===================================
    ✅ HEALTH CHECK
