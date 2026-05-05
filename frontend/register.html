@@ -305,7 +305,7 @@ body:JSON.stringify({name,email,password,role})
 const data=await res.json();
 
 if(!res.ok){
-message.innerHTML=`<span class='error'>${data.msg||"Registration failed"}</span>`;
+message.innerHTML=`<span class='error'>${data.message||data.msg||"Registration failed"}</span>`;
 return;
 }
 

@@ -212,7 +212,7 @@ const data = await res.json();
 
 if(!res.ok){
 
-alert(data.msg || "Invalid credentials");
+alert(data.message || data.msg || "Invalid credentials");
 
 return;
 
