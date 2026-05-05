@@ -2,49 +2,57 @@ const mongoose = require("mongoose");
 
 const paymentSchema = new mongoose.Schema({
 
-  // 👤 buyer
-  userId: {
-    type: String,
+  // 👤 Buyer
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true
   },
 
-  // 📚 book
-  bookId: {
-    type: String,
+  // 📚 Book
+  book: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Book",
     required: true
   },
 
-  // 👨‍💻 creator (IMPORTANT)
-  creatorId: {
-    type: String,
+  // 👨‍💻 Creator
+  creator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true
   },
 
-  // 💰 full amount user paid
+  // 💰 Total amount paid
   amount: {
     type: Number,
     required: true
   },
 
-  // 💸 your platform earning (18%)
+  // 💸 Platform earning (auto)
   platformFee: {
-    type: Number,
-    default: 0
+    type: Number
   },
 
-  // 💵 creator earning (82%)
+  // 💵 Creator earning (auto)
   creatorAmount: {
-    type: Number,
-    default: 0
+    type: Number
   },
 
-  // 📸 payment proof
+  // 📸 Payment screenshot
   screenshot: {
     type: String,
     required: true
   },
 
-  // 📊 status
+  // 🔐 Unique transaction id
+  transactionId: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
+  // 📊 Status
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
@@ -55,4 +63,23 @@ const paymentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model("Payment", paymentSchema);
+
+/* ============================
+   🔥 AUTO CALCULATION
+============================ */
+paymentSchema.pre("save", function (next) {
+
+  this.platformFee = this.amount * 0.18;
+  this.creatorAmount = this.amount * 0.82;
+
+  next();
+});
+
+
+/* ============================
+   🔥 PREVENT DUPLICATES
+============================ */
+paymentSchema.index({ user: 1, book: 1 }, { unique: true });
+
+
+module.exports = mongoose.model("Payment", paymentSchema);s

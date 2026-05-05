@@ -1,52 +1,62 @@
 const express = require("express");
 const router = express.Router();
 
-const Book = require("../models/Book");
+const Book = require("../models/book");
 
 /*
 =================================
-TRENDING BOOKS API
+🔥 TRENDING BOOKS API (PRO VERSION)
 GET /api/marketplace/trending
 =================================
 */
 
 router.get("/trending", async (req, res) => {
+  try {
+    // optional limit (future scalability)
+    const limit = parseInt(req.query.limit) || 12;
 
-try{
+    // fetch approved books only
+    const books = await Book.find({
+      approved: true
+    })
+      .sort({
+        sales: -1,
+        views: -1,
+        rating: -1,
+        createdAt: -1
+      })
+      .limit(limit)
+      .select("title price cover creator views sales rating createdAt");
 
-// fetch approved books
-const books = await Book.find({ approved: true })
+    // format response (🔥 important for frontend)
+    const formattedBooks = books.map((book) => ({
+      id: book._id,
+      title: book.title,
+      price: book.price,
+      cover: book.cover
+        ? `${process.env.BASE_URL || ""}/uploads/${book.cover}`
+        : null,
+      creator: book.creator,
+      views: book.views || 0,
+      sales: book.sales || 0,
+      rating: book.rating || 0,
+      createdAt: book.createdAt
+    }));
 
-.sort({
-sales: -1,     // most sold
-views: -1,     // most viewed
-rating: -1,    // highest rating
-createdAt: -1  // newest boost
-})
+    res.status(200).json({
+      status: "success",
+      count: formattedBooks.length,
+      books: formattedBooks
+    });
 
-.limit(12)
+  } catch (err) {
+    console.error("🔥 Marketplace trending error:", err.message);
 
-.select(
-"title price cover creator views sales rating"
-);
-
-res.status(200).json({
-status: "success",
-count: books.length,
-books
-});
-
-}catch(err){
-
-console.error("Marketplace trending error:", err);
-
-res.status(500).json({
-status: "error",
-message: "Failed to load trending books"
-});
-
-}
-
+    res.status(500).json({
+      status: "error",
+      message: "Failed to load trending books"
+    });
+  }
 });
 
 module.exports = router;
