@@ -28,8 +28,21 @@ const app = express();
 // ❌ hide express info
 app.disable("x-powered-by");
 
-// 🔐 security headers
-app.use(helmet());
+// 🔐 security headers (adjusted for frontend compatibility)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // 🔥 rate limit (anti hack)
 app.use(
@@ -74,7 +87,8 @@ const allowedOrigins = [
   "http://localhost:5501",
   "http://127.0.0.1:5501",
   "http://localhost:3000",
-  "https://your-frontend-domain.onrender.com" // 👈 CHANGE THIS
+  "https://ebook-website-theta-nine.vercel.app",
+  "https://your-frontend-domain.onrender.com"
 ];
 
 app.use(
