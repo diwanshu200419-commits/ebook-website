@@ -23,6 +23,22 @@ router.get("/books", protect, authorize("admin"), async (req, res) => {
 });
 
 /* =====================================
+   🧑‍💼 ADMIN: AI FLAGGED BOOKS
+===================================== */
+router.get("/books/flagged", protect, authorize("admin"), async (req, res) => {
+  try {
+    const books = await Book.find({
+      $or: [{ aiStatus: "pending" }, { status: "Admin_Review" }]
+    }).populate("author", "name email");
+
+    res.json({ success: true, books });
+  } catch (err) {
+    console.error("Get Flagged Books Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =====================================
    🧑‍💼 ADMIN: APPROVE BOOK
 ===================================== */
 router.put("/books/:bookId/approve", protect, authorize("admin"), async (req, res) => {
@@ -33,6 +49,7 @@ router.put("/books/:bookId/approve", protect, authorize("admin"), async (req, re
     }
 
     book.status = "Approved";
+    book.aiStatus = "approved";
     await book.save();
 
     res.json({ success: true, message: "Book approved", book });
@@ -53,6 +70,7 @@ router.put("/books/:bookId/reject", protect, authorize("admin"), async (req, res
     }
 
     book.status = "Rejected";
+    book.aiStatus = "rejected";
     await book.save();
 
     res.json({ success: true, message: "Book rejected", book });

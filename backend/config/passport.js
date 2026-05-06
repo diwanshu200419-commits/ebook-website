@@ -5,14 +5,26 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 
+const isProduction = process.env.NODE_ENV === "production";
 const backendBaseUrl =
   process.env.BACKEND_URL ||
   process.env.RENDER_EXTERNAL_URL ||
-  `http://localhost:${process.env.PORT || 5000}`;
+  (!isProduction ? `http://localhost:${process.env.PORT || 5000}` : "");
+
+const normalizedBackendBaseUrl = backendBaseUrl.replace(/\/$/, "");
+const isHttpsBackend = /^https:\/\//i.test(normalizedBackendBaseUrl);
 
 const callbackUrl =
   process.env.GOOGLE_CALLBACK_URL ||
-  `${backendBaseUrl.replace(/\/$/, "")}/api/auth/google/callback`;
+  `${normalizedBackendBaseUrl}/api/auth/google/callback`;
+
+if (isProduction && !isHttpsBackend) {
+  throw new Error("BACKEND_URL/RENDER_EXTERNAL_URL must use HTTPS in production.");
+}
+
+if (isProduction && /^http:\/\//i.test(callbackUrl)) {
+  throw new Error("GOOGLE_CALLBACK_URL must use HTTPS in production.");
+}
 
 passport.use(
   new GoogleStrategy(

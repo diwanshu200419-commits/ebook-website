@@ -199,8 +199,9 @@ async function uploadContent() {
   formData.append("price", price);
   formData.append("description", description);
   formData.append("tags", JSON.stringify(tags));
-  formData.append("bookFile", file);
-  if (thumbnail) formData.append("thumbnail", thumbnail);
+  // Keep field names aligned with backend multer config.
+  formData.append("pdf", file);
+  if (thumbnail) formData.append("cover", thumbnail);
 
   try {
 
@@ -235,7 +236,12 @@ async function uploadContent() {
       } else if (xhr.status === 401) {
         redirectToLogin();
       } else {
-        showStatus("Upload failed. Try again.", "error");
+        let message = "Upload failed. Try again.";
+        try {
+          const response = JSON.parse(xhr.responseText || "{}");
+          message = response.message || message;
+        } catch (_) {}
+        showStatus(message, "error");
       }
     };
 

@@ -1,44 +1,51 @@
 // services/aiReview.js
 
-function generateAIScore(book) {
-
-  let score = 50; // base score
-
-  // 1️⃣ Description Quality
-  if (book.description && book.description.length > 100) {
-    score += 15;
-  }
-
-  // 2️⃣ Price Logic
-  if (book.price > 0 && book.price <= 999) {
-    score += 10;
-  }
-
-  // 3️⃣ Category Boost
-  if (["Book", "Notes", "AI"].includes(book.category)) {
-    score += 10;
-  }
-
-  // 4️⃣ Random originality simulation
-  const originality = Math.floor(Math.random() * 20);
-  score += originality;
-
-  // Cap at 100
-  if (score > 100) score = 100;
-
-  return score;
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
 }
 
-function decideStatus(score) {
+function buildAIReview(book) {
+  const title = (book.title || "").trim();
+  const description = (book.description || "").trim();
+  const text = `${title} ${description}`.toLowerCase();
+  const words = text.split(/\s+/).filter(Boolean);
 
-  if (score >= 80) return "Admin_Review";
+  let qualityScore = 40;
+  if (title.length >= 8) qualityScore += 10;
+  if (description.length >= 120) qualityScore += 25;
+  if (description.length >= 300) qualityScore += 10;
+  if ((book.price || 0) >= 0) qualityScore += 5;
+  if (["Book", "Notes", "Study", "AI", "Comics"].includes(book.category)) qualityScore += 5;
+  qualityScore = clamp(qualityScore, 0, 100);
 
-  if (score < 40) return "Rejected";
+  const shortOrSpam = words.filter((w) => w.length <= 2).length;
+  const uniqueCount = new Set(words).size || 1;
+  const repetitionRatio = words.length ? 1 - uniqueCount / words.length : 0;
+  let plagiarismScore = 5;
+  plagiarismScore += clamp(Math.round(repetitionRatio * 120), 0, 70);
+  plagiarismScore += shortOrSpam > 40 ? 10 : 0;
+  plagiarismScore += description.length < 80 ? 15 : 0;
+  plagiarismScore = clamp(plagiarismScore, 0, 100);
 
-  return "Admin_Review";
+  const aiScore = clamp(Math.round((qualityScore * 0.65) + ((100 - plagiarismScore) * 0.35)), 0, 100);
+
+  let aiStatus = "pending";
+  if (plagiarismScore < 30 && qualityScore >= 70) {
+    aiStatus = "approved";
+  } else if (plagiarismScore >= 70 || qualityScore < 35) {
+    aiStatus = "rejected";
+  }
+
+  const aiSuggestion =
+    aiStatus === "approved"
+      ? "Auto-approved by AI quality checks."
+      : aiStatus === "rejected"
+        ? "High risk content quality/plagiarism. Requires major revision."
+        : "Needs admin review before publishing.";
+
+  return { aiStatus, plagiarismScore, qualityScore, aiSuggestion, aiScore };
 }
 
 module.exports = {
-  generateAIScore,
-  decideStatus
+  buildAIReview
 };

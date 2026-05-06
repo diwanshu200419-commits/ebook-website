@@ -2,6 +2,11 @@ const express = require("express");
 const router = express.Router();
 
 const Book = require("../models/book");
+const backendBaseUrl = (
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ""
+).replace(/\/$/, "");
 
 /*
 =================================
@@ -17,7 +22,7 @@ router.get("/trending", async (req, res) => {
 
     // fetch approved books only
     const books = await Book.find({
-      approved: true
+      status: "Approved"
     })
       .sort({
         sales: -1,
@@ -26,20 +31,20 @@ router.get("/trending", async (req, res) => {
         createdAt: -1
       })
       .limit(limit)
-      .select("title price cover creator views sales rating createdAt");
+      .select("title price coverImage authorName downloads salesCount aiScore createdAt");
 
     // format response (🔥 important for frontend)
     const formattedBooks = books.map((book) => ({
       id: book._id,
       title: book.title,
       price: book.price,
-      cover: book.cover
-        ? `${process.env.BASE_URL || ""}/uploads/${book.cover}`
+      cover: book.coverImage
+        ? (backendBaseUrl ? `${backendBaseUrl}${book.coverImage}` : book.coverImage)
         : null,
-      creator: book.creator,
-      views: book.views || 0,
-      sales: book.sales || 0,
-      rating: book.rating || 0,
+      creator: book.authorName,
+      views: book.downloads || 0,
+      sales: book.salesCount || 0,
+      rating: book.aiScore || 0,
       createdAt: book.createdAt
     }));
 

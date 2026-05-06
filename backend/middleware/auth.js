@@ -8,20 +8,21 @@ const protect = async (req, res, next) => {
   try {
 
     const authHeader = req.headers.authorization;
+    let token = null;
 
-    // 1️⃣ Check Authorization header properly
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        message: "Not authorized, token missing",
-      });
+    // Primary auth path: Authorization header
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
     }
 
-    // 2️⃣ Extract token
-    const token = authHeader.split(" ")[1];
+    // Backward-compatible fallback for legacy frontend links
+    if (!token && req.query && typeof req.query.token === "string") {
+      token = req.query.token;
+    }
 
     if (!token) {
       return res.status(401).json({
-        message: "Not authorized, invalid token format",
+        message: "Not authorized, token missing",
       });
     }
 

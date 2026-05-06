@@ -8,6 +8,12 @@ const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
 const Payment = require("../models/Payment");
 const User = require("../models/user");
+const { buildAIReview } = require("../services/aiReview");
+const backendBaseUrl = (
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ""
+).replace(/\/$/, "");
 
 // Ensure upload folders exist
 const booksUploadPath = path.join(__dirname, "../uploads/books");
@@ -38,7 +44,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf" || file.mimetype.startsWith("image/")) {
       cb(null, true);
@@ -51,16 +57,37 @@ const upload = multer({
 /* =====================================
    📤 UPLOAD BOOK (PDF + Cover)
 ===================================== */
-router.post("/upload", protect, upload.fields([{ name: "pdf", maxCount: 1 }, { name: "cover", maxCount: 1 }]), async (req, res) => {
+router.post("/upload", protect, upload.fields([
+  { name: "pdf", maxCount: 1 },
+  { name: "bookFile", maxCount: 1 },
+  { name: "cover", maxCount: 1 },
+  { name: "thumbnail", maxCount: 1 }
+]), async (req, res) => {
   try {
     const { title, description, price, category, authorName } = req.body;
+    const pdfFile = req.files?.pdf?.[0] || req.files?.bookFile?.[0];
+    const coverFile = req.files?.cover?.[0] || req.files?.thumbnail?.[0];
 
-    if (!title || !req.files?.pdf) {
+    if (!title || !pdfFile) {
       return res.status(400).json({ success: false, message: "Title and PDF are required" });
     }
 
-    const pdfPath = `/uploads/books/${req.files.pdf[0].filename}`;
-    const coverPath = req.files?.cover ? `/uploads/covers/${req.files.cover[0].filename}` : "";
+    const pdfPath = `/uploads/books/${pdfFile.filename}`;
+    const coverPath = coverFile ? `/uploads/covers/${coverFile.filename}` : "";
+
+    const aiReview = buildAIReview({
+      title,
+      description,
+      category: category || "Book",
+      price: Number(price) || 0
+    });
+
+    const moderationStatus =
+      aiReview.aiStatus === "approved"
+        ? "Approved"
+        : aiReview.aiStatus === "rejected"
+          ? "Rejected"
+          : "Admin_Review";
 
     const book = await Book.create({
       title,
@@ -73,10 +100,24 @@ router.post("/upload", protect, upload.fields([{ name: "pdf", maxCount: 1 }, { n
       previewPath: pdfPath,
       coverImage: coverPath,
       isPaid: Number(price) > 0,
-      status: "AI_Review"
+      status: moderationStatus,
+      aiStatus: aiReview.aiStatus,
+      aiScore: aiReview.aiScore,
+      plagiarismScore: aiReview.plagiarismScore,
+      qualityScore: aiReview.qualityScore,
+      aiSuggestion: aiReview.aiSuggestion
     });
 
-    res.status(201).json({ success: true, book });
+    res.status(201).json({
+      success: true,
+      message: "Book uploaded successfully",
+      aiStatus: aiReview.aiStatus,
+      aiScore: aiReview.aiScore,
+      plagiarismScore: aiReview.plagiarismScore,
+      qualityScore: aiReview.qualityScore,
+      aiSuggestion: aiReview.aiSuggestion,
+      book
+    });
 
   } catch (err) {
     console.error("Upload Error:", err.message);
@@ -108,17 +149,54 @@ router.get("/", async (req, res) => {
       Book.countDocuments(filter)
     ]);
 
+    const booksWithUrls = books.map((book) => {
+      const plain = book.toObject();
+      const coverPath = plain.coverImage || "";
+      const filePath = plain.filePath || "";
+      return {
+        ...plain,
+        coverImage: coverPath,
+        cover: coverPath, // backward-compatible key used by existing frontend
+        coverUrl: coverPath && backendBaseUrl ? `${backendBaseUrl}${coverPath}` : coverPath,
+        fileUrl: filePath && backendBaseUrl ? `${backendBaseUrl}${filePath}` : filePath
+      };
+    });
+
     res.json({
       success: true,
       page,
       limit,
       total,
       pages: Math.ceil(total / limit),
-      books
+      books: booksWithUrls
     });
 
   } catch (err) {
     console.error("Get Books Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =====================================
+   👤 GET MY BOOKS (Creator)
+===================================== */
+router.get("/my/books", protect, async (req, res) => {
+  try {
+    const books = await Book.find({ author: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, books });
+  } catch (err) {
+    console.error("Get My Books Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Backward-compatible alias used by existing frontend
+router.get("/my-books", protect, async (req, res) => {
+  try {
+    const books = await Book.find({ author: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, books });
+  } catch (err) {
+    console.error("Get My Books Error:", err.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -171,7 +249,8 @@ router.get("/:id/download", protect, async (req, res) => {
       }
     }
 
-    const filePath = path.join(__dirname, "..", book.filePath);
+    const normalizedFilePath = String(book.filePath || "").replace(/^[/\\]+/, "");
+    const filePath = path.join(__dirname, "..", normalizedFilePath);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: "File not found" });
     }
@@ -183,19 +262,6 @@ router.get("/:id/download", protect, async (req, res) => {
 
   } catch (err) {
     console.error("Download Error:", err.message);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-/* =====================================
-   👤 GET MY BOOKS (Creator)
-===================================== */
-router.get("/my/books", protect, async (req, res) => {
-  try {
-    const books = await Book.find({ author: req.user.id }).sort({ createdAt: -1 });
-    res.json({ success: true, books });
-  } catch (err) {
-    console.error("Get My Books Error:", err.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

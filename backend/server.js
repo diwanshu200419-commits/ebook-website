@@ -29,6 +29,11 @@ const app = express();
 app.disable("x-powered-by");
 
 const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL;
+const isProd = process.env.NODE_ENV === "production";
+const normalizedClientUrl = (clientUrl || "").replace(/\/$/, "");
+if (isProd && normalizedClientUrl && /^http:\/\//i.test(normalizedClientUrl)) {
+  throw new Error("CLIENT_URL/FRONTEND_URL must use HTTPS in production.");
+}
 
 // 🔐 security headers (adjusted for frontend compatibility)
 app.use(helmet({
@@ -86,12 +91,13 @@ app.use(express.urlencoded({ extended: true }));
 =================================== */
 
 const allowedOrigins = [
-  "http://localhost:5501",
-  "http://127.0.0.1:5501",
-  "http://localhost:3000",
-  "https://ebook-website-theta-nine.vercel.app",
-  "https://your-frontend-domain.onrender.com"
-];
+  normalizedClientUrl,
+  "https://ebook-website-theta-nine.vercel.app"
+].filter(Boolean);
+
+if (!isProd) {
+  allowedOrigins.push("http://localhost:5501", "http://127.0.0.1:5501", "http://localhost:3000");
+}
 
 app.use(
   cors({
@@ -119,6 +125,14 @@ app.use(passport.initialize());
 =================================== */
 
 app.set("trust proxy", 1);
+
+// Enforce HTTPS in production deployments (Render/Proxy aware)
+app.use((req, res, next) => {
+  if (!isProd) return next();
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  if (req.secure || forwardedProto === "https") return next();
+  return res.redirect(`https://${req.headers.host}${req.originalUrl}`);
+});
 
 /* ===================================
    📂 STATIC FILES (IMPORTANT)
@@ -153,6 +167,7 @@ app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/earnings", require("./routes/earnings"));
 app.use("/api/payments", require("./routes/payments"));
+app.use("/api/cart", require("./routes/cart"));
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/creator", creatorRoutes);
 app.use("/api/admin", adminRoutes);

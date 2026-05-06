@@ -7,6 +7,7 @@
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="config.js"></script>
 
   <style>
     * {
@@ -159,21 +160,24 @@
 
   <!-- BOOK DETAILS -->
   <aside class="info">
-    <h1>Side Hustles for Students</h1>
-    <p class="meta">📘 E-Book • Business • by Admin</p>
+    <h1 id="bookTitle">Side Hustles for Students</h1>
+    <p class="meta" id="bookMeta">📘 E-Book • Business • by Admin</p>
 
-    <p class="price">FREE PREVIEW</p>
+    <p class="price" id="bookPrice">FREE PREVIEW</p>
 
-    <p class="desc">
+    <p class="desc" id="bookDescription">
       Discover practical side hustles students can start with zero investment.
       Learn skills, earn online, and build income streams while studying.
     </p>
 
     <div class="actions">
-      <button class="buy" onclick="alert('Login required to download')">
-        Login to Download
+      <button class="buy" id="downloadBtn">
+        Download
       </button>
-      <button class="login" onclick="window.location.href='login.html'">
+      <button class="buy" id="cartBtn" style="display:none;background:linear-gradient(135deg,#0ea5e9,#0284c7);">
+        Add to Cart
+      </button>
+      <button class="login" id="secondaryBtn">
         Sign In
       </button>
     </div>
@@ -181,14 +185,16 @@
 
   <!-- PDF PREVIEW -->
   <section class="viewer">
-    <iframe src="assets/books/I-Tried-8-Different-AI-Side-Hustles-for-Students-Heres-Which-Ones-Actually-Pay.pdf"></iframe>
+    <iframe id="bookPreview" src="assets/books/I-Tried-8-Different-AI-Side-Hustles-for-Students-Heres-Which-Ones-Actually-Pay.pdf"></iframe>
   </section>
 
 </main>
 
-<p class="note">
+<p class="note" id="bookNote">
   🔒 Preview only • Download available after login • © E-Book Market
 </p>
+
+<script src="book-view.js"></script>
 
 </body>
 </html>

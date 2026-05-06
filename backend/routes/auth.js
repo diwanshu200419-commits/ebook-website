@@ -6,6 +6,18 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
 
+const getFrontendBaseUrl = () => {
+  const raw = process.env.CLIENT_URL || process.env.FRONTEND_URL || "";
+  const trimmed = raw.trim().replace(/\/$/, "");
+  if (!trimmed) {
+    return process.env.NODE_ENV === "production" ? "" : "http://localhost:3000";
+  }
+  if (process.env.NODE_ENV === "production" && !/^https:\/\//i.test(trimmed)) {
+    return "";
+  }
+  return trimmed;
+};
+
 /* =========================================
    USERNAME GENERATOR (AUTO)
 ========================================= */
@@ -218,7 +230,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: (process.env.CLIENT_URL || process.env.FRONTEND_URL) + "/login.html",
+    failureRedirect: `${getFrontendBaseUrl()}/login.html`,
   }),
   async (req, res) => {
     try {
@@ -227,14 +239,14 @@ router.get(
 
       // Use URL fragment instead of querystring to reduce token leakage via referrers/logs
       res.redirect(
-        `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/login.html#token=${token}`
+        `${getFrontendBaseUrl()}/login.html#token=${token}`
       );
 
     } catch (error) {
 
       console.error("Google Callback Error:", error);
 
-      res.redirect((process.env.CLIENT_URL || process.env.FRONTEND_URL) + "/login.html");
+      res.redirect(`${getFrontendBaseUrl()}/login.html`);
 
     }
   }

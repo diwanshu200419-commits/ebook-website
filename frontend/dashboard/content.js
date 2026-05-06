@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function loadBooks() {
   try {
-    const res = await fetch(`${API_BASE}/api/books/my-books`, {
+    const res = await fetch(`${API_BASE}/api/books/my/books`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -114,7 +114,7 @@ function updateStats(books) {
   const totalBooks = books.length;
   const totalSales = books.reduce((sum, b) => sum + (b.sales || 0), 0);
   const totalRevenue = books.reduce((sum, b) => sum + ((b.sales || 0) * (b.price || 0)), 0);
-  const publishedCount = books.filter(b => b.status === "published").length;
+  const publishedCount = books.filter(b => b.status === "Approved").length;
 
   totalBooksEl.textContent = totalBooks;
   totalSalesEl.textContent = totalSales;
@@ -157,10 +157,10 @@ async function uploadBook() {
   formData.append("description", description);
   formData.append("price", price);
   formData.append("status", status);
-  formData.append("file", file);
+  formData.append("pdf", file);
 
   try {
-    const res = await fetch(`${API_BASE}/api/books`, {
+    const res = await fetch(`${API_BASE}/api/books/upload`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`

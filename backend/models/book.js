@@ -21,7 +21,19 @@ const BookSchema = new mongoose.Schema({
 
   category: {
     type: String,
-    enum: ["Book", "Notes", "Study", "AI", "Comics"],
+    enum: [
+      "Book",
+      "Notes",
+      "Study",
+      "AI",
+      "Comics",
+      "Education",
+      "Technology",
+      "Self Help",
+      "Fiction",
+      "Competitive",
+      "Other"
+    ],
     default: "Book"
   },
 
@@ -84,6 +96,31 @@ const BookSchema = new mongoose.Schema({
   aiScore: {
     type: Number,
     default: 0
+  },
+
+  aiStatus: {
+    type: String,
+    enum: ["approved", "pending", "rejected"],
+    default: "pending"
+  },
+
+  plagiarismScore: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+
+  qualityScore: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+
+  aiSuggestion: {
+    type: String,
+    default: ""
   },
 
   /* =====================

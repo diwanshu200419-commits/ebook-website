@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cart | E-Book Market</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="config.js"></script>
+</head>
+<body>
+  <header class="nav">
+    <div class="logo">E-BOOK MARKET</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard/dashboard.html">Dashboard</a>
+    </nav>
+  </header>
+
+  <main style="max-width:900px;margin:40px auto;padding:0 16px;">
+    <h1 style="margin-bottom:20px;">Your Cart</h1>
+    <div id="cartList"></div>
+    <div style="margin-top:20px;font-weight:700;">Total: <span id="cartTotal">₹0</span></div>
+    <div style="display:flex;gap:12px;margin-top:20px;">
+      <button id="clearBtn">Clear Cart</button>
+    </div>
+  </main>
+
+  <script src="cart.js"></script>
+</body>
+</html>

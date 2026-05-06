@@ -206,8 +206,8 @@ async function loadFeaturedBooks(){
   try{
 
     const res = await fetch(`${API_BASE}/api/books`);
-
-    const books = await res.json();
+    const result = await res.json();
+    const books = result.books || [];
 
     container.innerHTML = "";
 
@@ -220,7 +220,7 @@ async function loadFeaturedBooks(){
       card.innerHTML = `
       
       <a href="book_view.html?id=${book._id}">
-        <img src="${book.cover}" alt="${book.title}">
+        <img src="${book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : "assets/covers/Ebook_AI.png")}" alt="${book.title}">
         <h3>${book.title}</h3>
         <p>${book.category}</p>
         <span class="price">₹${book.price}</span>
@@ -530,11 +530,15 @@ container.innerHTML = "";
 
 books.forEach(book=>{
 
+const coverSrc =
+  book.coverUrl ||
+  (book.cover ? `${API_BASE}${book.cover}` : "assets/covers/Ebook_AI.png");
+
 container.innerHTML += `
 
 <div class="book-card">
 
-<img src="/uploads/${book.cover}">
+<img src="${coverSrc}">
 
 <h3>${book.title}</h3>
 
