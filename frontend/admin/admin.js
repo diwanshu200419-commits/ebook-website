@@ -1,23 +1,17 @@
-/* ================================
-   ADMIN DASHBOARD – REAL WORKING
-================================ */
+const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+const token = localStorage.getItem("token");
 
-/* ========= AUTH ========= */
-if (typeof protectPage === "function") {
-  protectPage(["admin"]);
+if (!token) {
+  window.location.href = "../login.html";
 }
 
-/* ========= DOM ========= */
 const navLinks = document.querySelectorAll(".sidebar-nav a");
 const sections = document.querySelectorAll(".admin-section");
-
 const pageTitle = document.getElementById("pageTitle");
 const pageSub = document.getElementById("pageSub");
-
-const reviewList = document.getElementById("contentList");
+const contentList = document.getElementById("contentList");
 const approvedList = document.getElementById("approvedList");
 
-/* ========= HEADER TEXT ========= */
 const HEADERS = {
   review: {
     title: "Pending Content Review",
@@ -49,7 +43,6 @@ const HEADERS = {
   },
 };
 
-/* ========= SIDEBAR NAV ========= */
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     const target = link.dataset.target;
@@ -58,134 +51,158 @@ navLinks.forEach((link) => {
     link.classList.add("active");
 
     sections.forEach((s) => s.classList.remove("active"));
-    document.getElementById(target).classList.add("active");
+    const targetSection = document.getElementById(target);
+    if (targetSection) targetSection.classList.add("active");
 
-    pageTitle.textContent = HEADERS[target].title;
-    pageSub.textContent = HEADERS[target].sub;
+    pageTitle.textContent = HEADERS[target]?.title || "Admin";
+    pageSub.textContent = HEADERS[target]?.sub || "";
+
+    if (target === "review") loadPendingBooks();
+    if (target === "approved") loadApprovedBooks();
   });
 });
 
-/* ========= DATA ========= */
-let pendingContent = [
-  {
-    id: 1,
-    title: "Advanced Java Handwritten Notes",
-    creator: "Yash Parmar",
-    type: "Notes",
-    price: 99,
-    aiScore: 91,
-  },
-  {
-    id: 2,
-    title: "AI for Beginners",
-    creator: "Nishant Chopra",
-    type: "E-Book",
-    price: 199,
-    aiScore: 88,
-  },
-];
+async function loadPendingBooks() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/books/flagged`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    renderPending(data.books || []);
+  } catch (err) {
+    console.error(err);
+    contentList.innerHTML = "<p>Failed to load pending books</p>";
+  }
+}
 
-let approvedContent = [];
+async function loadApprovedBooks() {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/books?status=Approved`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    renderApproved(data.books || []);
+  } catch (err) {
+    console.error(err);
+    approvedList.innerHTML = "<p>Failed to load approved books</p>";
+  }
+}
 
-/* ========= RENDER PENDING ========= */
-function renderPending() {
-  reviewList.innerHTML = "";
-
-  if (pendingContent.length === 0) {
-    reviewList.innerHTML = "<p style='opacity:.7'>No pending content</p>";
+function renderPending(books) {
+  contentList.innerHTML = "";
+  if (!books.length) {
+    contentList.innerHTML = "<p style='opacity:.7'>No pending content</p>";
     return;
   }
 
-  pendingContent.forEach((item) => {
+  books.forEach((book) => {
     const card = document.createElement("div");
     card.className = "content-card";
-
+    const cover = book.coverImage ? `${API_BASE}${book.coverImage}` : "../assets/covers/Ebook_AI.png";
     card.innerHTML = `
       <div class="content-info">
-        <h3>${item.title}</h3>
-        <p>
-          ${item.type} • ₹${item.price}<br/>
-          Creator: <strong>${item.creator}</strong>
-        </p>
-        <div class="signals">
-          <span class="signal ai">AI ${item.aiScore}%</span>
+        <img src="${cover}" style="width:80px;height:100px;object-fit:cover;border-radius:4px;" />
+        <div>
+          <h3>${escapeHTML(book.title)}</h3>
+          <p>
+            ${book.category} • ₹${book.price}<br/>
+            Creator: <strong>${book.author?.name || "Unknown"}</strong><br/>
+            AI Score: ${book.aiScore || 0}% • Plagiarism: ${book.plagiarismScore || 0}% • Quality: ${book.qualityScore || 0}%
+          </p>
+          <div class="signals">
+            <span class="signal ai">AI ${book.aiStatus || "pending"}</span>
+          </div>
         </div>
       </div>
-
       <div class="actions">
-        <button class="approve">Approve</button>
-        <button class="reject">Reject</button>
+        <button class="approve" data-id="${book._id}">Approve</button>
+        <button class="reject" data-id="${book._id}">Reject</button>
       </div>
     `;
 
-    card.querySelector(".approve").onclick = () =>
-      approveContent(item.id);
-    card.querySelector(".reject").onclick = () =>
-      rejectContent(item.id);
+    card.querySelector(".approve").onclick = () => approveBook(book._id);
+    card.querySelector(".reject").onclick = () => rejectBook(book._id);
 
-    reviewList.appendChild(card);
+    contentList.appendChild(card);
   });
 }
 
-/* ========= RENDER APPROVED ========= */
-function renderApproved() {
+function renderApproved(books) {
   approvedList.innerHTML = "";
-
-  if (approvedContent.length === 0) {
-    approvedList.innerHTML =
-      "<p style='opacity:.7'>No approved content yet</p>";
+  if (!books.length) {
+    approvedList.innerHTML = "<p style='opacity:.7'>No approved content yet</p>";
     return;
   }
 
-  approvedContent.forEach((item) => {
+  books.forEach((book) => {
     const card = document.createElement("div");
     card.className = "content-card";
-
+    const cover = book.coverImage ? `${API_BASE}${book.coverImage}` : "../assets/covers/Ebook_AI.png";
     card.innerHTML = `
       <div class="content-info">
-        <h3>${item.title}</h3>
-        <p>
-          ${item.type} • ₹${item.price}<br/>
-          Creator: <strong>${item.creator}</strong><br/>
-          Approved on: ${item.approvedAt}
-        </p>
+        <img src="${cover}" style="width:80px;height:100px;object-fit:cover;border-radius:4px;" />
+        <div>
+          <h3>${escapeHTML(book.title)}</h3>
+          <p>
+            ${book.category} • ₹${book.price}<br/>
+            Creator: <strong>${book.author?.name || "Unknown"}</strong><br/>
+            Sales: ${book.salesCount || 0} • Downloads: ${book.downloads || 0}
+          </p>
+        </div>
       </div>
     `;
-
     approvedList.appendChild(card);
   });
 }
 
-/* ========= ACTIONS ========= */
-function approveContent(id) {
-  const item = pendingContent.find((i) => i.id === id);
-  if (!item) return;
-
-  approvedContent.push({
-    ...item,
-    approvedAt: new Date().toLocaleDateString(),
-  });
-
-  pendingContent = pendingContent.filter((i) => i.id !== id);
-
-  renderPending();
-  renderApproved();
+async function approveBook(bookId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/books/${bookId}/approve`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    alert("Book approved!");
+    loadPendingBooks();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
-function rejectContent(id) {
-  const reason = prompt("Reason for rejection?");
-  if (!reason) return;
-
-  pendingContent = pendingContent.filter((i) => i.id !== id);
-  renderPending();
+async function rejectBook(bookId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/books/${bookId}/reject`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    alert("Book rejected!");
+    loadPendingBooks();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
-/* ========= LOGOUT ========= */
 function logoutUser() {
   localStorage.clear();
   window.location.href = "../login.html";
 }
 
-/* ========= INIT ========= */
-renderPending();
-renderApproved();
+function escapeHTML(str) {
+  if (!str) return "";
+  return str.replace(/[&<>"']/g, function(m) {
+    return {
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#039;"
+    }[m];
+  });
+}
+
+loadPendingBooks();
