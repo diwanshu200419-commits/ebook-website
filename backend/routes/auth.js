@@ -18,6 +18,21 @@ const getFrontendBaseUrl = () => {
   return trimmed;
 };
 
+const getSafeFrontendFromState = (state) => {
+  if (!state) return getFrontendBaseUrl();
+  try {
+    const decoded = decodeURIComponent(state);
+    const normalized = decoded.trim().replace(/\/$/, "");
+    if (!/^https?:\/\//i.test(normalized)) return getFrontendBaseUrl();
+    if (process.env.NODE_ENV === "production" && !/^https:\/\//i.test(normalized)) {
+      return getFrontendBaseUrl();
+    }
+    return normalized;
+  } catch {
+    return getFrontendBaseUrl();
+  }
+};
+
 /* =========================================
    USERNAME GENERATOR (AUTO)
 ========================================= */
@@ -208,19 +223,22 @@ router.post("/login", async (req, res) => {
    GOOGLE LOGIN START
 ========================================= */
 
-router.get(
-  "/google",
-  (req, res, next) => {
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-      return res.status(503).json({
-        success: false,
-        message: "Google login is not configured on the server",
-      });
-    }
-    return next();
-  },
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+router.get("/google", (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.status(503).json({
+      success: false,
+      message: "Google login is not configured on the server",
+    });
+  }
+  const frontendFromClient = req.query.clientOrigin || req.query.frontend;
+  const state = encodeURIComponent(
+    (typeof frontendFromClient === "string" && frontendFromClient.trim()) || getFrontendBaseUrl()
+  );
+  return passport.authenticate("google", {
+    scope: ["profile", "email"],
+    state
+  })(req, res, next);
+});
 
 /* =========================================
    GOOGLE CALLBACK
@@ -228,25 +246,30 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: `${getFrontendBaseUrl()}/login.html`,
-  }),
+  (req, res, next) => {
+    const frontendBase = getSafeFrontendFromState(req.query.state);
+    return passport.authenticate("google", {
+      session: false,
+      failureRedirect: `${frontendBase}/login.html`,
+    })(req, res, next);
+  },
   async (req, res) => {
     try {
+      const frontendBase = getSafeFrontendFromState(req.query.state);
 
       const token = generateToken(req.user);
 
       // Use URL fragment instead of querystring to reduce token leakage via referrers/logs
       res.redirect(
-        `${getFrontendBaseUrl()}/login.html#token=${token}`
+        `${frontendBase}/login.html#token=${token}`
       );
 
     } catch (error) {
 
       console.error("Google Callback Error:", error);
 
-      res.redirect(`${getFrontendBaseUrl()}/login.html`);
+      const frontendBase = getSafeFrontendFromState(req.query.state);
+      res.redirect(`${frontendBase}/login.html`);
 
     }
   }

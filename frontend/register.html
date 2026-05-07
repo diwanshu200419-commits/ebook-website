@@ -322,7 +322,7 @@ btn.innerText="Create Account";
 }
 
 function googleLogin(){
-window.location.href=`${API_BASE}/api/auth/google`;
+window.location.href=`${API_BASE}/api/auth/google?clientOrigin=${encodeURIComponent(window.location.origin)}`;
 }
 </script>
 

@@ -302,7 +302,7 @@ btn.innerHTML="Redirecting...";
 
 
 window.location.href=
-`${API_BASE}/api/auth/google`;
+`${API_BASE}/api/auth/google?clientOrigin=${encodeURIComponent(window.location.origin)}`;
 
 }
 

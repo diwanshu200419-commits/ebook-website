@@ -9,6 +9,7 @@ const cartList = document.getElementById("cartList");
 const cartTotal = document.getElementById("cartTotal");
 const clearBtn = document.getElementById("clearBtn");
 const checkoutBtn = document.getElementById("checkoutBtn");
+const manualCheckoutBtn = document.getElementById("manualCheckoutBtn");
 const cartMessage = document.getElementById("cartMessage");
 
 async function fetchCart() {
@@ -126,6 +127,10 @@ checkoutBtn?.addEventListener("click", async () => {
   } finally {
     checkoutBtn.disabled = false;
   }
+});
+
+manualCheckoutBtn?.addEventListener("click", () => {
+  window.location.href = "checkout.html";
 });
 
 render();

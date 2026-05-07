@@ -103,6 +103,10 @@ function renderBook(book) {
   downloadBtn.textContent = isPaid ? "Buy / Download" : "Download Free";
   downloadBtn.onclick = () => {
     if (!token) return redirectToLogin();
+    if (isPaid) {
+      window.location.href = `checkout.html?bookId=${encodeURIComponent(book._id)}`;
+      return;
+    }
     window.location.href = `${API_BASE}/api/books/${book._id}/download?token=${token}`;
   };
 

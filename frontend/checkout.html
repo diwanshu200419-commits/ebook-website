@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Checkout | E-Book Market</title>
+  <script src="config.js"></script>
+</head>
+<body style="font-family:Inter,Arial,sans-serif;background:#0b1020;color:#fff;margin:0;">
+  <header style="display:flex;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #1f2937;">
+    <strong>E-BOOK MARKET</strong>
+    <nav style="display:flex;gap:16px;">
+      <a href="cart.html" style="color:#cbd5e1;">Cart</a>
+      <a href="dashboard/dashboard.html" style="color:#cbd5e1;">Dashboard</a>
+    </nav>
+  </header>
+
+  <main style="max-width:980px;margin:24px auto;padding:0 16px;">
+    <h1>Manual Checkout (India-ready)</h1>
+    <p style="color:#9ca3af;">Use UPI, GPay or PayPal QR and upload payment proof.</p>
+
+    <section style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:16px;">
+      <h2 style="margin-top:0;">Step 1: Select Book + Method</h2>
+      <label>Book</label><br/>
+      <select id="bookSelect" style="padding:10px;min-width:260px;margin:8px 0 14px 0;"></select><br/>
+
+      <label>Payment Method</label><br/>
+      <select id="methodSelect" style="padding:10px;min-width:260px;margin:8px 0;">
+        <option value="UPI">UPI</option>
+        <option value="GPay">GPay</option>
+        <option value="PayPal">PayPal</option>
+      </select>
+    </section>
+
+    <section style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:16px;">
+      <h2 style="margin-top:0;">Step 2: Scan QR and Pay</h2>
+      <p id="payInfo" style="color:#cbd5e1;margin:0 0 12px 0;"></p>
+      <p id="amountInfo" style="color:#fbbf24;margin:0 0 12px 0;font-weight:700;"></p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0;">
+        <span id="upiIdLabel" style="font-size:13px;color:#9ca3af;">UPI ID: -</span>
+        <button id="copyUpiBtn" style="padding:6px 10px;font-size:12px;">Copy UPI ID</button>
+      </div>
+      <img id="qrImage" alt="Payment QR" style="max-width:260px;width:100%;height:auto;border-radius:10px;border:1px solid #374151;background:#0f172a;" />
+      <p style="font-size:13px;color:#9ca3af;">If image is missing, set your real QR file paths in `checkout.js` constants.</p>
+    </section>
+
+    <section style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:16px;">
+      <h2 style="margin-top:0;">Step 3: Upload Payment Proof</h2>
+      <label>Transaction ID / UTR</label><br/>
+      <input id="transactionId" type="text" placeholder="Enter UTR/transaction id" style="padding:10px;min-width:280px;margin:8px 0 14px 0;" /><br/>
+      <label>Payment Screenshot</label><br/>
+      <input id="screenshot" type="file" accept="image/*" style="margin:8px 0 14px 0;" /><br/>
+      <button id="submitBtn" style="padding:10px 16px;">Submit for Verification</button>
+      <p id="status" style="margin-top:12px;color:#93c5fd;"></p>
+    </section>
+  </main>
+
+  <script src="checkout.js"></script>
+</body>
+</html>
