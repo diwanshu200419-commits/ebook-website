@@ -31,8 +31,8 @@ message:"Creator not found"
 /* FIND CREATOR BOOKS */
 
 const books = await Book.find({
-creator:creator._id,
-approved:true
+author:creator._id,
+status:"Approved"
 }).sort({createdAt:-1});
 
 
@@ -40,12 +40,11 @@ approved:true
 
 const booksCount = books.length;
 
-const totalSales = books.reduce((sum,b)=> sum + (b.sales || 0),0);
+const totalSales = books.reduce((sum,b)=> sum + (b.salesCount || 0),0);
 
-const totalViews = books.reduce((sum,b)=> sum + (b.views || 0),0);
+const totalViews = books.reduce((sum,b)=> sum + (b.downloads || 0),0);
 
-const totalEarnings = books.reduce((sum,b)=> 
-sum + ((b.sales || 0) * (b.price || 0)),0);
+const totalEarnings = books.reduce((sum,b)=> sum + (b.earnings || 0),0);
 
 
 /* RETURN DATA */
@@ -59,11 +58,8 @@ id:creator._id,
 name:creator.name,
 username:creator.username,
 bio:creator.bio || "Digital creator on E-Book Market",
-avatar:creator.avatar || "/assets/avatar.png",
-website:creator.website || "",
+avatar:creator.profileImage || "/assets/default-avatar.png",
 verified:creator.verified || false,
-
-followers:creator.followers?.length || 0,
 
 stats:{
 books:booksCount,

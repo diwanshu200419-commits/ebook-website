@@ -16,22 +16,22 @@ router.get("/test", (req, res) => {
 ====================================== */
 router.get("/creator", protect, async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user._id || req.user.id;
 
     const books = await Book.find({ author: userId });
 
     const totalBooks = books.length;
 
     const totalSales = books.reduce((sum, b) => {
-      return sum + (b.sales || 0);
+      return sum + (b.salesCount || 0);
     }, 0);
 
     const totalRevenue = books.reduce((sum, b) => {
-      return sum + (b.revenue || 0);
+      return sum + (b.earnings || 0);
     }, 0);
 
     const totalViews = books.reduce((sum, b) => {
-      return sum + (b.views || 0);
+      return sum + (b.downloads || 0);
     }, 0);
 
     // Temporary Monthly Demo Data

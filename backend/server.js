@@ -9,6 +9,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const passport = require("passport");
 const path = require("path");
+const User = require("./models/user");
 
 // 🔥 SECURITY
 const helmet = require("helmet");
@@ -162,7 +163,30 @@ app.use("/uploads/books", (req, res) => {
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected"))
+  .then(async () => {
+    console.log("✅ MongoDB Connected");
+    
+    // Seed admin user if missing
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+      const adminEmail = process.env.ADMIN_EMAIL.toLowerCase().trim();
+      const existingAdmin = await User.findOne({ email: adminEmail });
+      if (!existingAdmin) {
+        const admin = await User.create({
+          name: "Admin",
+          username: "admin",
+          email: adminEmail,
+          password: process.env.ADMIN_PASSWORD,
+          role: "admin",
+          provider: "local"
+        });
+        console.log("✅ Admin user created successfully");
+      } else {
+        console.log("✅ Admin user already exists");
+      }
+    } else {
+      console.log("ℹ️ ADMIN_EMAIL and ADMIN_PASSWORD not set - skipping admin seeding");
+    }
+  })
   .catch((err) => {
     console.error("❌ MongoDB Error:", err.message);
     process.exit(1);
