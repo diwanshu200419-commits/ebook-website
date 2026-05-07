@@ -90,10 +90,22 @@ app.use(express.urlencoded({ extended: true }));
    🔥 CORS FIX (IMPORTANT FOR DEPLOY)
 =================================== */
 
-const allowedOrigins = [
-  normalizedClientUrl,
-  "https://ebook-website-theta-nine.vercel.app"
-].filter(Boolean);
+const rawAllowedOrigins = process.env.ALLOWED_ORIGINS || "";
+const parsedAllowedOrigins = rawAllowedOrigins
+  .split(",")
+  .map((o) => o.trim().replace(/\/$/, ""))
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(
+  new Set(
+    [
+      normalizedClientUrl,
+      process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : "",
+      "https://ebook-website-theta-nine.vercel.app",
+      ...parsedAllowedOrigins
+    ].filter(Boolean)
+  )
+);
 
 if (!isProd) {
   allowedOrigins.push("http://localhost:5501", "http://127.0.0.1:5501", "http://localhost:3000");
@@ -102,12 +114,9 @@ if (!isProd) {
 app.use(
   cors({
     origin: function (origin, callback) {
-      const isVercelApp = typeof origin === "string" && /^https:\/\/.*\.vercel\.app$/.test(origin);
       const allow =
         !origin ||
-        allowedOrigins.includes(origin) ||
-        (clientUrl && origin === clientUrl) ||
-        isVercelApp;
+        allowedOrigins.includes(String(origin).replace(/\/$/, ""));
       if (allow) {
         callback(null, true);
       } else {
@@ -138,10 +147,14 @@ app.use((req, res, next) => {
    📂 STATIC FILES (IMPORTANT)
 =================================== */
 
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
+// Serve non-sensitive upload assets publicly.
+app.use("/uploads/covers", express.static(path.join(__dirname, "uploads/covers")));
+app.use("/uploads/payments", express.static(path.join(__dirname, "uploads/payments")));
+
+// Prevent direct public PDF access. Book files are served via protected endpoints.
+app.use("/uploads/books", (req, res) => {
+  return res.status(403).json({ success: false, message: "Direct access blocked" });
+});
 
 /* ===================================
    ✅ DATABASE

@@ -8,6 +8,8 @@ if (!token) {
 const cartList = document.getElementById("cartList");
 const cartTotal = document.getElementById("cartTotal");
 const clearBtn = document.getElementById("clearBtn");
+const checkoutBtn = document.getElementById("checkoutBtn");
+const cartMessage = document.getElementById("cartMessage");
 
 async function fetchCart() {
   const res = await fetch(`${API_BASE}/api/cart`, {
@@ -49,6 +51,7 @@ async function render() {
     if (!items.length) {
       cartList.innerHTML = "<p>Your cart is empty.</p>";
       cartTotal.textContent = "₹0";
+      if (checkoutBtn) checkoutBtn.disabled = true;
       return;
     }
 
@@ -66,6 +69,7 @@ async function render() {
     });
 
     cartTotal.textContent = `₹${Number(data.total || 0).toLocaleString("en-IN")}`;
+    if (checkoutBtn) checkoutBtn.disabled = false;
 
     cartList.querySelectorAll("button[data-book-id]").forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -79,6 +83,7 @@ async function render() {
     });
   } catch (err) {
     cartList.innerHTML = `<p>${err.message}</p>`;
+    if (checkoutBtn) checkoutBtn.disabled = true;
   }
 }
 
@@ -88,6 +93,38 @@ clearBtn?.addEventListener("click", async () => {
     await render();
   } catch (err) {
     alert(err.message);
+  }
+});
+
+checkoutBtn?.addEventListener("click", async () => {
+  try {
+    checkoutBtn.disabled = true;
+    cartMessage.textContent = "Creating Stripe checkout session...";
+    const cart = await fetchCart();
+    const bookIds = (cart.items || []).map((i) => i.book?._id).filter(Boolean);
+    if (!bookIds.length) {
+      cartMessage.textContent = "Your cart is empty.";
+      return;
+    }
+    const res = await fetch(`${API_BASE}/api/payments/create-checkout-cart`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ bookIds })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Checkout failed");
+    if (!data.url) {
+      cartMessage.textContent = data.message || "No payable items found.";
+      return;
+    }
+    window.location.href = data.url;
+  } catch (err) {
+    cartMessage.textContent = err.message || "Checkout failed";
+  } finally {
+    checkoutBtn.disabled = false;
   }
 });
 

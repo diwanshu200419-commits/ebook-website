@@ -152,13 +152,11 @@ router.get("/", async (req, res) => {
     const booksWithUrls = books.map((book) => {
       const plain = book.toObject();
       const coverPath = plain.coverImage || "";
-      const filePath = plain.filePath || "";
       return {
         ...plain,
         coverImage: coverPath,
         cover: coverPath, // backward-compatible key used by existing frontend
-        coverUrl: coverPath && backendBaseUrl ? `${backendBaseUrl}${coverPath}` : coverPath,
-        fileUrl: filePath && backendBaseUrl ? `${backendBaseUrl}${filePath}` : filePath
+        coverUrl: coverPath && backendBaseUrl ? `${backendBaseUrl}${coverPath}` : coverPath
       };
     });
 
@@ -262,6 +260,34 @@ router.get("/:id/download", protect, async (req, res) => {
 
   } catch (err) {
     console.error("Download Error:", err.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* =====================================
+   🗑️ DELETE BOOK (author/admin)
+===================================== */
+router.delete("/:id", protect, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid book ID" });
+    }
+
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    const isOwner = String(book.author) === String(req.user.id);
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ success: false, message: "Not allowed" });
+    }
+
+    await Book.findByIdAndDelete(book._id);
+    return res.json({ success: true, message: "Book deleted successfully" });
+  } catch (err) {
+    console.error("Delete Book Error:", err.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

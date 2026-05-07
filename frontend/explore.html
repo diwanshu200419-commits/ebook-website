@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explore Books | E-Book Market</title>
+  <script src="config.js"></script>
+</head>
+<body style="font-family:Inter,Arial,sans-serif;background:#0b1020;color:#fff;margin:0;">
+  <header style="display:flex;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #1f2937;">
+    <strong>E-BOOK MARKET</strong>
+    <nav style="display:flex;gap:16px;">
+      <a href="index.html" style="color:#cbd5e1;">Home</a>
+      <a href="cart.html" style="color:#cbd5e1;">Cart</a>
+    </nav>
+  </header>
+  <main style="max-width:1200px;margin:24px auto;padding:0 16px;">
+    <h1>Explore Marketplace</h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <input id="searchInput" placeholder="Search books..." style="padding:10px;min-width:220px;" />
+      <select id="categorySelect" style="padding:10px;">
+        <option value="">All Categories</option>
+        <option>Technology</option>
+        <option>AI</option>
+        <option>Programming</option>
+        <option>Business</option>
+        <option>Self Growth</option>
+        <option>Education</option>
+        <option>Design</option>
+        <option>Finance</option>
+        <option>Book</option>
+        <option>Notes</option>
+        <option>Study</option>
+        <option>Comics</option>
+      </select>
+      <select id="sortSelect" style="padding:10px;">
+        <option value="trending">Trending</option>
+        <option value="newest">Newest</option>
+        <option value="price-low">Price Low to High</option>
+        <option value="price-high">Price High to Low</option>
+      </select>
+      <button id="applyBtn">Apply</button>
+    </div>
+    <div id="booksGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;"></div>
+  </main>
+  <script src="explore.js"></script>
+</body>
+</html>

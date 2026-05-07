@@ -95,6 +95,61 @@ router.post("/create-checkout", protect, async (req, res) => {
 });
 
 /* =====================================
+   💳 CREATE STRIPE CHECKOUT (CART)
+===================================== */
+router.post("/create-checkout-cart", protect, async (req, res) => {
+  try {
+    const inputBookIds = Array.isArray(req.body.bookIds) ? req.body.bookIds : [];
+    if (!inputBookIds.length) {
+      return res.status(400).json({ success: false, message: "No books selected" });
+    }
+
+    const validIds = inputBookIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const books = await Book.find({ _id: { $in: validIds }, status: "Approved", isPaid: true });
+    if (!books.length) {
+      return res.status(400).json({ success: false, message: "No valid paid books found" });
+    }
+
+    const purchased = await Payment.find({
+      user: req.user.id,
+      status: "approved",
+      book: { $in: books.map((b) => b._id) }
+    }).select("book");
+    const purchasedSet = new Set(purchased.map((p) => String(p.book)));
+    const payableBooks = books.filter((b) => !purchasedSet.has(String(b._id)));
+    if (!payableBooks.length) {
+      return res.status(200).json({ success: true, message: "All selected books already purchased" });
+    }
+
+    const line_items = payableBooks.map((book) => ({
+      price_data: {
+        currency: "inr",
+        product_data: { name: book.title },
+        unit_amount: Math.round(Number(book.price || 0) * 100)
+      },
+      quantity: 1
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items,
+      metadata: {
+        bookIds: payableBooks.map((b) => String(b._id)).join(","),
+        userId: req.user.id.toString()
+      },
+      success_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/cancel.html`
+    });
+
+    return res.json({ success: true, url: session.url });
+  } catch (err) {
+    console.error("Stripe Cart Checkout Error:", err.message);
+    return res.status(500).json({ success: false, message: "Stripe checkout failed" });
+  }
+});
+
+/* =====================================
    ✅ VERIFY STRIPE PAYMENT
 ===================================== */
 router.get("/verify-session", protect, async (req, res) => {
@@ -111,7 +166,7 @@ router.get("/verify-session", protect, async (req, res) => {
       return res.json({ success: false, payment: "pending" });
     }
 
-    const { bookId, userId, creatorId } = session.metadata;
+    const { bookId, userId, creatorId, bookIds } = session.metadata;
 
     let payment = await Payment.findOne({ transactionId: session.id });
     if (payment) {
@@ -121,6 +176,35 @@ router.get("/verify-session", protect, async (req, res) => {
     const existing = await Payment.findOne({ user: userId, book: bookId, status: "approved" });
     if (existing) {
       return res.json({ success: true, message: "Already purchased", paymentId: existing._id });
+    }
+
+    if (bookIds) {
+      const parsedIds = bookIds.split(",").map((id) => id.trim()).filter(Boolean);
+      const books = await Book.find({ _id: { $in: parsedIds } });
+      for (const b of books) {
+        const hasPayment = await Payment.findOne({
+          user: userId,
+          book: b._id,
+          status: "approved"
+        });
+        if (hasPayment) continue;
+
+        await Payment.create({
+          user: userId,
+          book: b._id,
+          creator: b.author,
+          amount: Number(b.price || 0),
+          transactionId: `${session.id}:${b._id}`,
+          screenshot: "stripe_auto",
+          status: "approved"
+        });
+
+        await updateCreatorEarnings(b.author, Number(b.price || 0) * 0.8);
+        await Book.findByIdAndUpdate(b._id, {
+          $inc: { salesCount: 1, earnings: Number(b.price || 0) * 0.8, platformRevenue: Number(b.price || 0) * 0.2 }
+        });
+      }
+      return res.json({ success: true, payment: "completed" });
     }
 
     const amount = session.amount_total / 100;
@@ -134,8 +218,8 @@ router.get("/verify-session", protect, async (req, res) => {
       status: "approved"
     });
 
-    await updateCreatorEarnings(creatorId, amount * 0.82);
-    await Book.findByIdAndUpdate(bookId, { $inc: { salesCount: 1, earnings: amount * 0.82, platformRevenue: amount * 0.18 } });
+    await updateCreatorEarnings(creatorId, amount * 0.8);
+    await Book.findByIdAndUpdate(bookId, { $inc: { salesCount: 1, earnings: amount * 0.8, platformRevenue: amount * 0.2 } });
 
     return res.json({ success: true, payment: "completed", paymentId: payment._id });
 
@@ -221,8 +305,8 @@ router.put("/:paymentId/approve", protect, authorize("admin"), async (req, res) 
     payment.status = "approved";
     await payment.save();
 
-    await updateCreatorEarnings(payment.creator, payment.amount * 0.82);
-    await Book.findByIdAndUpdate(payment.book, { $inc: { salesCount: 1, earnings: payment.amount * 0.82, platformRevenue: payment.amount * 0.18 } });
+    await updateCreatorEarnings(payment.creator, payment.amount * 0.8);
+    await Book.findByIdAndUpdate(payment.book, { $inc: { salesCount: 1, earnings: payment.amount * 0.8, platformRevenue: payment.amount * 0.2 } });
 
     res.json({ success: true, message: "Payment approved", payment });
   } catch (err) {

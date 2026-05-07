@@ -148,7 +148,7 @@ user = JSON.parse(localStorage.getItem("user"));
 let dashboardLink = "dashboard/dashboard.html";
 
 if(user?.role === "admin"){
-dashboardLink = "admin/admin-dashboard.html";
+dashboardLink = "admin/admin.html";
 }
 
 if(user?.role === "creator"){

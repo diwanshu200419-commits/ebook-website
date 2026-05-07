@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Success | E-Book Market</title>
+  <script src="config.js"></script>
+</head>
+<body style="font-family:Inter,Arial,sans-serif;padding:32px;background:#0b1020;color:#fff;">
+  <h1>Payment Processing...</h1>
+  <p id="status">Verifying your payment and unlocking books.</p>
+  <a href="dashboard/dashboard.html" style="color:#93c5fd;">Go to Dashboard</a>
+
+  <script>
+    (async function () {
+      const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+      const token = localStorage.getItem("token");
+      const status = document.getElementById("status");
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+      if (!token || !sessionId) {
+        status.textContent = "Missing session or login. Please sign in and retry.";
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/verify-session?session_id=${encodeURIComponent(sessionId)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Verification failed");
+        status.textContent = "Payment verified. Downloads are now unlocked.";
+      } catch (err) {
+        status.textContent = err.message || "Verification failed.";
+      }
+    })();
+  </script>
+</body>
+</html>
