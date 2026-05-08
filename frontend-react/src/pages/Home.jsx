@@ -70,9 +70,9 @@ export default function Home() {
               <span>THE FUTURE OF KNOWLEDGE ECONOMY</span>
             </motion.div>
 
-            <h1 className="text-6xl lg:text-8xl font-black tracking-tighter mb-8 leading-[0.9]">
+            <h1 className="text-6xl lg:text-[120px] font-black tracking-tighter mb-8 leading-[0.85] text-white">
               World's Best <br />
-              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-4 inline-block">
                 Knowledge
               </span> <br />
               Platform
@@ -128,49 +128,65 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 relative"
+            className="flex-1 relative min-h-[500px] flex items-center justify-center"
           >
-            <div className="relative z-10 grid grid-cols-2 gap-4">
+            <div className="relative w-full max-w-[500px] aspect-square">
+              {/* Main Book Cover */}
               <motion.div
-                whileHover={{ y: -10 }}
-                className="glass rounded-3xl p-4 mt-12"
+                whileHover={{ y: -10, rotate: -2 }}
+                className="absolute top-0 left-0 w-2/3 z-10 glass rounded-[32px] p-4 shadow-2xl"
               >
-                <img src="/assets/covers/Ebook_AI.png" className="w-full h-64 object-cover rounded-2xl mb-4 shadow-2xl" alt="Book" />
-                <div className="h-2 w-24 bg-blue-500 rounded-full mb-2"></div>
-                <div className="h-2 w-16 bg-white/10 rounded-full"></div>
+                <img src="/assets/covers/Ebook_AI.png" className="w-full h-full object-cover rounded-2xl shadow-2xl" alt="Book" />
               </motion.div>
+
+              {/* Secondary Book Cover */}
               <motion.div
-                whileHover={{ y: -10 }}
-                className="glass rounded-3xl p-4"
+                whileHover={{ y: -10, rotate: 2 }}
+                className="absolute bottom-0 right-0 w-2/3 z-0 glass rounded-[32px] p-4 shadow-2xl grayscale opacity-50"
               >
-                <img src="/assets/covers/Ebook_AI.png" className="w-full h-64 object-cover rounded-2xl mb-4 shadow-2xl grayscale" alt="Book" />
-                <div className="h-2 w-24 bg-purple-500 rounded-full mb-2"></div>
-                <div className="h-2 w-16 bg-white/10 rounded-full"></div>
+                <img src="/assets/covers/Ebook_AI.png" className="w-full h-full object-cover rounded-2xl shadow-2xl" alt="Book" />
+              </motion.div>
+              
+              {/* Floating Revenue Card */}
+              <motion.div
+                animate={{ y: [0, -15, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -right-4 top-1/4 z-20 glass-card p-6 rounded-3xl border-white/20 shadow-2xl min-w-[220px]"
+              >
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Revenue</p>
+                    <p className="text-2xl font-black text-white">₹1.2M+</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full w-3/4 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+                  </div>
+                  <p className="text-[10px] text-gray-500 font-black">MONTHLY TARGET REACHED</p>
+                </div>
+              </motion.div>
+
+              {/* Floating User Card */}
+              <motion.div
+                animate={{ y: [0, 15, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -left-8 bottom-1/4 z-20 glass-card p-4 rounded-2xl border-white/20 shadow-2xl"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-black text-sm">50K+</p>
+                    <p className="text-gray-500 text-[10px] font-bold">CREATORS</p>
+                  </div>
+                </div>
               </motion.div>
             </div>
-            
-            {/* Floating Card */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 glass p-6 rounded-3xl border-white/20 shadow-2xl min-w-[240px]"
-            >
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</p>
-                  <p className="text-2xl font-black text-white">₹1.2M+</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full w-3/4 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-                </div>
-                <p className="text-[10px] text-gray-500 font-bold">MONTHLY TARGET REACHED</p>
-              </div>
-            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -212,12 +228,15 @@ export default function Home() {
             {categories.map((cat, i) => (
               <motion.div
                 key={i}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${cat.color} border border-white/5 p-8 text-center cursor-pointer group`}
+                whileHover={{ y: -8, scale: 1.05 }}
+                className={`relative overflow-hidden rounded-[32px] bg-white/[0.02] border border-white/5 p-8 text-center cursor-pointer group hover:border-white/20 transition-all`}
               >
-                <span className="text-4xl mb-4 block group-hover:scale-125 transition-transform duration-500">{cat.icon}</span>
-                <h3 className="font-black text-lg mb-1">{cat.name}</h3>
-                <p className="text-xs text-gray-500 font-bold uppercase">{cat.count} Books</p>
+                <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+                <div className="relative z-10">
+                  <span className="text-4xl mb-4 block group-hover:scale-125 transition-transform duration-500">{cat.icon}</span>
+                  <h3 className="font-black text-lg mb-1 group-hover:text-white transition-colors">{cat.name}</h3>
+                  <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{cat.count} Books</p>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -248,19 +267,19 @@ export default function Home() {
                 <motion.div
                   key={book._id}
                   whileHover={{ y: -10 }}
-                  className="group relative"
+                  className="group relative bg-white/[0.02] border border-white/5 rounded-[32px] p-4 hover:border-white/20 transition-all"
                 >
                   <Link to={`/book/${book.id || book._id}`}>
-                    <div className="relative aspect-[3/4] rounded-3xl overflow-hidden mb-6">
+                    <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-6">
                       <img 
                         src={book.cover || (book.coverImage ? (book.coverImage.startsWith('http') ? book.coverImage : `${API_BASE}${book.coverImage}`) : '/assets/covers/Ebook_AI.png')} 
                         alt={book.title} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">
-                        <button className="w-full py-3 rounded-xl bg-white text-black font-black text-sm flex items-center justify-center gap-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                        <div className="w-full py-3 rounded-xl bg-white text-black font-black text-sm flex items-center justify-center gap-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                           <Download className="w-4 h-4" /> Get This Book
-                        </button>
+                        </div>
                       </div>
                       {book.price === 0 && (
                         <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-green-500 text-white text-[10px] font-black uppercase tracking-widest shadow-xl">
@@ -268,11 +287,19 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-xl font-bold mb-1 truncate group-hover:text-blue-400 transition-colors">{book.title}</h3>
-                    <p className="text-gray-500 font-bold text-sm mb-3">{book.creator || book.authorName}</p>
-                    <p className="text-2xl font-black text-white">
-                      {book.price === 0 ? 'FREE' : `₹${book.price}`}
-                    </p>
+                    <div className="px-2">
+                      <h3 className="text-xl font-black mb-1 truncate group-hover:text-blue-400 transition-colors">{book.title}</h3>
+                      <p className="text-gray-500 font-bold text-sm mb-4 uppercase tracking-wider">{book.creator || book.authorName}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-2xl font-black text-white">
+                          {book.price === 0 ? 'FREE' : `₹${book.price}`}
+                        </p>
+                        <div className="flex items-center gap-1 text-yellow-400">
+                          <Star className="w-4 h-4 fill-current" />
+                          <span className="text-white font-black text-sm">4.9</span>
+                        </div>
+                      </div>
+                    </div>
                   </Link>
                 </motion.div>
               ))
