@@ -95,7 +95,7 @@ export default function Explore() {
         ) : (
           <div id="booksGrid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {books.length > 0 ? books.map((book) => {
-              const cover = book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : 'https://ebook-website-theta-nine.vercel.app/assets/covers/Ebook_AI.png')
+              const cover = book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : '/assets/covers/Ebook_AI.png')
               return (
                 <motion.article 
                   key={book._id}

@@ -40,7 +40,7 @@ export default function Settings() {
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-md opacity-50"></div>
               <img
-                src={user?.avatar || 'https://ebook-website-theta-nine.vercel.app/assets/default-avatar.png'}
+                src={user?.avatar || '/assets/default-avatar.png'}
                 alt={user?.name}
                 className="w-24 h-24 rounded-full object-cover relative z-10 border-4 border-white/20"
               />

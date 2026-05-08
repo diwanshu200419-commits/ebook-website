@@ -69,7 +69,7 @@ export default function Home() {
 
           <div className="hero-stats flex flex-wrap gap-8">
             <div className="hero-stat flex items-center gap-3">
-              <img src="https://ebook-website-theta-nine.vercel.app/assets/default-avatar.png" className="w-10 h-10 rounded-full" alt="users" />
+              <img src="/assets/default-avatar.png" className="w-10 h-10 rounded-full" alt="users" />
               <span>50K+ Creators</span>
             </div>
             <div className="hero-stat">
@@ -89,7 +89,7 @@ export default function Home() {
           <div className="card-wrap grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link to="/explore" className="book-card featured glass rounded-2xl overflow-hidden relative">
               <img 
-                src="https://ebook-website-theta-nine.vercel.app/assets/covers/Ebook_AI.png" 
+                src="/assets/covers/Ebook_AI.png" 
                 className="w-full h-64 object-cover" 
                 alt="Featured Book" 
               />
@@ -169,7 +169,7 @@ export default function Home() {
               >
                 <Link to={`/book/${book._id}`}>
                   <img 
-                    src={book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : 'https://ebook-website-theta-nine.vercel.app/assets/covers/Ebook_AI.png')}
+                    src={book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : '/assets/covers/Ebook_AI.png')}
                     alt={book.title}
                     className="w-full h-48 object-cover"
                   />

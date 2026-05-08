@@ -35,3 +35,9 @@ body::before {
   backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Fix for background-clip: text in some browsers */
+.bg-clip-text {
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+}

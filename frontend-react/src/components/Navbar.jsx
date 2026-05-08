@@ -255,7 +255,7 @@ export default function Navbar() {
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-md opacity-50"></div>
                   <img
-                    src={user.avatar || 'https://ebook-website-theta-nine.vercel.app/assets/default-avatar.png'}
+                    src={user.avatar || '/assets/default-avatar.png'}
                     alt={user.name}
                     className="w-10 h-10 rounded-full object-cover relative z-10 border-2 border-white/20"
                   />
@@ -279,7 +279,7 @@ export default function Navbar() {
                     <div className="p-4 border-b border-white/10">
                       <div className="flex items-center gap-3">
                         <img
-                          src={user.avatar || 'https://ebook-website-theta-nine.vercel.app/assets/default-avatar.png'}
+                          src={user.avatar || '/assets/default-avatar.png'}
                           alt={user.name}
                           className="w-12 h-12 rounded-full object-cover border-2 border-white/20"
                         />
