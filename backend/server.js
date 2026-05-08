@@ -204,6 +204,7 @@ app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/earnings", require("./routes/earnings"));
 app.use("/api/payments", require("./routes/payments"));
+app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/creator", creatorRoutes);

@@ -1,10 +1,12 @@
 // services/aiReview.js
+const OpenAI = require('openai');
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-function buildAIReview(book) {
+// Fallback heuristic AI review if OpenAI is not available
+function heuristicReview(book) {
   const title = (book.title || "").trim();
   const description = (book.description || "").trim();
   const text = `${title} ${description}`.toLowerCase();
@@ -44,6 +46,78 @@ function buildAIReview(book) {
         : "Needs admin review before publishing.";
 
   return { aiStatus, plagiarismScore, qualityScore, aiSuggestion, aiScore };
+}
+
+// Real AI review using OpenAI
+async function openAIReview(book) {
+  if (!process.env.OPENAI_API_KEY) {
+    return heuristicReview(book);
+  }
+
+  try {
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const title = (book.title || "").trim();
+    const description = (book.description || "").trim();
+    const category = book.category || "Book";
+
+    const prompt = `
+You are an AI content moderator for an educational ebook marketplace. Analyze this book submission and provide:
+
+1. qualityScore (0-100): How good is the content quality?
+2. plagiarismScore (0-100): How likely is this to be plagiarized or low-quality spam?
+3. aiStatus: "approved", "pending", or "rejected"
+4. aiSuggestion: Short helpful feedback for the creator
+
+Book Details:
+- Title: ${title}
+- Description: ${description}
+- Category: ${category}
+- Price: ₹${book.price || 0}
+
+Respond with JSON only in this exact format:
+{
+  "qualityScore": 85,
+  "plagiarismScore": 10,
+  "aiStatus": "approved",
+  "aiSuggestion": "Great content!"
+}
+`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+    });
+
+    const content = response.choices[0]?.message?.content || "";
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    
+    if (jsonMatch) {
+      const result = JSON.parse(jsonMatch[0]);
+      const aiScore = clamp(Math.round((result.qualityScore * 0.65) + ((100 - result.plagiarismScore) * 0.35)), 0, 100);
+      return {
+        aiStatus: result.aiStatus || "pending",
+        plagiarismScore: clamp(result.plagiarismScore || 0, 0, 100),
+        qualityScore: clamp(result.qualityScore || 0, 0, 100),
+        aiSuggestion: result.aiSuggestion || "Needs admin review before publishing.",
+        aiScore
+      };
+    }
+  } catch (error) {
+    console.error("OpenAI review error:", error.message);
+  }
+
+  return heuristicReview(book);
+}
+
+async function buildAIReview(book) {
+  if (process.env.OPENAI_API_KEY) {
+    return await openAIReview(book);
+  }
+  return heuristicReview(book);
 }
 
 module.exports = {

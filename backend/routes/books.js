@@ -75,7 +75,7 @@ router.post("/upload", protect, upload.fields([
     const pdfPath = `/uploads/books/${pdfFile.filename}`;
     const coverPath = coverFile ? `/uploads/covers/${coverFile.filename}` : "";
 
-    const aiReview = buildAIReview({
+    const aiReview = await buildAIReview({
       title,
       description,
       category: category || "Book",
