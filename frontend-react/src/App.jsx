@@ -13,6 +13,11 @@ import Admin from './pages/Admin'
 import Settings from './pages/Settings'
 import Cart from './pages/Cart'
 
+import BookDetail from './pages/BookDetail'
+import UploadBook from './pages/UploadBook'
+import Success from './pages/Success'
+import Cancel from './pages/Cancel'
+
 function App() {
   return (
     <AuthProvider>
@@ -28,12 +33,15 @@ function App() {
           <Route path="/library" element={<Library />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/creator" element={<Creator />} />
+          <Route path="/creator/upload" element={<UploadBook />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/success" element={<Success />} />
+          <Route path="/cancel" element={<Cancel />} />
           <Route path="/ai-review" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">AI Review Coming Soon</h1></div>} />
           <Route path="/checkout" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Checkout Coming Soon</h1></div>} />
-          <Route path="/book/:id" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Book View Coming Soon</h1></div>} />
+          <Route path="/book/:id" element={<BookDetail />} />
           <Route path="*" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Page Not Found</h1></div>} />
         </Routes>
       </Router>

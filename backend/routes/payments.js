@@ -82,8 +82,8 @@ router.post("/create-checkout", protect, async (req, res) => {
         userId: req.user.id.toString(),
         creatorId: book.author.toString()
       },
-      success_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/cancel.html`
+      success_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/cancel`
     });
 
     return res.json({ success: true, url: session.url });
@@ -138,8 +138,8 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
         bookIds: payableBooks.map((b) => String(b._id)).join(","),
         userId: req.user.id.toString()
       },
-      success_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/cancel.html`
+      success_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${(process.env.CLIENT_URL || process.env.FRONTEND_URL)}/cancel`
     });
 
     return res.json({ success: true, url: session.url });

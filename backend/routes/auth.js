@@ -250,7 +250,7 @@ router.get(
     const frontendBase = getSafeFrontendFromState(req.query.state);
     return passport.authenticate("google", {
       session: false,
-      failureRedirect: `${frontendBase}/login.html`,
+      failureRedirect: `${frontendBase}/login`,
     })(req, res, next);
   },
   async (req, res) => {
@@ -261,7 +261,7 @@ router.get(
 
       // Use URL fragment instead of querystring to reduce token leakage via referrers/logs
       res.redirect(
-        `${frontendBase}/login.html#token=${token}`
+        `${frontendBase}/login#token=${token}`
       );
 
     } catch (error) {
@@ -269,7 +269,7 @@ router.get(
       console.error("Google Callback Error:", error);
 
       const frontendBase = getSafeFrontendFromState(req.query.state);
-      res.redirect(`${frontendBase}/login.html`);
+      res.redirect(`${frontendBase}/login`);
 
     }
   }

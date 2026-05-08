@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import { BookOpen, TrendingUp, ShieldCheck, Zap, ArrowRight, Star, Sparkles, Download, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://ebook-website-v2mj.onrender.com'
@@ -9,185 +10,346 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchBooks()
+    fetchTrendingBooks()
   }, [])
 
-  const fetchBooks = async () => {
+  const fetchTrendingBooks = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/books`)
+      const res = await fetch(`${API_BASE}/api/books?limit=8`)
       const data = await res.json()
       setBooks(data.books || [])
     } catch (err) {
-      console.error('Error fetching books:', err)
+      console.error('Error fetching trending books:', err)
     } finally {
       setLoading(false)
     }
   }
 
   const categories = [
-    { icon: '📊', name: 'Business', count: '1.2K' },
-    { icon: '🎓', name: 'Education', count: '2.5K' },
-    { icon: '🤖', name: 'AI & Tech', count: '1.8K' },
-    { icon: '✍️', name: 'Handwritten', count: '1.1K' },
-    { icon: '💬', name: 'Comics', count: '800+' },
-    { icon: '🧠', name: 'Self Help', count: '1.6K' },
-    { icon: '💻', name: 'Programming', count: '2.2K' },
-    { icon: '📝', name: 'Exam Prep', count: '1.3K' },
+    { name: 'Business', icon: '💼', count: '1.2K', color: 'from-blue-500/20 to-blue-600/20' },
+    { name: 'AI & Tech', icon: '🤖', count: '1.8K', color: 'from-purple-500/20 to-purple-600/20' },
+    { name: 'Comics', icon: '🎨', count: '800+', color: 'from-pink-500/20 to-pink-600/20' },
+    { name: 'Programming', icon: '💻', count: '2.5K', color: 'from-indigo-500/20 to-indigo-600/20' },
+    { name: 'Education', icon: '🎓', count: '3K+', color: 'from-green-500/20 to-green-600/20' },
+    { name: 'Self Help', icon: '🧠', count: '1.5K', color: 'from-orange-500/20 to-orange-600/20' }
   ]
 
   return (
-    <div className="min-h-screen pt-24">
+    <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="hero px-10 py-20 flex flex-col lg:flex-row items-center gap-12 max-w-7xl mx-auto">
-        <motion.div 
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="flex-1"
-        >
-          <p className="tag text-purple-300 font-semibold mb-4">THE FUTURE OF KNOWLEDGE ECONOMY</p>
-          <h1 className="text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
-            World's Best <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
-              Knowledge Earning
-            </span> <br />
-            Platform
-          </h1>
-          <p className="sub text-gray-300 text-lg mb-8">
-            Create, publish and earn from books, notes, comics and AI-assisted content.  
-            <strong className="text-white block mt-2">Built in India. Used Worldwide.</strong>
-          </p>
+      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+        {/* Background Blobs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px] -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
 
-          <div className="actions flex flex-wrap gap-4 mb-8">
-            <Link to="/explore" className="btn big px-8 py-4 rounded-full bg-gradient-to-r from-primary to-secondary text-white font-semibold hover:opacity-90 transition">
-              Explore Books
-            </Link>
-            <Link to="/register" className="btn-outline big px-8 py-4 rounded-full border border-white/30 text-white font-semibold hover:border-white transition">
-              Become a Creator
-            </Link>
-          </div>
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+          {/* Hero Left */}
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex-1 text-center lg:text-left"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-blue-400 text-sm font-bold mb-8"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>THE FUTURE OF KNOWLEDGE ECONOMY</span>
+            </motion.div>
 
-          <div className="hero-stats flex flex-wrap gap-8">
-            <div className="hero-stat flex items-center gap-3">
-              <img src="/assets/default-avatar.png" className="w-10 h-10 rounded-full" alt="users" />
-              <span>50K+ Creators</span>
+            <h1 className="text-6xl lg:text-8xl font-black tracking-tighter mb-8 leading-[0.9]">
+              World's Best <br />
+              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Knowledge
+              </span> <br />
+              Platform
+            </h1>
+            
+            <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+              Create, publish and earn from books, notes, comics and AI-assisted content. 
+              <span className="text-white font-bold"> Built in India. Used Worldwide.</span>
+            </p>
+
+            <div className="flex flex-wrap justify-center lg:justify-start gap-4 mb-12">
+              <Link 
+                to="/explore" 
+                className="group relative px-8 py-4 rounded-2xl bg-white text-black font-black text-lg flex items-center gap-2 hover:bg-gray-200 transition-all shadow-2xl shadow-white/10"
+              >
+                Explore Books
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <Link 
+                to="/creator/upload" 
+                className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-lg hover:bg-white/10 transition-all"
+              >
+                Become a Creator
+              </Link>
             </div>
-            <div className="hero-stat">
-              <span className="text-yellow-400">⭐⭐⭐⭐⭐</span>
-              <span className="text-gray-300 ml-2">4.8/5 from 10K+ users</span>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Hero Right - Book Cards */}
-        <motion.div 
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex-1"
-        >
-          <div className="card-wrap grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Link to="/explore" className="book-card featured glass rounded-2xl overflow-hidden relative">
-              <img 
-                src="/assets/covers/Ebook_AI.png" 
-                className="w-full h-64 object-cover" 
-                alt="Featured Book" 
-              />
-              <div className="overlay absolute inset-0 p-6 flex flex-col justify-end bg-gradient-to-t from-black/80 to-transparent">
-                <span className="badge free bg-green-500/80 text-white px-3 py-1 rounded-full text-sm font-semibold mb-2 w-fit">FREE • OFFICIAL</span>
-                <h3 className="text-xl font-bold mb-2">Side Hustles for Students</h3>
-                <p className="text-gray-300 text-sm mb-4">Business • Career • AI</p>
-                <button className="cta-btn bg-white text-black px-6 py-2 rounded-full font-semibold w-fit">
-                  Read Now →
-                </button>
+            <div className="flex flex-wrap justify-center lg:justify-start items-center gap-8">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-3">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="w-10 h-10 rounded-full border-2 border-black bg-gray-800 overflow-hidden">
+                      <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="user" />
+                    </div>
+                  ))}
+                </div>
+                <div className="text-left">
+                  <p className="text-white font-black text-sm leading-none">50K+</p>
+                  <p className="text-gray-500 text-xs">Active Creators</p>
+                </div>
               </div>
-            </Link>
-
-            <div className="flex flex-col gap-4">
-              <Link to="/login" className="book-card locked glass rounded-2xl overflow-hidden relative h-32">
-                <div className="lock-bg absolute inset-0 bg-black/60"></div>
-                <div className="overlay absolute inset-0 p-4 flex flex-col justify-center">
-                  <span className="price text-2xl font-bold text-yellow-400">₹199</span>
-                  <h3 className="text-lg font-semibold mb-1">AI for Beginners</h3>
-                  <p className="text-gray-300 text-sm">Education</p>
-                  <small className="text-gray-400 text-xs mt-2">Login required</small>
+              <div className="h-10 w-px bg-white/10 hidden sm:block"></div>
+              <div className="flex items-center gap-2 text-yellow-400">
+                <div className="flex">
+                  {[1, 2, 3, 4, 5].map(i => <Star key={i} className="w-4 h-4 fill-current" />)}
                 </div>
-              </Link>
-
-              <Link to="/login" className="book-card locked glass rounded-2xl overflow-hidden relative h-32">
-                <div className="lock-bg absolute inset-0 bg-black/60"></div>
-                <div className="overlay absolute inset-0 p-4 flex flex-col justify-center">
-                  <span className="price text-2xl font-bold text-yellow-400">₹99</span>
-                  <h3 className="text-lg font-semibold mb-1">Topper's Notes</h3>
-                  <p className="text-gray-300 text-sm">Handwritten</p>
-                  <small className="text-gray-400 text-xs mt-2">Login required</small>
-                </div>
-              </Link>
+                <span className="text-white font-black">4.9/5</span>
+                <span className="text-gray-500 text-sm">Rating</span>
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+
+          {/* Hero Right */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex-1 relative"
+          >
+            <div className="relative z-10 grid grid-cols-2 gap-4">
+              <motion.div
+                whileHover={{ y: -10 }}
+                className="glass rounded-3xl p-4 mt-12"
+              >
+                <img src="/assets/covers/Ebook_AI.png" className="w-full h-64 object-cover rounded-2xl mb-4 shadow-2xl" alt="Book" />
+                <div className="h-2 w-24 bg-blue-500 rounded-full mb-2"></div>
+                <div className="h-2 w-16 bg-white/10 rounded-full"></div>
+              </motion.div>
+              <motion.div
+                whileHover={{ y: -10 }}
+                className="glass rounded-3xl p-4"
+              >
+                <img src="/assets/covers/Ebook_AI.png" className="w-full h-64 object-cover rounded-2xl mb-4 shadow-2xl grayscale" alt="Book" />
+                <div className="h-2 w-24 bg-purple-500 rounded-full mb-2"></div>
+                <div className="h-2 w-16 bg-white/10 rounded-full"></div>
+              </motion.div>
+            </div>
+            
+            {/* Floating Card */}
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 glass p-6 rounded-3xl border-white/20 shadow-2xl min-w-[240px]"
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Revenue</p>
+                  <p className="text-2xl font-black text-white">₹1.2M+</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full w-3/4 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+                </div>
+                <p className="text-[10px] text-gray-500 font-bold">MONTHLY TARGET REACHED</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="categories px-10 py-16 max-w-7xl mx-auto" id="marketplace">
-        <div className="section-header flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">Popular Categories</h2>
-          <Link to="/explore" className="view-all text-blue-300 hover:text-white transition">View All →</Link>
-        </div>
-        <div className="categories-grid grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-          {categories.map((cat, idx) => (
-            <motion.div 
-              key={idx}
-              whileHover={{ y: -5 }}
-              className="category-card glass rounded-xl p-6 text-center cursor-pointer"
-            >
-              <div className="category-icon text-4xl mb-3">{cat.icon}</div>
-              <h3 className="font-semibold mb-1">{cat.name}</h3>
-              <p className="text-gray-400 text-sm">{cat.count} Books</p>
-            </motion.div>
+      {/* Stats Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            { label: 'Total Books', value: '12K+', icon: BookOpen },
+            { label: 'Total Sales', value: '₹4.5M+', icon: Zap },
+            { label: 'Verified Creators', value: '50K+', icon: ShieldCheck },
+            { label: 'Happy Readers', value: '1M+', icon: Users }
+          ].map((stat, i) => (
+            <div key={i} className="text-center lg:text-left group">
+              <div className="flex items-center justify-center lg:justify-start gap-4 mb-2">
+                <stat.icon className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+                <h3 className="text-4xl font-black tracking-tighter">{stat.value}</h3>
+              </div>
+              <p className="text-gray-500 font-bold text-sm uppercase tracking-widest">{stat.label}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* Top Rated Books */}
-      <section className="top-books px-10 py-16 max-w-7xl mx-auto">
-        <div className="section-header flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">Top Rated Books</h2>
-          <Link to="/explore" className="view-all text-blue-300 hover:text-white transition">View All →</Link>
-        </div>
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full"></div>
+      {/* Categories Section */}
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+            <div>
+              <h2 className="text-4xl lg:text-5xl font-black tracking-tighter mb-4">Popular Categories</h2>
+              <p className="text-gray-400 text-lg">Explore a wide range of topics and formats</p>
+            </div>
+            <Link to="/explore" className="group flex items-center gap-2 text-white font-bold hover:text-blue-400 transition-colors">
+              View All Categories <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
-        ) : (
-          <div id="featuredApprovedList" className="featured-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {books.length > 0 ? books.map(book => (
-              <motion.div 
-                key={book._id}
-                whileHover={{ y: -5 }}
-                className="featured-card glass rounded-xl overflow-hidden"
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            {categories.map((cat, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -8, scale: 1.02 }}
+                className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${cat.color} border border-white/5 p-8 text-center cursor-pointer group`}
               >
-                <Link to={`/book/${book._id}`}>
-                  <img 
-                    src={book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : '/assets/covers/Ebook_AI.png')}
-                    alt={book.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="p-4">
-                    <h3 className="font-semibold mb-2 truncate">{book.title}</h3>
-                    <p className="text-gray-400 text-sm mb-2">{book.category}</p>
-                    <span className="price text-yellow-400 font-bold">{book.isFree || book.price === 0 ? 'FREE' : '₹' + book.price}</span>
-                  </div>
-                </Link>
+                <span className="text-4xl mb-4 block group-hover:scale-125 transition-transform duration-500">{cat.icon}</span>
+                <h3 className="font-black text-lg mb-1">{cat.name}</h3>
+                <p className="text-xs text-gray-500 font-bold uppercase">{cat.count} Books</p>
               </motion.div>
-            )) : (
-              <div className="col-span-full text-center py-10 text-gray-400">
-                No books available yet.
-              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Books */}
+      <section className="py-20 px-6 bg-white/[0.02]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-16">
+            <h2 className="text-4xl lg:text-5xl font-black tracking-tighter">Trending Now</h2>
+            <Link to="/explore" className="px-6 py-2 rounded-full border border-white/10 hover:bg-white/5 transition-all text-sm font-bold">
+              View Marketplace
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {loading ? (
+              [1, 2, 3, 4].map(i => (
+                <div key={i} className="animate-pulse space-y-4">
+                  <div className="aspect-[3/4] bg-white/5 rounded-3xl"></div>
+                  <div className="h-4 bg-white/5 rounded w-3/4"></div>
+                  <div className="h-4 bg-white/5 rounded w-1/2"></div>
+                </div>
+              ))
+            ) : (
+              books.map((book) => (
+                <motion.div
+                  key={book._id}
+                  whileHover={{ y: -10 }}
+                  className="group relative"
+                >
+                  <Link to={`/book/${book._id}`}>
+                    <div className="relative aspect-[3/4] rounded-3xl overflow-hidden mb-6">
+                      <img 
+                        src={book.coverUrl || '/assets/covers/Ebook_AI.png'} 
+                        alt={book.title} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-6">
+                        <button className="w-full py-3 rounded-xl bg-white text-black font-black text-sm flex items-center justify-center gap-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                          <Download className="w-4 h-4" /> Get This Book
+                        </button>
+                      </div>
+                      {book.price === 0 && (
+                        <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-green-500 text-white text-[10px] font-black uppercase tracking-widest shadow-xl">
+                          Free
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-bold mb-1 truncate group-hover:text-blue-400 transition-colors">{book.title}</h3>
+                    <p className="text-gray-500 font-bold text-sm mb-3">{book.authorName}</p>
+                    <p className="text-2xl font-black text-white">
+                      {book.price === 0 ? 'FREE' : `₹${book.price}`}
+                    </p>
+                  </Link>
+                </motion.div>
+              ))
             )}
           </div>
-        )}
+        </div>
       </section>
+
+      {/* CTA Section */}
+      <section className="py-32 px-6">
+        <div className="max-w-5xl mx-auto relative rounded-[40px] overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+          
+          <div className="relative z-10 p-12 lg:p-20 text-center">
+            <h2 className="text-4xl lg:text-6xl font-black tracking-tighter text-white mb-8">
+              Ready to Share Your <br /> Knowledge?
+            </h2>
+            <p className="text-white/80 text-xl mb-12 max-w-2xl mx-auto">
+              Join 50,000+ creators who are already selling their books, notes, and comics on the world's fastest-growing marketplace.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/creator/upload" className="px-10 py-5 rounded-2xl bg-white text-black font-black text-xl hover:scale-105 transition-all shadow-2xl">
+                Get Started for Free
+              </Link>
+              <Link to="/explore" className="px-10 py-5 rounded-2xl bg-black/20 text-white font-black text-xl border border-white/20 hover:bg-black/30 transition-all">
+                Browse Marketplace
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-20 px-6 border-t border-white/5 bg-black">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+          <div>
+            <Link to="/" className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <span className="font-black text-2xl tracking-tighter">E-BOOK MARKET</span>
+            </Link>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              The ultimate marketplace for digital knowledge. Sell your books, notes, comics and more with AI-powered review and global reach.
+            </p>
+          </div>
+          <div>
+            <h4 className="text-white font-black mb-6 uppercase tracking-widest text-xs">Marketplace</h4>
+            <ul className="space-y-4 text-gray-500 text-sm font-bold">
+              <li><Link to="/explore" className="hover:text-white transition-colors">All Books</Link></li>
+              <li><Link to="/explore" className="hover:text-white transition-colors">Trending</Link></li>
+              <li><Link to="/explore" className="hover:text-white transition-colors">Categories</Link></li>
+              <li><Link to="/explore" className="hover:text-white transition-colors">Free Assets</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-black mb-6 uppercase tracking-widest text-xs">Creators</h4>
+            <ul className="space-y-4 text-gray-500 text-sm font-bold">
+              <li><Link to="/creator/upload" className="hover:text-white transition-colors">Start Selling</Link></li>
+              <li><Link to="/creator" className="hover:text-white transition-colors">Creator Dashboard</Link></li>
+              <li><Link to="/creator" className="hover:text-white transition-colors">Earnings</Link></li>
+              <li><Link to="/creator" className="hover:text-white transition-colors">AI Review Guide</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-white font-black mb-6 uppercase tracking-widest text-xs">Newsletter</h4>
+            <p className="text-gray-500 text-sm mb-6 font-bold">Get the latest knowledge delivered to your inbox.</p>
+            <div className="relative">
+              <input 
+                type="email" 
+                placeholder="email@example.com" 
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-blue-500"
+              />
+              <button className="absolute right-2 top-1.5 p-1.5 rounded-lg bg-blue-600 text-white">
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-600 text-xs font-bold uppercase tracking-widest">
+          <p>© 2026 E-BOOK MARKET. ALL RIGHTS RESERVED.</p>
+          <div className="flex gap-8">
+            <Link to="#" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="#" className="hover:text-white transition-colors">Terms of Service</Link>
+            <Link to="#" className="hover:text-white transition-colors">Cookies</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
