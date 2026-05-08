@@ -47,19 +47,19 @@ export default function Home() {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-black">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      <section className="relative min-h-[90vh] flex items-center justify-center pt-32 pb-20 px-4 md:px-8 lg:px-12 overflow-hidden">
         {/* Background Blobs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px] -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-0 left-1/4 w-[30vw] h-[30vw] bg-blue-600/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-[30vw] h-[30vw] bg-purple-600/10 rounded-full blur-[120px] -z-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
 
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+        <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20">
           {/* Hero Left */}
           <motion.div 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex-1 text-center lg:text-left z-20"
+            className="w-full lg:w-3/5 text-center lg:text-left z-20"
           >
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -70,7 +70,7 @@ export default function Home() {
               <span>THE FUTURE OF KNOWLEDGE ECONOMY</span>
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-[110px] font-black tracking-tighter mb-8 leading-[0.9] text-white">
+            <h1 className="text-5xl md:text-7xl lg:text-[100px] xl:text-[110px] font-black tracking-tighter mb-8 leading-[0.9] text-white">
               World's Best <br />
               <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-2 inline-block">
                 Knowledge
@@ -78,7 +78,7 @@ export default function Home() {
               Platform
             </h1>
             
-            <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+            <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
               Create, publish and earn from books, notes, comics and AI-assisted content. 
               <span className="text-white font-bold"> Built in India. Used Worldwide.</span>
             </p>
@@ -128,13 +128,13 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 relative min-h-[400px] lg:min-h-[600px] flex items-center justify-center w-full"
+            className="w-full lg:w-2/5 relative min-h-[400px] lg:min-h-[550px] flex items-center justify-center lg:justify-end"
           >
-            <div className="relative w-full max-w-[450px] aspect-[4/5]">
+            <div className="relative w-full max-w-[400px] lg:max-w-[450px] aspect-[4/5]">
               {/* Main Book Cover - The "AI Side Hustles" one */}
               <motion.div
                 whileHover={{ y: -10, rotate: -2 }}
-                className="absolute top-0 left-0 w-[70%] z-10 glass rounded-[32px] p-3 lg:p-4 shadow-2xl overflow-hidden"
+                className="absolute top-0 left-0 w-[75%] z-10 glass rounded-[32px] p-3 lg:p-4 shadow-2xl overflow-hidden"
               >
                 <img src="/assets/covers/Ebook_AI.png" className="w-full h-full object-cover rounded-2xl shadow-2xl" alt="Book" />
               </motion.div>
@@ -142,7 +142,7 @@ export default function Home() {
               {/* Secondary Book Cover */}
               <motion.div
                 whileHover={{ y: -10, rotate: 2 }}
-                className="absolute bottom-0 right-0 w-[70%] z-0 glass rounded-[32px] p-3 lg:p-4 shadow-2xl grayscale opacity-40"
+                className="absolute bottom-0 right-0 w-[75%] z-0 glass rounded-[32px] p-3 lg:p-4 shadow-2xl grayscale opacity-40"
               >
                 <img src="/assets/covers/Ebook_AI.png" className="w-full h-full object-cover rounded-2xl shadow-2xl" alt="Book" />
               </motion.div>
