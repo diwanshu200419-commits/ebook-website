@@ -10,45 +10,47 @@ const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 PROTECT PAGE
 ========================= */
 
-async function protectPage(){
+async function protectPage(allowedRoles = []) {
+  const token = localStorage.getItem("token");
 
-const token = localStorage.getItem("token");
+  /* If no token → login */
+  if (!token) {
+    redirectToLogin();
+    return;
+  }
 
-/* If no token → login */
-if(!token){
+  try {
+    const res = await fetch(`${API_BASE}/api/user/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
 
-redirectLogin();
-return;
+    /* Invalid token */
+    if (!res.ok) {
+      throw new Error("Token invalid");
+    }
 
-}
+    const data = await res.json();
 
-try{
+    /* Save fresh user data */
+    localStorage.setItem("user", JSON.stringify(data.user));
 
-const res = await fetch(`${API_BASE}/api/user/profile`,{
-headers:{
-Authorization:`Bearer ${token}`
-}
-});
+    /* Check role if allowedRoles specified */
+    if (allowedRoles.length > 0) {
+      const userRole = data.user?.role || "";
+      if (!allowedRoles.includes(userRole)) {
+        window.location.href = "index.html";
+        return;
+      }
+    }
 
-/* Invalid token */
-if(!res.ok){
-throw new Error("Token invalid");
-}
+  } catch (err) {
+    console.log("Auth error:", err);
 
-const data = await res.json();
-
-/* Save fresh user data */
-localStorage.setItem("user",JSON.stringify(data.user));
-
-}catch(err){
-
-console.log("Auth error:",err);
-
-/* Logout if token invalid */
-logoutUser();
-
-}
-
+    /* Logout if token invalid */
+    logoutUser();
+  }
 }
 
 
@@ -56,15 +58,17 @@ logoutUser();
 REDIRECT LOGIN
 ========================= */
 
-function redirectLogin(){
-
-/* detect correct path */
-if(window.location.pathname.includes("/dashboard/")){
-window.location.href="../login.html";
-}else{
-window.location.href="login.html";
+function redirectToLogin() {
+  /* detect correct path */
+  if (window.location.pathname.includes("/dashboard/") || window.location.pathname.includes("/admin/")) {
+    window.location.href = "../login.html";
+  } else {
+    window.location.href = "login.html";
+  }
 }
 
+function redirectLogin() {
+  redirectToLogin();
 }
 
 
@@ -72,14 +76,12 @@ window.location.href="login.html";
 LOGOUT SYSTEM
 ========================= */
 
-function logoutUser(){
+function logoutUser() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
 
-localStorage.removeItem("token");
-localStorage.removeItem("user");
-
-/* redirect safely */
-redirectLogin();
-
+  /* redirect safely */
+  redirectToLogin();
 }
 
 
@@ -87,12 +89,9 @@ redirectLogin();
 GET CURRENT USER
 ========================= */
 
-function getCurrentUser(){
-
-const user = JSON.parse(localStorage.getItem("user") || "{}");
-
-return user;
-
+function getCurrentUser() {
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  return user;
 }
 
 
@@ -100,21 +99,15 @@ return user;
 CHECK ROLE
 ========================= */
 
-function isAdmin(){
-
-const user = getCurrentUser();
-
-return user && user.role === "admin";
-
+function isAdmin() {
+  const user = getCurrentUser();
+  return user && user.role === "admin";
 }
 
 
-function isCreator(){
-
-const user = getCurrentUser();
-
-return user && user.role === "creator";
-
+function isCreator() {
+  const user = getCurrentUser();
+  return user && (user.role === "creator" || user.role === "author");
 }
 
 
@@ -122,15 +115,6 @@ return user && user.role === "creator";
 CHECK LOGIN STATE
 ========================= */
 
-function isLoggedIn(){
-
-return !!localStorage.getItem("token");
-
+function isLoggedIn() {
+  return !!localStorage.getItem("token");
 }
-
-
-/* =========================
-AUTO RUN AUTH GUARD
-========================= */
-
-protectPage();
