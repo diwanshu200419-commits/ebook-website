@@ -1,146 +1,254 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <title>AI Content Review | E-Book Market</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="stylesheet" href="ai-review.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <title>AI Content Review | E-Book Market</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="ai-review.css" />
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
 </head>
+
 <body>
 
-<div class="ai-layout">
+  <main class="ai-layout">
 
-  <!-- HEADER -->
-  <header class="ai-header">
-    <div>
-      <h1>AI Content Review</h1>
-      <p>Automated quality, originality & monetization analysis</p>
-    </div>
-    <span class="badge">ADMIN</span>
-  </header>
+    <!-- ================= HEADER ================= -->
 
-  <!-- CONTENT INFO -->
-  <section class="content-summary">
-    <h2 id="contentTitle">Advanced Java Handwritten Notes</h2>
-    <p>
-      Category: <strong>Handwritten Notes</strong> •
-      Type: <strong>Notes</strong> •
-      Price: <strong>₹99</strong>
-    </p>
-    <p class="creator">
-      Uploaded by: <strong>Yash Parmar</strong>
-    </p>
-  </section>
+    <header class="ai-header">
 
-  <!-- AI SCORE -->
-  <section class="ai-score-card">
-    <h3>Overall AI Score</h3>
-    <div class="score-circle">
-      <span id="overallScore">92%</span>
-    </div>
-    <p class="score-status good">High Quality Content</p>
-  </section>
+      <div class="header-left">
 
-  <!-- METRICS -->
-  <section class="metrics-grid">
+        <h1>AI Content Review</h1>
 
-    <div class="metric">
-      <h4>Originality</h4>
-      <span class="good">94%</span>
-    </div>
+        <p>
+          Automated quality, originality &
+          monetization analysis
+        </p>
 
-    <div class="metric">
-      <h4>Readability</h4>
-      <span class="good">88%</span>
-    </div>
+      </div>
 
-    <div class="metric">
-      <h4>Relevance</h4>
-      <span class="good">90%</span>
-    </div>
+      <span class="badge">
+        ADMIN
+      </span>
 
-    <div class="metric">
-      <h4>Copyright Risk</h4>
-      <span class="safe">Low</span>
-    </div>
+    </header>
 
-    <div class="metric">
-      <h4>Spam Probability</h4>
-      <span class="safe">Low</span>
-    </div>
+    <!-- ================= CONTENT SUMMARY ================= -->
 
-    <div class="metric">
-      <h4>Revenue Potential</h4>
-      <span class="good">High</span>
-    </div>
+    <section class="content-summary">
 
-  </section>
+      <h2 id="contentTitle">
+        Advanced Java Handwritten Notes
+      </h2>
 
-  <!-- AI INSIGHTS -->
-  <section class="ai-insights">
-    <h3>AI Insights</h3>
-    <ul>
-      <li>✔ Content appears original with no major plagiarism detected</li>
-      <li>✔ Suitable for global audience</li>
-      <li>⚠ Minor formatting improvements suggested</li>
-      <li>💰 High earning potential in Technology & Education categories</li>
-    </ul>
-  </section>
+      <div class="content-meta">
 
-  <!-- AI RECOMMENDATION -->
-  <section class="ai-recommendation approve">
-    <h3>AI Recommendation</h3>
-    <p>Recommended for publishing</p>
-  </section>
+        <p>
+          Category:
+          <strong>Handwritten Notes</strong>
+        </p>
 
-  <!-- ADMIN ACTIONS -->
-  <section class="admin-actions">
-    <button class="btn approve" onclick="approveContent()">
-      Approve & Publish
-    </button>
-    <button class="btn changes" onclick="requestChanges()">
-      Request Changes
-    </button>
-    <button class="btn reject" onclick="rejectContent()">
-      Reject Content
-    </button>
-  </section>
+        <p>
+          Type:
+          <strong>Notes</strong>
+        </p>
 
-  <!-- BACK -->
-  <a class="back" href="../admin/admin.html">
-    ← Back to Admin Dashboard
-  </a>
+        <p>
+          Price:
+          <strong>₹99</strong>
+        </p>
 
-</div>
+      </div>
 
-<script src="../auth.js"></script>
-<script src="ai-review.js"></script>
+      <p class="creator">
+        Uploaded by:
+        <strong>Yash Parmar</strong>
+      </p>
 
-<script>
-  // ADMIN PROTECTION
-  protectPage(["admin"]);
+    </section>
 
-  // Demo admin actions
-  function approveContent() {
-    alert("✅ Content approved based on AI & admin review");
-  }
+    <!-- ================= AI SCORE ================= -->
 
-  function requestChanges() {
-    const reason = prompt("Enter changes required for creator:");
-    if (reason) {
-      alert("✏️ Changes requested from creator");
-    }
-  }
+    <section class="ai-score-card">
 
-  function rejectContent() {
-    const reason = prompt("Reason for rejection:");
-    if (reason) {
-      alert("❌ Content rejected and creator notified");
-    }
-  }
-</script>
+      <h3>Overall AI Score</h3>
+
+      <div class="score-circle">
+
+        <span id="overallScore">
+          92%
+        </span>
+
+      </div>
+
+      <p class="score-status good">
+        High Quality Content
+      </p>
+
+    </section>
+
+    <!-- ================= METRICS ================= -->
+
+    <section class="metrics-grid">
+
+      <article class="metric">
+
+        <h4>Originality</h4>
+
+        <span class="good">
+          94%
+        </span>
+
+      </article>
+
+      <article class="metric">
+
+        <h4>Readability</h4>
+
+        <span class="good">
+          88%
+        </span>
+
+      </article>
+
+      <article class="metric">
+
+        <h4>Relevance</h4>
+
+        <span class="good">
+          90%
+        </span>
+
+      </article>
+
+      <article class="metric">
+
+        <h4>Copyright Risk</h4>
+
+        <span class="safe">
+          Low
+        </span>
+
+      </article>
+
+      <article class="metric">
+
+        <h4>Spam Probability</h4>
+
+        <span class="safe">
+          Low
+        </span>
+
+      </article>
+
+      <article class="metric">
+
+        <h4>Revenue Potential</h4>
+
+        <span class="good">
+          High
+        </span>
+
+      </article>
+
+    </section>
+
+    <!-- ================= AI INSIGHTS ================= -->
+
+    <section class="ai-insights">
+
+      <h3>AI Insights</h3>
+
+      <ul>
+
+        <li>
+          ✔ Content appears original with no major plagiarism detected
+        </li>
+
+        <li>
+          ✔ Suitable for global audience
+        </li>
+
+        <li>
+          ⚠ Minor formatting improvements suggested
+        </li>
+
+        <li>
+          💰 High earning potential in Technology & Education categories
+        </li>
+
+      </ul>
+
+    </section>
+
+    <!-- ================= RECOMMENDATION ================= -->
+
+    <section class="ai-recommendation approve">
+
+      <h3>AI Recommendation</h3>
+
+      <p>
+        Recommended for publishing
+      </p>
+
+    </section>
+
+    <!-- ================= ADMIN ACTIONS ================= -->
+
+    <section class="admin-actions">
+
+      <button
+        class="btn approve"
+        onclick="approveContent()"
+      >
+        Approve & Publish
+      </button>
+
+      <button
+        class="btn changes"
+        onclick="requestChanges()"
+      >
+        Request Changes
+      </button>
+
+      <button
+        class="btn reject"
+        onclick="rejectContent()"
+      >
+        Reject Content
+      </button>
+
+    </section>
+
+    <!-- ================= BACK BUTTON ================= -->
+
+    <a
+      class="back"
+      href="../admin/admin.html"
+    >
+      ← Back to Admin Dashboard
+    </a>
+
+  </main>
+
+  <!-- ================= SCRIPTS ================= -->
+
+  <script src="../auth.js"></script>
+
+  <script src="ai-review.js"></script>
 
 </body>
+
 </html>
