@@ -5,6 +5,13 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Explore from './pages/Explore'
+import AITools from './pages/AITools'
+import Library from './pages/Library'
+import Dashboard from './pages/Dashboard'
+import Creator from './pages/Creator'
+import Admin from './pages/Admin'
+import Settings from './pages/Settings'
+import Cart from './pages/Cart'
 
 function App() {
   return (
@@ -17,13 +24,16 @@ function App() {
           <Route path="/marketplace" element={<Explore />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/ai-tools" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">AI Tools Coming Soon</h1></div>} />
-          <Route path="/library" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">My Library Coming Soon</h1></div>} />
-          <Route path="/dashboard" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Dashboard Coming Soon</h1></div>} />
-          <Route path="/creator" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Creator Dashboard Coming Soon</h1></div>} />
-          <Route path="/admin" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Admin Dashboard Coming Soon</h1></div>} />
-          <Route path="/settings" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Settings Coming Soon</h1></div>} />
-          <Route path="/cart" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Cart Coming Soon</h1></div>} />
+          <Route path="/ai-tools" element={<AITools />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/creator" element={<Creator />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/ai-review" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">AI Review Coming Soon</h1></div>} />
+          <Route path="/checkout" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Checkout Coming Soon</h1></div>} />
+          <Route path="/book/:id" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Book View Coming Soon</h1></div>} />
           <Route path="*" element={<div className="min-h-screen flex items-center justify-center pt-20"><h1 className="text-4xl">Page Not Found</h1></div>} />
         </Routes>
       </Router>
