@@ -30,6 +30,8 @@ router.get("/creator", protect, async (req, res) => {
       return sum + (b.earnings || 0);
     }, 0);
 
+    const totalEarnings = totalRevenue;
+
     const totalViews = books.reduce((sum, b) => {
       return sum + (b.downloads || 0);
     }, 0);
@@ -40,12 +42,15 @@ router.get("/creator", protect, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      totalBooks,
-      totalSales,
-      totalRevenue,
-      totalViews,
-      monthlyRevenue,
-      monthlySales
+      analytics: {
+        totalBooks,
+        totalSales,
+        totalRevenue,
+        totalEarnings,
+        totalViews,
+        monthlyRevenue,
+        monthlySales
+      }
     });
 
   } catch (err) {

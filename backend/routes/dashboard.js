@@ -9,30 +9,64 @@ const Book = require("../models/book");
 
 /* =====================================
    GET USER DASHBOARD DATA
-   GET /api/dashboard/user
+   GET /api/dashboard
 ===================================== */
+
+router.get("/", protect, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1️⃣ Get purchases
+    const Payment = require("../models/Payment");
+    const purchases = await Payment.find({ user: userId, status: "approved" });
+    const totalSpent = purchases.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalPurchased = purchases.length;
+
+    // 2️⃣ Get user's own books (if they are a creator)
+    const books = await Book.find({ author: userId });
+    const totalDownloads = books.reduce((sum, book) => sum + (book.downloads || 0), 0);
+
+    // 3️⃣ Format stats for frontend
+    const stats = {
+      totalBooks: totalPurchased,
+      totalSalesAmount: totalSpent,
+      totalDownloads: totalDownloads,
+    };
+
+    // 4️⃣ Recent Activity
+    const recentActivity = purchases.slice(0, 5).map(p => ({
+      message: "Asset purchased successfully",
+      createdAt: p.createdAt,
+      amount: p.amount
+    }));
+
+    res.status(200).json({
+      success: true,
+      stats,
+      recentActivity
+    });
+
+  } catch (error) {
+    console.error("🔥 Dashboard Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+});
 
 router.get("/user", protect, async (req, res) => {
   try {
     const userId = req.user.id;
-
-    // =====================================
-    // 1️⃣ GET USER BOOKS
-    // =====================================
+    const Payment = require("../models/Payment");
+    
+    const purchases = await Payment.find({ user: userId, status: "approved" });
+    const totalSpent = purchases.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     const books = await Book.find({ author: userId });
-
     const totalBooks = books.length;
-
-    const totalDownloads = books.reduce(
-      (sum, book) => sum + (book.downloads || 0),
-      0
-    );
-
-    const totalEarnings = books.reduce(
-      (sum, book) => sum + (book.earnings || 0),
-      0
-    );
+    const totalDownloads = books.reduce((sum, book) => sum + (book.downloads || 0), 0);
+    const totalEarnings = books.reduce((sum, book) => sum + (book.earnings || 0), 0);
 
     // =====================================
     // 2️⃣ MONTHLY EARNINGS CALCULATION

@@ -20,9 +20,20 @@ export default function BookDetail() {
 
   const fetchBook = async () => {
     try {
+      // First try to fetch from the standard list
       const res = await fetch(`${API_BASE}/api/books`)
       const data = await res.json()
-      const found = data.books?.find(b => b._id === id)
+      let found = data.books?.find(b => (b._id || b.id) === id)
+      
+      // If not found, try the specific book endpoint
+      if (!found) {
+        const bookRes = await fetch(`${API_BASE}/api/books/${id}`)
+        const bookData = await bookRes.json()
+        if (bookData.success) {
+          found = bookData.book
+        }
+      }
+
       if (found) {
         setBook(found)
       } else {
@@ -144,7 +155,7 @@ export default function BookDetail() {
                 <div className="absolute inset-0 bg-blue-600/20 blur-[100px] rounded-full opacity-30 group-hover:opacity-50 transition-opacity"></div>
                 <div className="relative z-10 aspect-[3/4] rounded-[40px] overflow-hidden bg-white/5 border border-white/10 shadow-2xl">
                   <img 
-                    src={book.coverUrl || '/assets/covers/Ebook_AI.png'} 
+                    src={book.coverUrl || (book.coverImage ? (book.coverImage.startsWith('http') ? book.coverImage : `${API_BASE}${book.coverImage}`) : '/assets/covers/Ebook_AI.png')} 
                     alt={book.title} 
                     className="w-full h-full object-cover"
                   />

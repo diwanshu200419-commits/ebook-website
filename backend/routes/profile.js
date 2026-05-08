@@ -8,6 +8,19 @@ const User = require("../models/user");
    GET /api/profile/me
 ===================== */
 
+router.get("/", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id || req.user.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("Profile Fetch Error:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 router.get("/me", protect, async (req, res) => {
   try {
     // 🔥 Always fetch fresh user from DB

@@ -104,7 +104,7 @@ export default function Library() {
               >
                 <div className="relative aspect-[3/4] rounded-[32px] overflow-hidden mb-6 bg-white/5 border border-white/10 shadow-2xl">
                   <img 
-                    src={book.coverImage ? `${API_BASE}${book.coverImage}` : '/assets/covers/Ebook_AI.png'} 
+                    src={book.coverUrl || (book.coverImage ? (book.coverImage.startsWith('http') ? book.coverImage : `${API_BASE}${book.coverImage}`) : '/assets/covers/Ebook_AI.png')} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                     alt={book.title} 
                   />

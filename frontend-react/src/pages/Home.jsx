@@ -15,9 +15,21 @@ export default function Home() {
 
   const fetchTrendingBooks = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/books?limit=8`)
+      const res = await fetch(`${API_BASE}/api/marketplace/trending?limit=8`)
       const data = await res.json()
-      setBooks(data.books || [])
+      let fetchedBooks = data.books || [];
+      
+      // Keep only unique books, prioritize "AI Side Hustles for Students"
+      const uniqueBooks = [];
+      const titles = new Set();
+      fetchedBooks.forEach(b => {
+        const bookId = b.id || b._id;
+        if (b.title === "AI Side Hustles for Students" || !titles.has(b.title)) {
+          uniqueBooks.push({ ...b, _id: bookId });
+          titles.add(b.title);
+        }
+      });
+      setBooks(uniqueBooks)
     } catch (err) {
       console.error('Error fetching trending books:', err)
     } finally {
@@ -238,10 +250,10 @@ export default function Home() {
                   whileHover={{ y: -10 }}
                   className="group relative"
                 >
-                  <Link to={`/book/${book._id}`}>
+                  <Link to={`/book/${book.id || book._id}`}>
                     <div className="relative aspect-[3/4] rounded-3xl overflow-hidden mb-6">
                       <img 
-                        src={book.coverUrl || '/assets/covers/Ebook_AI.png'} 
+                        src={book.cover || (book.coverImage ? (book.coverImage.startsWith('http') ? book.coverImage : `${API_BASE}${book.coverImage}`) : '/assets/covers/Ebook_AI.png')} 
                         alt={book.title} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
@@ -257,7 +269,7 @@ export default function Home() {
                       )}
                     </div>
                     <h3 className="text-xl font-bold mb-1 truncate group-hover:text-blue-400 transition-colors">{book.title}</h3>
-                    <p className="text-gray-500 font-bold text-sm mb-3">{book.authorName}</p>
+                    <p className="text-gray-500 font-bold text-sm mb-3">{book.creator || book.authorName}</p>
                     <p className="text-2xl font-black text-white">
                       {book.price === 0 ? 'FREE' : `₹${book.price}`}
                     </p>

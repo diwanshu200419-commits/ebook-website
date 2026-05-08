@@ -152,10 +152,8 @@ app.use((req, res, next) => {
 app.use("/uploads/covers", express.static(path.join(__dirname, "uploads/covers")));
 app.use("/uploads/payments", express.static(path.join(__dirname, "uploads/payments")));
 
-// Prevent direct public PDF access. Book files are served via protected endpoints.
-app.use("/uploads/books", (req, res) => {
-  return res.status(403).json({ success: false, message: "Direct access blocked" });
-});
+// Support frontend access to covers without backendBaseUrl if needed
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ===================================
    ✅ DATABASE

@@ -25,14 +25,29 @@ export default function Explore() {
       if (category) params.set('category', category)
       params.set('limit', '60')
 
-      const res = await fetch(`${API_BASE}/api/books?${params.toString()}`)
+      // Use the marketplace endpoint for consistency with Home
+      const res = await fetch(`${API_BASE}/api/marketplace/trending?${params.toString()}`)
       const data = await res.json()
       let fetchedBooks = data.books || []
+
+      // Filter out duplicate demo books if any, but KEEP "AI Side Hustles for Students"
+      const uniqueBooks = [];
+      const titles = new Set();
+      fetchedBooks.forEach(b => {
+        if (b.title === "AI Side Hustles for Students" || !titles.has(b.title)) {
+          uniqueBooks.push(b);
+          titles.add(b.title);
+        }
+      });
+      fetchedBooks = uniqueBooks;
 
       if (sort === 'newest') fetchedBooks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       if (sort === 'price-low') fetchedBooks.sort((a, b) => Number(a.price || 0) - Number(b.price || 0))
       if (sort === 'price-high') fetchedBooks.sort((a, b) => Number(b.price || 0) - Number(a.price || 0))
-      if (sort === 'trending') fetchedBooks.sort((a, b) => Number(b.salesCount || 0) - Number(a.salesCount || 0))
+      if (sort === 'trending') fetchedBooks.sort((a, b) => Number(b.sales || b.salesCount || 0) - Number(a.sales || a.salesCount || 0))
+
+      // Fallback for missing _id if necessary
+      fetchedBooks = fetchedBooks.map(b => ({ ...b, _id: b._id || b.id }));
 
       setBooks(fetchedBooks)
     } catch (err) {
@@ -141,16 +156,16 @@ export default function Explore() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {books.length > 0 ? books.map((book, idx) => (
                 <motion.article 
-                  key={book._id}
+                  key={book._id || book.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   className="group"
                 >
-                  <Link to={`/book/${book._id}`}>
+                  <Link to={`/book/${book._id || book.id}`}>
                     <div className="relative aspect-[3/4] rounded-[32px] overflow-hidden mb-6 bg-white/5 border border-white/10 shadow-2xl">
                       <img 
-                        src={book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : '/assets/covers/Ebook_AI.png')} 
+                        src={book.coverUrl || (book.cover ? (book.cover.startsWith('http') ? book.cover : `${API_BASE}${book.cover}`) : '/assets/covers/Ebook_AI.png')} 
                         alt={book.title} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                       />
@@ -176,11 +191,11 @@ export default function Explore() {
                         </span>
                         <div className="flex items-center gap-1 text-yellow-400">
                           <Star className="w-3 h-3 fill-current" />
-                          <span className="text-[10px] font-black text-white">4.9</span>
+                          <span className="text-[10px] font-black text-white">{book.aiScore || book.rating || '4.9'}</span>
                         </div>
                       </div>
                       <h3 className="text-xl font-black mb-1 truncate group-hover:text-blue-400 transition-colors">{book.title}</h3>
-                      <p className="text-gray-500 font-bold text-sm mb-4">{book.authorName}</p>
+                      <p className="text-gray-500 font-bold text-sm mb-4">{book.creator || book.authorName}</p>
                       <div className="flex items-center justify-between">
                         <p className="text-2xl font-black text-white">
                           {book.price === 0 ? 'FREE' : `₹${book.price}`}

@@ -118,12 +118,12 @@ export default function AITools() {
             className="glass-card rounded-[40px] p-10 flex flex-col justify-center"
           >
             <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-green-400" />
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-blue-400" />
               </div>
-              <h3 className="text-2xl font-black tracking-tighter">Enterprise-Grade Security</h3>
+              <h3 className="text-2xl font-black tracking-tighter text-white">Advanced AI Diagnostics</h3>
             </div>
-            <p className="text-gray-400 text-lg font-medium mb-10">Your intellectual property is safe. All AI processing happens in encrypted environments and your data is never used for training models without consent.</p>
+            <p className="text-gray-400 text-lg font-medium mb-10">Our proprietary AI engines provide deep insights into your content's quality, sentiment, and market readiness. Perfect for professional creators.</p>
             <div className="flex flex-wrap gap-4">
               <Link to="/explore" className="px-8 py-4 rounded-2xl bg-white text-black font-black text-sm hover:bg-gray-200 transition-all">
                 Explore Marketplace

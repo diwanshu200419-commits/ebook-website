@@ -142,7 +142,7 @@ export default function Cart() {
                   >
                     <div className="w-24 h-32 rounded-2xl overflow-hidden bg-white/5 flex-shrink-0">
                       <img 
-                        src={book.coverUrl || (book.cover ? `${API_BASE}${book.cover}` : '/assets/covers/Ebook_AI.png')} 
+                        src={book.coverUrl || (book.coverImage ? (book.coverImage.startsWith('http') ? book.coverImage : `${API_BASE}${book.coverImage}`) : (book.cover ? (book.cover.startsWith('http') ? book.cover : `${API_BASE}${book.cover}`) : '/assets/covers/Ebook_AI.png'))} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                         alt={book.title} 
                       />
