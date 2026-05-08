@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at top, #0b1020, #000);
+  color: #fff;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(106, 92, 255, 0.18), transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(139, 92, 246, 0.16), transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.14), transparent 45%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.glass {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}

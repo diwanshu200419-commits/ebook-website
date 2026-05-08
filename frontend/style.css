@@ -167,6 +167,7 @@ font-weight:800;
 
 background:linear-gradient(135deg,#6aa6ff,#8b5cf6);
 -webkit-background-clip:text;
+background-clip:text;
 color:transparent;
 
 }
@@ -423,6 +424,7 @@ font-size:46px;
 
 background:linear-gradient(135deg,#6aa6ff,#8b5cf6);
 -webkit-background-clip:text;
+background-clip:text;
 color:transparent;
 
 }
@@ -910,6 +912,7 @@ font-size:20px;
 font-weight:800;
 background:linear-gradient(135deg,#6aa6ff,#8b5cf6);
 -webkit-background-clip:text;
+background-clip:text;
 color:transparent;
 margin-bottom:10px;
 }
