@@ -59,20 +59,20 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex-1 text-center lg:text-left"
+            className="flex-1 text-center lg:text-left z-20"
           >
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-blue-400 text-sm font-bold mb-8"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-blue-400 text-[10px] lg:text-sm font-black mb-8 tracking-widest uppercase"
             >
               <Sparkles className="w-4 h-4" />
               <span>THE FUTURE OF KNOWLEDGE ECONOMY</span>
             </motion.div>
 
-            <h1 className="text-6xl lg:text-[120px] font-black tracking-tighter mb-8 leading-[0.85] text-white">
+            <h1 className="text-5xl md:text-7xl lg:text-[110px] font-black tracking-tighter mb-8 leading-[0.9] text-white">
               World's Best <br />
-              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-4 inline-block">
+              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent pb-2 inline-block">
                 Knowledge
               </span> <br />
               Platform
@@ -128,13 +128,13 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 relative min-h-[500px] flex items-center justify-center"
+            className="flex-1 relative min-h-[400px] lg:min-h-[600px] flex items-center justify-center w-full"
           >
-            <div className="relative w-full max-w-[500px] aspect-square">
-              {/* Main Book Cover */}
+            <div className="relative w-full max-w-[450px] aspect-[4/5]">
+              {/* Main Book Cover - The "AI Side Hustles" one */}
               <motion.div
                 whileHover={{ y: -10, rotate: -2 }}
-                className="absolute top-0 left-0 w-2/3 z-10 glass rounded-[32px] p-4 shadow-2xl"
+                className="absolute top-0 left-0 w-[70%] z-10 glass rounded-[32px] p-3 lg:p-4 shadow-2xl overflow-hidden"
               >
                 <img src="/assets/covers/Ebook_AI.png" className="w-full h-full object-cover rounded-2xl shadow-2xl" alt="Book" />
               </motion.div>
@@ -142,31 +142,30 @@ export default function Home() {
               {/* Secondary Book Cover */}
               <motion.div
                 whileHover={{ y: -10, rotate: 2 }}
-                className="absolute bottom-0 right-0 w-2/3 z-0 glass rounded-[32px] p-4 shadow-2xl grayscale opacity-50"
+                className="absolute bottom-0 right-0 w-[70%] z-0 glass rounded-[32px] p-3 lg:p-4 shadow-2xl grayscale opacity-40"
               >
                 <img src="/assets/covers/Ebook_AI.png" className="w-full h-full object-cover rounded-2xl shadow-2xl" alt="Book" />
               </motion.div>
               
-              {/* Floating Revenue Card */}
+              {/* Floating Revenue Card - Repositioned to not block center */}
               <motion.div
                 animate={{ y: [0, -15, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -right-4 top-1/4 z-20 glass-card p-6 rounded-3xl border-white/20 shadow-2xl min-w-[220px]"
+                className="absolute -right-6 top-[20%] z-20 glass-card p-5 rounded-3xl border-white/20 shadow-2xl min-w-[200px] hidden sm:block"
               >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-green-500/20 flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-green-400" />
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-green-400" />
                   </div>
                   <div>
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Revenue</p>
-                    <p className="text-2xl font-black text-white">₹1.2M+</p>
+                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Revenue</p>
+                    <p className="text-xl font-black text-white">₹1.2M+</p>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                     <div className="h-full w-3/4 bg-gradient-to-r from-blue-500 to-purple-600"></div>
                   </div>
-                  <p className="text-[10px] text-gray-500 font-black">MONTHLY TARGET REACHED</p>
                 </div>
               </motion.div>
 
@@ -174,7 +173,7 @@ export default function Home() {
               <motion.div
                 animate={{ y: [0, 15, 0] }}
                 transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute -left-8 bottom-1/4 z-20 glass-card p-4 rounded-2xl border-white/20 shadow-2xl"
+                className="absolute -left-10 bottom-[20%] z-20 glass-card p-4 rounded-2xl border-white/20 shadow-2xl hidden sm:block"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -182,7 +181,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="text-white font-black text-sm">50K+</p>
-                    <p className="text-gray-500 text-[10px] font-bold">CREATORS</p>
+                    <p className="text-gray-500 text-[10px] font-bold uppercase">Creators</p>
                   </div>
                 </div>
               </motion.div>
@@ -224,17 +223,17 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
             {categories.map((cat, i) => (
               <motion.div
                 key={i}
                 whileHover={{ y: -8, scale: 1.05 }}
-                className={`relative overflow-hidden rounded-[32px] bg-white/[0.02] border border-white/5 p-8 text-center cursor-pointer group hover:border-white/20 transition-all`}
+                className={`relative overflow-hidden rounded-[32px] bg-white/[0.02] border border-white/5 p-8 flex flex-col items-center justify-center text-center cursor-pointer group hover:border-white/20 transition-all min-h-[180px]`}
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
                 <div className="relative z-10">
-                  <span className="text-4xl mb-4 block group-hover:scale-125 transition-transform duration-500">{cat.icon}</span>
-                  <h3 className="font-black text-lg mb-1 group-hover:text-white transition-colors">{cat.name}</h3>
+                  <span className="text-5xl mb-4 block group-hover:scale-125 transition-transform duration-500">{cat.icon}</span>
+                  <h3 className="font-black text-xl mb-1 group-hover:text-white transition-colors tracking-tight">{cat.name}</h3>
                   <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{cat.count} Books</p>
                 </div>
               </motion.div>

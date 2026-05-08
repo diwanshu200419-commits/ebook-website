@@ -78,13 +78,19 @@ body::before {
   -webkit-background-clip: text !important;
   background-clip: text !important;
   display: inline-block;
+  background-size: 100% 100%;
 }
 
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.05em;
+  font-weight: 800;
 }
 
 .glass-card:hover {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.max-w-7xl {
+  width: 100%;
 }
