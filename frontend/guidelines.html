@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Community Guidelines | E-Book Market</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter',sans-serif;
+}
+
+body{
+background:#050816;
+color:white;
+overflow-x:hidden;
+line-height:1.8;
+}
+
+/* ================= BACKGROUND ================= */
+
+.bg-glow{
+position:fixed;
+width:500px;
+height:500px;
+background:#7c3aed;
+filter:blur(140px);
+opacity:0.25;
+top:-150px;
+left:-150px;
+z-index:-1;
+}
+
+.bg-glow2{
+position:fixed;
+width:500px;
+height:500px;
+background:#06b6d4;
+filter:blur(140px);
+opacity:0.2;
+bottom:-150px;
+right:-150px;
+z-index:-1;
+}
+
+/* ================= NAVBAR ================= */
+
+.nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 7%;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(12px);
+border-bottom:1px solid rgba(255,255,255,0.08);
+position:sticky;
+top:0;
+z-index:1000;
+}
+
+.logo{
+font-size:2rem;
+font-weight:800;
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.nav-links{
+display:flex;
+gap:30px;
+align-items:center;
+}
+
+.nav-links a{
+text-decoration:none;
+color:#dbeafe;
+font-weight:500;
+transition:0.3s;
+}
+
+.nav-links a:hover{
+color:#8b5cf6;
+}
+
+/* ================= HERO ================= */
+
+.hero{
+padding:100px 7% 70px;
+text-align:center;
+}
+
+.hero h1{
+font-size:4.5rem;
+line-height:1.1;
+margin-bottom:20px;
+}
+
+.hero h1 span{
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+max-width:850px;
+margin:auto;
+font-size:1.1rem;
+color:#cbd5e1;
+}
+
+/* ================= GLASS ================= */
+
+.glass{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+backdrop-filter:blur(16px);
+border-radius:28px;
+box-shadow:0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* ================= GUIDELINES ================= */
+
+.guidelines{
+padding:20px 7% 100px;
+display:flex;
+flex-direction:column;
+gap:35px;
+}
+
+.guideline-card{
+padding:40px;
+transition:0.4s ease;
+}
+
+.guideline-card:hover{
+transform:translateY(-6px);
+}
+
+.guideline-card h2{
+font-size:2rem;
+margin-bottom:18px;
+color:#a5b4fc;
+}
+
+.guideline-card p{
+color:#cbd5e1;
+margin-bottom:18px;
+}
+
+.guideline-card ul{
+padding-left:20px;
+}
+
+.guideline-card li{
+margin-bottom:12px;
+color:#dbeafe;
+}
+
+/* ================= ALERT ================= */
+
+.alert-box{
+padding:35px;
+border-left:5px solid #ef4444;
+background:rgba(239,68,68,0.08);
+border-radius:20px;
+margin-top:20px;
+}
+
+.alert-box h3{
+margin-bottom:15px;
+color:#f87171;
+}
+
+/* ================= CTA ================= */
+
+.cta{
+padding:0 7% 100px;
+}
+
+.cta-box{
+padding:60px;
+text-align:center;
+}
+
+.cta-box h2{
+font-size:3rem;
+margin-bottom:20px;
+}
+
+.cta-box p{
+max-width:700px;
+margin:auto;
+color:#cbd5e1;
+margin-bottom:35px;
+}
+
+/* ================= BUTTON ================= */
+
+.btn{
+padding:16px 32px;
+border:none;
+border-radius:14px;
+background:linear-gradient(90deg,#6366f1,#8b5cf6);
+color:white;
+font-weight:700;
+font-size:1rem;
+cursor:pointer;
+transition:0.4s ease;
+text-decoration:none;
+display:inline-block;
+box-shadow:0 10px 30px rgba(99,102,241,0.4);
+}
+
+.btn:hover{
+transform:translateY(-4px);
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+padding:40px 7%;
+text-align:center;
+border-top:1px solid rgba(255,255,255,0.08);
+color:#94a3b8;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:900px){
+
+.hero h1{
+font-size:3rem;
+}
+
+.cta-box h2{
+font-size:2.3rem;
+}
+
+.guideline-card h2{
+font-size:1.7rem;
+}
+
+}
+
+@media(max-width:600px){
+
+.nav{
+flex-direction:column;
+gap:20px;
+}
+
+.nav-links{
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.hero{
+padding-top:70px;
+}
+
+.hero h1{
+font-size:2.3rem;
+}
+
+.guideline-card{
+padding:28px;
+}
+
+.cta-box{
+padding:35px;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<!-- ================= NAVBAR ================= -->
+
+<header class="nav">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<div class="nav-links">
+<a href="index.html">Home</a>
+<a href="explore.html">Marketplace</a>
+<a href="contact.html">Contact</a>
+<a href="login.html">Login</a>
+</div>
+
+</header>
+
+<!-- ================= HERO ================= -->
+
+<section class="hero">
+
+<h1>Community <span>Guidelines</span></h1>
+
+<p>
+These guidelines help keep E-Book Market safe, professional and valuable for creators, students and readers worldwide.
+</p>
+
+</section>
+
+<!-- ================= GUIDELINES ================= -->
+
+<section class="guidelines">
+
+<div class="guideline-card glass">
+
+<h2>📚 Content Quality Standards</h2>
+
+<p>
+Creators must ensure that uploaded books, notes and digital products are high quality and useful for users.
+</p>
+
+<ul>
+<li>Provide original and readable content.</li>
+<li>Use proper formatting and clear titles.</li>
+<li>Avoid misleading thumbnails or descriptions.</li>
+<li>Ensure uploaded files work properly.</li>
+</ul>
+
+</div>
+
+<div class="guideline-card glass">
+
+<h2>🚫 Prohibited Content</h2>
+
+<p>
+The following types of content are strictly prohibited on E-Book Market.
+</p>
+
+<ul>
+<li>Copyrighted or pirated material.</li>
+<li>Hate speech or harmful content.</li>
+<li>Adult or explicit material.</li>
+<li>Malware, viruses or dangerous files.</li>
+<li>Fake or scam products.</li>
+</ul>
+
+<div class="alert-box">
+
+<h3>⚠ Important Notice</h3>
+
+<p>
+Accounts repeatedly violating these policies may face suspension or permanent removal from the platform.
+</p>
+
+</div>
+
+</div>
+
+<div class="guideline-card glass">
+
+<h2>💰 Creator Responsibilities</h2>
+
+<p>
+Creators are responsible for maintaining professionalism and ethical selling practices.
+</p>
+
+<ul>
+<li>Provide accurate product information.</li>
+<li>Respond respectfully to customers.</li>
+<li>Do not manipulate ratings or reviews.</li>
+<li>Deliver promised digital content.</li>
+</ul>
+
+</div>
+
+<div class="guideline-card glass">
+
+<h2>🔐 User Safety & Security</h2>
+
+<p>
+We prioritize user privacy and secure transactions across the platform.
+</p>
+
+<ul>
+<li>Never share personal account credentials.</li>
+<li>Use secure payment methods only.</li>
+<li>Report suspicious activity immediately.</li>
+<li>Respect privacy of creators and buyers.</li>
+</ul>
+
+</div>
+
+<div class="guideline-card glass">
+
+<h2>🌍 Community Behavior</h2>
+
+<p>
+We encourage a supportive and positive creator ecosystem.
+</p>
+
+<ul>
+<li>Respect all creators and users.</li>
+<li>Avoid harassment or abusive behavior.</li>
+<li>Support genuine learning and growth.</li>
+<li>Contribute positively to the community.</li>
+</ul>
+
+</div>
+
+</section>
+
+<!-- ================= CTA ================= -->
+
+<section class="cta">
+
+<div class="cta-box glass">
+
+<h2>Help Us Build a Better Community</h2>
+
+<p>
+By following these guidelines, you help create a trusted and professional marketplace for everyone.
+</p>
+
+<a href="contact.html" class="btn">
+Contact Support →
+</a>
+
+</div>
+
+</section>
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+<p>
+© 2026 E-Book Market • Made with ❤️ in India
+</p>
+
+</footer>
+
+</body>
+</html>

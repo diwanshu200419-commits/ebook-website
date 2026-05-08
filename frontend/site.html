@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Site Map | E-Book Market</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter',sans-serif;
+}
+
+body{
+background:#050816;
+color:white;
+overflow-x:hidden;
+}
+
+/* ================= BACKGROUND ================= */
+
+.bg-glow{
+position:fixed;
+width:500px;
+height:500px;
+background:#7c3aed;
+filter:blur(140px);
+opacity:0.25;
+top:-150px;
+left:-150px;
+z-index:-1;
+}
+
+.bg-glow2{
+position:fixed;
+width:500px;
+height:500px;
+background:#06b6d4;
+filter:blur(140px);
+opacity:0.2;
+bottom:-150px;
+right:-150px;
+z-index:-1;
+}
+
+/* ================= NAVBAR ================= */
+
+.nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 7%;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(12px);
+border-bottom:1px solid rgba(255,255,255,0.08);
+position:sticky;
+top:0;
+z-index:1000;
+}
+
+.logo{
+font-size:2rem;
+font-weight:800;
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.nav-links{
+display:flex;
+gap:30px;
+align-items:center;
+}
+
+.nav-links a{
+text-decoration:none;
+color:#dbeafe;
+font-weight:500;
+transition:0.3s;
+}
+
+.nav-links a:hover{
+color:#8b5cf6;
+}
+
+/* ================= HERO ================= */
+
+.hero{
+padding:100px 7% 70px;
+text-align:center;
+}
+
+.hero h1{
+font-size:4.5rem;
+margin-bottom:20px;
+line-height:1.1;
+}
+
+.hero h1 span{
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+max-width:850px;
+margin:auto;
+font-size:1.1rem;
+line-height:1.8;
+color:#cbd5e1;
+}
+
+/* ================= GLASS ================= */
+
+.glass{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+backdrop-filter:blur(16px);
+border-radius:28px;
+box-shadow:0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* ================= SITEMAP ================= */
+
+.sitemap{
+padding:20px 7% 100px;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+gap:30px;
+}
+
+.sitemap-card{
+padding:40px;
+transition:0.4s ease;
+}
+
+.sitemap-card:hover{
+transform:translateY(-6px);
+}
+
+.sitemap-card h2{
+font-size:2rem;
+margin-bottom:25px;
+color:#a5b4fc;
+}
+
+.sitemap-links{
+display:flex;
+flex-direction:column;
+gap:18px;
+}
+
+.sitemap-links a{
+text-decoration:none;
+color:#dbeafe;
+font-size:1rem;
+padding:14px 18px;
+border-radius:14px;
+background:rgba(255,255,255,0.04);
+transition:0.3s ease;
+}
+
+.sitemap-links a:hover{
+background:rgba(99,102,241,0.18);
+transform:translateX(6px);
+}
+
+/* ================= CTA ================= */
+
+.cta{
+padding:0 7% 100px;
+}
+
+.cta-box{
+padding:60px;
+text-align:center;
+}
+
+.cta-box h2{
+font-size:3rem;
+margin-bottom:20px;
+}
+
+.cta-box p{
+max-width:700px;
+margin:auto;
+line-height:1.8;
+color:#cbd5e1;
+margin-bottom:35px;
+}
+
+/* ================= BUTTON ================= */
+
+.btn{
+padding:16px 32px;
+border:none;
+border-radius:14px;
+background:linear-gradient(90deg,#6366f1,#8b5cf6);
+color:white;
+font-weight:700;
+font-size:1rem;
+cursor:pointer;
+transition:0.4s ease;
+text-decoration:none;
+display:inline-block;
+box-shadow:0 10px 30px rgba(99,102,241,0.4);
+}
+
+.btn:hover{
+transform:translateY(-4px);
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+padding:40px 7%;
+text-align:center;
+border-top:1px solid rgba(255,255,255,0.08);
+color:#94a3b8;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:900px){
+
+.hero h1{
+font-size:3rem;
+}
+
+.cta-box h2{
+font-size:2.3rem;
+}
+
+.sitemap-card h2{
+font-size:1.7rem;
+}
+
+}
+
+@media(max-width:600px){
+
+.nav{
+flex-direction:column;
+gap:20px;
+}
+
+.nav-links{
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.hero{
+padding-top:70px;
+}
+
+.hero h1{
+font-size:2.3rem;
+}
+
+.sitemap-card{
+padding:28px;
+}
+
+.cta-box{
+padding:35px;
+}
+
+}
+
+</style>
+</head>
+<script>
+const observer = new IntersectionObserver((entries)=>{
+entries.forEach(entry=>{
+if(entry.isIntersecting){
+entry.target.classList.add('show');
+}
+});
+});
+
+document.querySelectorAll(
+'.category-card,.testimonial-card,.hero-feature,.book-card'
+).forEach(el=>{
+el.classList.add('hidden');
+observer.observe(el);
+});
+</script>
+<body>
+
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<!-- ================= NAVBAR ================= -->
+
+<header class="nav">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<div class="nav-links">
+<a href="index.html">Home</a>
+<a href="explore.html">Marketplace</a>
+<a href="contact.html">Contact</a>
+<a href="login.html">Login</a>
+</div>
+
+</header>
+
+<!-- ================= HERO ================= -->
+
+<section class="hero">
+
+<h1>Website <span>Site Map</span></h1>
+
+<p>
+Quickly navigate through all important pages, creator tools and marketplace sections available on E-Book Market.
+</p>
+
+</section>
+
+<!-- ================= SITEMAP ================= -->
+
+<section class="sitemap">
+
+<!-- MAIN PAGES -->
+
+<div class="sitemap-card glass">
+
+<h2>🏠 Main Pages</h2>
+
+<div class="sitemap-links">
+
+<a href="index.html">Home</a>
+<a href="explore.html">Marketplace</a>
+<a href="book_view.html">Book View</a>
+<a href="cart.html">Cart</a>
+<a href="checkout.html">Checkout</a>
+
+</div>
+
+</div>
+
+<!-- ACCOUNT -->
+
+<div class="sitemap-card glass">
+
+<h2>👤 Account</h2>
+
+<div class="sitemap-links">
+
+<a href="login.html">Login</a>
+<a href="register.html">Register</a>
+<a href="dashboard/dashboard.html">Dashboard</a>
+<a href="dashboard/setting.html">Settings</a>
+
+</div>
+
+</div>
+
+<!-- CREATOR -->
+
+<div class="sitemap-card glass">
+
+<h2>🚀 Creator</h2>
+
+<div class="sitemap-links">
+
+<a href="creator.html">For Creators</a>
+<a href="dashboard/upload.html">Upload Book</a>
+<a href="dashboard/earning.html">Earnings</a>
+<a href="dashboard/analytics.html">Analytics</a>
+
+</div>
+
+</div>
+
+<!-- SUPPORT -->
+
+<div class="sitemap-card glass">
+
+<h2>📞 Support</h2>
+
+<div class="sitemap-links">
+
+<a href="help.html">Help Center</a>
+<a href="contact.html">Contact Us</a>
+<a href="guidelines.html">Guidelines</a>
+<a href="privacy.html">Privacy Policy</a>
+<a href="terms.html">Terms & Conditions</a>
+
+</div>
+
+</div>
+
+<!-- CONTENT -->
+
+<div class="sitemap-card glass">
+
+<h2>📚 Content</h2>
+
+<div class="sitemap-links">
+
+<a href="blog.html">Blog</a>
+<a href="about.html">About Us</a>
+<a href="careers.html">Careers</a>
+<a href="ai/ai-review.html">AI Tools</a>
+
+</div>
+
+</div>
+
+<!-- ADMIN -->
+
+<div class="sitemap-card glass">
+
+<h2>⚙ Admin</h2>
+
+<div class="sitemap-links">
+
+<a href="admin/admin-login.html">Admin Login</a>
+<a href="admin/admin.html">Admin Dashboard</a>
+
+</div>
+
+</div>
+
+</section>
+
+<!-- ================= CTA ================= -->
+
+<section class="cta">
+
+<div class="cta-box glass">
+
+<h2>Explore the Entire Platform</h2>
+
+<p>
+Discover ebooks, AI tools, creator features and premium digital resources built for modern learners and creators.
+</p>
+
+<a href="explore.html" class="btn">
+Explore Marketplace →
+</a>
+
+</div>
+
+</section>
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+<p>
+© 2026 E-Book Market • Made with ❤️ in India
+</p>
+
+</footer> 
+
+</body>
+</html>

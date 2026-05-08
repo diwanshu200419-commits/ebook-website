@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Contact Us | E-Book Market</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter',sans-serif;
+}
+
+body{
+background:#050816;
+color:white;
+overflow-x:hidden;
+}
+
+/* ================= BACKGROUND GLOW ================= */
+
+.bg-glow{
+position:fixed;
+width:500px;
+height:500px;
+background:#7c3aed;
+filter:blur(140px);
+opacity:0.25;
+top:-150px;
+left:-150px;
+z-index:-1;
+}
+
+.bg-glow2{
+position:fixed;
+width:500px;
+height:500px;
+background:#06b6d4;
+filter:blur(140px);
+opacity:0.2;
+bottom:-150px;
+right:-150px;
+z-index:-1;
+}
+
+/* ================= NAVBAR ================= */
+
+.nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 7%;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(12px);
+border-bottom:1px solid rgba(255,255,255,0.08);
+position:sticky;
+top:0;
+z-index:1000;
+}
+
+.logo{
+font-size:2rem;
+font-weight:800;
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.nav-links{
+display:flex;
+gap:30px;
+align-items:center;
+}
+
+.nav-links a{
+text-decoration:none;
+color:#dbeafe;
+font-weight:500;
+transition:0.3s;
+}
+
+.nav-links a:hover{
+color:#8b5cf6;
+}
+
+/* ================= HERO ================= */
+
+.contact-hero{
+padding:100px 7% 60px;
+text-align:center;
+}
+
+.contact-hero h1{
+font-size:4rem;
+margin-bottom:20px;
+line-height:1.1;
+}
+
+.contact-hero h1 span{
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.contact-hero p{
+max-width:750px;
+margin:auto;
+font-size:1.1rem;
+line-height:1.8;
+color:#cbd5e1;
+}
+
+/* ================= CONTACT CONTAINER ================= */
+
+.contact-container{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:40px;
+padding:40px 7% 100px;
+}
+
+/* ================= GLASS CARD ================= */
+
+.glass{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+backdrop-filter:blur(16px);
+border-radius:28px;
+padding:40px;
+box-shadow:0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* ================= INFO BOX ================= */
+
+.info-box h2{
+font-size:2rem;
+margin-bottom:25px;
+}
+
+.info-item{
+margin-bottom:30px;
+}
+
+.info-item h3{
+font-size:1.1rem;
+margin-bottom:8px;
+color:#8b5cf6;
+}
+
+.info-item p{
+color:#cbd5e1;
+line-height:1.7;
+}
+
+/* ================= FORM ================= */
+
+.contact-form h2{
+font-size:2rem;
+margin-bottom:25px;
+}
+
+.input-group{
+margin-bottom:22px;
+}
+
+.input-group label{
+display:block;
+margin-bottom:10px;
+font-weight:600;
+color:#e2e8f0;
+}
+
+.input-group input,
+.input-group textarea{
+width:100%;
+padding:16px 18px;
+border:none;
+outline:none;
+border-radius:14px;
+background:rgba(255,255,255,0.08);
+color:white;
+font-size:1rem;
+}
+
+.input-group textarea{
+resize:none;
+height:150px;
+}
+
+.input-group input::placeholder,
+.input-group textarea::placeholder{
+color:#94a3b8;
+}
+
+/* ================= BUTTON ================= */
+
+.btn{
+display:inline-block;
+padding:16px 30px;
+border:none;
+border-radius:14px;
+background:linear-gradient(90deg,#6366f1,#8b5cf6);
+color:white;
+font-size:1rem;
+font-weight:700;
+cursor:pointer;
+transition:0.4s ease;
+box-shadow:0 10px 30px rgba(99,102,241,0.4);
+}
+
+.btn:hover{
+transform:translateY(-4px);
+}
+
+/* ================= SOCIAL ================= */
+
+.socials{
+display:flex;
+gap:18px;
+margin-top:25px;
+flex-wrap:wrap;
+}
+
+.socials a{
+text-decoration:none;
+padding:12px 18px;
+border-radius:12px;
+background:rgba(255,255,255,0.08);
+color:white;
+transition:0.3s;
+}
+
+.socials a:hover{
+background:#8b5cf6;
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+padding:40px 7%;
+text-align:center;
+border-top:1px solid rgba(255,255,255,0.08);
+color:#94a3b8;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:1000px){
+
+.contact-container{
+grid-template-columns:1fr;
+}
+
+.contact-hero h1{
+font-size:3rem;
+}
+
+}
+
+@media(max-width:600px){
+
+.nav{
+flex-direction:column;
+gap:20px;
+}
+
+.nav-links{
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.contact-hero{
+padding-top:70px;
+}
+
+.contact-hero h1{
+font-size:2.3rem;
+}
+
+.glass{
+padding:28px;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<!-- ================= NAVBAR ================= -->
+
+<header class="nav">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<div class="nav-links">
+<a href="index.html">Home</a>
+<a href="explore.html">Marketplace</a>
+<a href="dashboard/dashboard.html">Dashboard</a>
+<a href="login.html">Login</a>
+</div>
+
+</header>
+
+<!-- ================= HERO ================= -->
+
+<section class="contact-hero">
+
+<h1>Let's <span>Connect</span></h1>
+
+<p>
+Have questions, feedback, business inquiries or creator partnership ideas?
+We’d love to hear from you. Contact the E-Book Market team anytime.
+</p>
+
+</section>
+
+<!-- ================= CONTACT SECTION ================= -->
+
+<section class="contact-container">
+
+<!-- LEFT -->
+
+<div class="glass info-box">
+
+<h2>Contact Information</h2>
+
+<div class="info-item">
+<h3>📍 Location</h3>
+<p>India • Global Digital Platform</p>
+</div>
+
+<div class="info-item">
+<h3>📧 Email</h3>
+<p>support@ebookmarket.com</p>
+</div>
+
+<div class="info-item">
+<h3>📞 Phone</h3>
+<p>+91 98765 43210</p>
+</div>
+
+<div class="info-item">
+<h3>🕒 Working Hours</h3>
+<p>Monday - Saturday<br>9:00 AM - 7:00 PM</p>
+</div>
+
+<div class="socials">
+<a href="#">Instagram</a>
+<a href="#">LinkedIn</a>
+<a href="#">YouTube</a>
+<a href="#">Twitter</a>
+</div>
+
+</div>
+
+<!-- RIGHT -->
+
+<div class="glass contact-form">
+
+<h2>Send a Message</h2>
+
+<form>
+
+<div class="input-group">
+<label>Full Name</label>
+<input type="text" placeholder="Enter your name">
+</div>
+
+<div class="input-group">
+<label>Email Address</label>
+<input type="email" placeholder="Enter your email">
+</div>
+
+<div class="input-group">
+<label>Subject</label>
+<input type="text" placeholder="Enter subject">
+</div>
+
+<div class="input-group">
+<label>Message</label>
+<textarea placeholder="Write your message..."></textarea>
+</div>
+
+<button type="submit" class="btn">
+Send Message →
+</button>
+
+</form>
+
+</div>
+
+</section>
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+<p>
+© 2026 E-Book Market • Built with ❤️ in India
+</p>
+
+</footer>
+
+</body>
+</html>

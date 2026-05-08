@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Blog | E-Book Market</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter',sans-serif;
+}
+
+body{
+background:#050816;
+color:white;
+overflow-x:hidden;
+}
+
+/* ================= BACKGROUND ================= */
+
+.bg-glow{
+position:fixed;
+width:500px;
+height:500px;
+background:#7c3aed;
+filter:blur(140px);
+opacity:0.25;
+top:-150px;
+left:-150px;
+z-index:-1;
+}
+
+.bg-glow2{
+position:fixed;
+width:500px;
+height:500px;
+background:#06b6d4;
+filter:blur(140px);
+opacity:0.2;
+bottom:-150px;
+right:-150px;
+z-index:-1;
+}
+
+/* ================= NAVBAR ================= */
+
+.nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 7%;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(12px);
+border-bottom:1px solid rgba(255,255,255,0.08);
+position:sticky;
+top:0;
+z-index:1000;
+}
+
+.logo{
+font-size:2rem;
+font-weight:800;
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.nav-links{
+display:flex;
+gap:30px;
+align-items:center;
+}
+
+.nav-links a{
+text-decoration:none;
+color:#dbeafe;
+font-weight:500;
+transition:0.3s;
+}
+
+.nav-links a:hover{
+color:#8b5cf6;
+}
+
+/* ================= HERO ================= */
+
+.hero{
+padding:100px 7% 80px;
+text-align:center;
+}
+
+.hero h1{
+font-size:4.5rem;
+margin-bottom:20px;
+line-height:1.1;
+}
+
+.hero h1 span{
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+max-width:800px;
+margin:auto;
+font-size:1.1rem;
+line-height:1.8;
+color:#cbd5e1;
+}
+
+/* ================= GLASS ================= */
+
+.glass{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+backdrop-filter:blur(16px);
+border-radius:28px;
+box-shadow:0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* ================= FEATURED BLOG ================= */
+
+.featured-blog{
+padding:0 7% 80px;
+}
+
+.featured-card{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:40px;
+overflow:hidden;
+}
+
+.featured-card img{
+width:100%;
+height:100%;
+object-fit:cover;
+}
+
+.featured-content{
+padding:50px;
+display:flex;
+flex-direction:column;
+justify-content:center;
+}
+
+.badge{
+display:inline-block;
+padding:10px 18px;
+border-radius:50px;
+background:rgba(99,102,241,0.18);
+color:#a5b4fc;
+font-size:0.9rem;
+margin-bottom:20px;
+width:max-content;
+}
+
+.featured-content h2{
+font-size:2.8rem;
+line-height:1.2;
+margin-bottom:20px;
+}
+
+.featured-content p{
+color:#cbd5e1;
+line-height:1.8;
+margin-bottom:25px;
+}
+
+/* ================= BUTTON ================= */
+
+.btn{
+padding:16px 30px;
+border:none;
+border-radius:14px;
+background:linear-gradient(90deg,#6366f1,#8b5cf6);
+color:white;
+font-weight:700;
+font-size:1rem;
+cursor:pointer;
+transition:0.4s ease;
+text-decoration:none;
+display:inline-block;
+box-shadow:0 10px 30px rgba(99,102,241,0.4);
+width:max-content;
+}
+
+.btn:hover{
+transform:translateY(-4px);
+}
+
+/* ================= BLOG GRID ================= */
+
+.blog-section{
+padding:20px 7% 100px;
+}
+
+.section-title{
+text-align:center;
+margin-bottom:50px;
+}
+
+.section-title h2{
+font-size:3rem;
+margin-bottom:15px;
+}
+
+.section-title p{
+color:#94a3b8;
+}
+
+.blog-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+gap:30px;
+}
+
+.blog-card{
+overflow:hidden;
+transition:0.4s ease;
+}
+
+.blog-card:hover{
+transform:translateY(-8px);
+}
+
+.blog-card img{
+width:100%;
+height:240px;
+object-fit:cover;
+}
+
+.blog-content{
+padding:30px;
+}
+
+.blog-content h3{
+font-size:1.5rem;
+margin-bottom:15px;
+line-height:1.4;
+}
+
+.blog-content p{
+color:#cbd5e1;
+line-height:1.8;
+margin-bottom:20px;
+}
+
+.blog-meta{
+display:flex;
+justify-content:space-between;
+font-size:0.9rem;
+color:#94a3b8;
+margin-bottom:20px;
+}
+
+/* ================= NEWSLETTER ================= */
+
+.newsletter{
+padding:0 7% 100px;
+}
+
+.newsletter-box{
+padding:60px;
+text-align:center;
+}
+
+.newsletter-box h2{
+font-size:3rem;
+margin-bottom:20px;
+}
+
+.newsletter-box p{
+max-width:700px;
+margin:auto;
+line-height:1.8;
+color:#cbd5e1;
+margin-bottom:35px;
+}
+
+.newsletter-form{
+max-width:650px;
+margin:auto;
+display:flex;
+gap:15px;
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.newsletter-form input{
+flex:1;
+min-width:250px;
+padding:18px 20px;
+border:none;
+outline:none;
+border-radius:14px;
+background:rgba(255,255,255,0.08);
+color:white;
+font-size:1rem;
+}
+
+.newsletter-form input::placeholder{
+color:#94a3b8;
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+padding:40px 7%;
+text-align:center;
+border-top:1px solid rgba(255,255,255,0.08);
+color:#94a3b8;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:1000px){
+
+.featured-card{
+grid-template-columns:1fr;
+}
+
+.hero h1{
+font-size:3rem;
+}
+
+.section-title h2,
+.newsletter-box h2{
+font-size:2.3rem;
+}
+
+}
+
+@media(max-width:600px){
+
+.nav{
+flex-direction:column;
+gap:20px;
+}
+
+.nav-links{
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.hero{
+padding-top:70px;
+}
+
+.hero h1{
+font-size:2.3rem;
+}
+
+.featured-content{
+padding:30px;
+}
+
+.newsletter-box{
+padding:35px;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<!-- ================= NAVBAR ================= -->
+
+<header class="nav">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<div class="nav-links">
+<a href="index.html">Home</a>
+<a href="explore.html">Marketplace</a>
+<a href="contact.html">Contact</a>
+<a href="login.html">Login</a>
+</div>
+
+</header>
+
+<!-- ================= HERO ================= -->
+
+<section class="hero">
+
+<h1>Insights, Trends & <span>Creator Stories</span></h1>
+
+<p>
+Explore blogs about digital products, creator economy, AI tools, online learning and strategies to grow your income online.
+</p>
+
+</section>
+
+<!-- ================= FEATURED BLOG ================= -->
+
+<section class="featured-blog">
+
+<div class="featured-card glass">
+
+<img src="assets/covers/Ebook_AI.png" alt="Featured Blog">
+
+<div class="featured-content">
+
+<span class="badge">FEATURED ARTICLE</span>
+
+<h2>How Students Are Making Money Selling Digital Products</h2>
+
+<p>
+Discover how creators are building passive income streams through ebooks, AI resources and premium educational content.
+</p>
+
+<a href="#" class="btn">
+Read Article →
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+<!-- ================= BLOG GRID ================= -->
+
+<section class="blog-section">
+
+<div class="section-title">
+<h2>Latest Articles</h2>
+<p>Learn, grow and stay ahead in the creator economy</p>
+</div>
+
+<div class="blog-grid">
+
+<div class="blog-card glass">
+
+<img src="assets/covers/Ebook_AI.png" alt="blog">
+
+<div class="blog-content">
+
+<div class="blog-meta">
+<span>AI & Tech</span>
+<span>5 min read</span>
+</div>
+
+<h3>Top AI Tools Every Student Should Use in 2026</h3>
+
+<p>
+Explore powerful AI tools helping students improve productivity, learning and online earning.
+</p>
+
+<a href="#" class="btn">
+Read More →
+</a>
+
+</div>
+
+</div>
+
+<div class="blog-card glass">
+
+<img src="assets/default-avatar.png" alt="blog">
+
+<div class="blog-content">
+
+<div class="blog-meta">
+<span>Business</span>
+<span>7 min read</span>
+</div>
+
+<h3>How to Earn Passive Income by Selling Notes Online</h3>
+
+<p>
+Learn how creators are turning handwritten notes and study resources into income streams.
+</p>
+
+<a href="#" class="btn">
+Read More →
+</a>
+
+</div>
+
+</div>
+
+<div class="blog-card glass">
+
+<img src="assets/default-avatar.png" alt="blog">
+
+<div class="blog-content">
+
+<div class="blog-meta">
+<span>Creator Economy</span>
+<span>6 min read</span>
+</div>
+
+<h3>Building a Digital Product Brand as a Student</h3>
+
+<p>
+Practical tips to grow your audience, sell products and create an online personal brand.
+</p>
+
+<a href="#" class="btn">
+Read More →
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<!-- ================= NEWSLETTER ================= -->
+
+<section class="newsletter">
+
+<div class="newsletter-box glass">
+
+<h2>Subscribe to Our Newsletter</h2>
+
+<p>
+Get the latest creator tips, AI resources and online earning strategies directly in your inbox.
+</p>
+
+<div class="newsletter-form">
+
+<input type="email" placeholder="Enter your email">
+
+<button class="btn">
+Subscribe →
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+<p>
+© 2026 E-Book Market • Made with ❤️ in India
+</p>
+
+</footer>
+
+</body>
+</html>

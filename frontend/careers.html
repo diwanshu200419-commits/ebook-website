@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Careers | E-Book Market</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter',sans-serif;
+}
+
+body{
+background:#050816;
+color:white;
+overflow-x:hidden;
+}
+
+/* ================= BACKGROUND ================= */
+
+.bg-glow{
+position:fixed;
+width:500px;
+height:500px;
+background:#7c3aed;
+filter:blur(140px);
+opacity:0.25;
+top:-150px;
+left:-150px;
+z-index:-1;
+}
+
+.bg-glow2{
+position:fixed;
+width:500px;
+height:500px;
+background:#06b6d4;
+filter:blur(140px);
+opacity:0.2;
+bottom:-150px;
+right:-150px;
+z-index:-1;
+}
+
+/* ================= NAVBAR ================= */
+
+.nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 7%;
+background:rgba(255,255,255,0.04);
+backdrop-filter:blur(12px);
+border-bottom:1px solid rgba(255,255,255,0.08);
+position:sticky;
+top:0;
+z-index:1000;
+}
+
+.logo{
+font-size:2rem;
+font-weight:800;
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.nav-links{
+display:flex;
+gap:30px;
+align-items:center;
+}
+
+.nav-links a{
+text-decoration:none;
+color:#dbeafe;
+font-weight:500;
+transition:0.3s;
+}
+
+.nav-links a:hover{
+color:#8b5cf6;
+}
+
+/* ================= HERO ================= */
+
+.hero{
+padding:100px 7% 70px;
+text-align:center;
+}
+
+.hero h1{
+font-size:4.5rem;
+line-height:1.1;
+margin-bottom:20px;
+}
+
+.hero h1 span{
+background:linear-gradient(90deg,#60a5fa,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+max-width:850px;
+margin:auto;
+font-size:1.1rem;
+line-height:1.8;
+color:#cbd5e1;
+}
+
+/* ================= GLASS ================= */
+
+.glass{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+backdrop-filter:blur(16px);
+border-radius:28px;
+box-shadow:0 10px 40px rgba(0,0,0,0.35);
+}
+
+/* ================= CULTURE ================= */
+
+.culture{
+padding:20px 7% 80px;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:25px;
+}
+
+.culture-card{
+padding:35px;
+transition:0.4s ease;
+}
+
+.culture-card:hover{
+transform:translateY(-8px);
+}
+
+.culture-card h3{
+font-size:1.4rem;
+margin:20px 0 12px;
+}
+
+.culture-card p{
+color:#cbd5e1;
+line-height:1.7;
+font-size:0.96rem;
+}
+
+.icon{
+font-size:3rem;
+}
+
+/* ================= OPENINGS ================= */
+
+.openings{
+padding:40px 7% 100px;
+}
+
+.section-title{
+text-align:center;
+margin-bottom:50px;
+}
+
+.section-title h2{
+font-size:3rem;
+margin-bottom:15px;
+}
+
+.section-title p{
+color:#94a3b8;
+}
+
+.jobs-grid{
+display:grid;
+gap:30px;
+}
+
+.job-card{
+padding:35px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+flex-wrap:wrap;
+gap:20px;
+transition:0.4s ease;
+}
+
+.job-card:hover{
+transform:translateY(-6px);
+}
+
+.job-left h3{
+font-size:1.5rem;
+margin-bottom:10px;
+}
+
+.job-left p{
+color:#cbd5e1;
+margin-bottom:10px;
+}
+
+.tags{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+}
+
+.tag{
+padding:8px 14px;
+border-radius:50px;
+background:rgba(255,255,255,0.08);
+font-size:0.85rem;
+color:#cbd5e1;
+}
+
+/* ================= BUTTON ================= */
+
+.btn{
+padding:15px 28px;
+border:none;
+border-radius:14px;
+background:linear-gradient(90deg,#6366f1,#8b5cf6);
+color:white;
+font-weight:700;
+font-size:1rem;
+cursor:pointer;
+transition:0.4s ease;
+text-decoration:none;
+display:inline-block;
+box-shadow:0 10px 30px rgba(99,102,241,0.4);
+}
+
+.btn:hover{
+transform:translateY(-4px);
+}
+
+/* ================= CTA ================= */
+
+.cta{
+padding:0 7% 100px;
+}
+
+.cta-box{
+padding:60px;
+text-align:center;
+}
+
+.cta-box h2{
+font-size:3rem;
+margin-bottom:20px;
+}
+
+.cta-box p{
+max-width:700px;
+margin:auto;
+line-height:1.8;
+color:#cbd5e1;
+margin-bottom:35px;
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+padding:40px 7%;
+text-align:center;
+border-top:1px solid rgba(255,255,255,0.08);
+color:#94a3b8;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:900px){
+
+.hero h1{
+font-size:3rem;
+}
+
+.section-title h2,
+.cta-box h2{
+font-size:2.3rem;
+}
+
+.job-card{
+flex-direction:column;
+align-items:flex-start;
+}
+
+}
+
+@media(max-width:600px){
+
+.nav{
+flex-direction:column;
+gap:20px;
+}
+
+.nav-links{
+flex-wrap:wrap;
+justify-content:center;
+}
+
+.hero{
+padding-top:70px;
+}
+
+.hero h1{
+font-size:2.3rem;
+}
+
+.cta-box{
+padding:35px;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="bg-glow"></div>
+<div class="bg-glow2"></div>
+
+<!-- ================= NAVBAR ================= -->
+
+<header class="nav">
+
+<div class="logo">E-BOOK MARKET</div>
+
+<div class="nav-links">
+<a href="index.html">Home</a>
+<a href="explore.html">Marketplace</a>
+<a href="contact.html">Contact</a>
+<a href="login.html">Login</a>
+</div>
+
+</header>
+
+<!-- ================= HERO ================= -->
+
+<section class="hero">
+
+<h1>Build the Future of <span>Knowledge Economy</span></h1>
+
+<p>
+Join one of the fastest-growing digital learning and creator economy platforms.
+At E-Book Market, we're building the future of online education, AI tools and creator monetization.
+</p>
+
+</section>
+
+<!-- ================= CULTURE ================= -->
+
+<section class="culture">
+
+<div class="culture-card glass">
+<div class="icon">🚀</div>
+<h3>Fast Growth</h3>
+<p>Work on impactful projects used by creators and students worldwide.</p>
+</div>
+
+<div class="culture-card glass">
+<div class="icon">🌍</div>
+<h3>Remote Friendly</h3>
+<p>Collaborate with a global team from anywhere in the world.</p>
+</div>
+
+<div class="culture-card glass">
+<div class="icon">💡</div>
+<h3>Innovation</h3>
+<p>Build cutting-edge AI and digital marketplace experiences.</p>
+</div>
+
+<div class="culture-card glass">
+<div class="icon">📚</div>
+<h3>Learning Culture</h3>
+<p>Grow your skills continuously with mentorship and real-world projects.</p>
+</div>
+
+</section>
+
+<!-- ================= OPEN POSITIONS ================= -->
+
+<section class="openings">
+
+<div class="section-title">
+<h2>Open Positions</h2>
+<p>Join our growing startup team</p>
+</div>
+
+<div class="jobs-grid">
+
+<div class="job-card glass">
+
+<div class="job-left">
+<h3>Frontend Developer</h3>
+<p>Build modern responsive interfaces for our marketplace.</p>
+
+<div class="tags">
+<span class="tag">Remote</span>
+<span class="tag">Full Time</span>
+<span class="tag">React / JS</span>
+</div>
+</div>
+
+<a href="contact.html" class="btn">
+Apply Now →
+</a>
+
+</div>
+
+<div class="job-card glass">
+
+<div class="job-left">
+<h3>UI/UX Designer</h3>
+<p>Create world-class experiences for creators and readers.</p>
+
+<div class="tags">
+<span class="tag">Remote</span>
+<span class="tag">Figma</span>
+<span class="tag">Product Design</span>
+</div>
+</div>
+
+<a href="contact.html" class="btn">
+Apply Now →
+</a>
+
+</div>
+
+<div class="job-card glass">
+
+<div class="job-left">
+<h3>Backend Developer</h3>
+<p>Scale APIs and payment systems powering the platform.</p>
+
+<div class="tags">
+<span class="tag">Node.js</span>
+<span class="tag">MongoDB</span>
+<span class="tag">API</span>
+</div>
+</div>
+
+<a href="contact.html" class="btn">
+Apply Now →
+</a>
+
+</div>
+
+</div>
+
+</section>
+
+<!-- ================= CTA ================= -->
+
+<section class="cta">
+
+<div class="cta-box glass">
+
+<h2>Ready to Build Something Big?</h2>
+
+<p>
+Join E-Book Market and help creators monetize knowledge globally.
+Let's create the future together.
+</p>
+
+<a href="contact.html" class="btn">
+Join Our Team →
+</a>
+
+</div>
+
+</section>
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="footer">
+
+<p>
+© 2026 E-Book Market • Made with ❤️ in India
+</p>
+
+</footer>
+
+</body>
+</html>
