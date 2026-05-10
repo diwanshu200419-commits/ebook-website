@@ -5,6 +5,14 @@ E-BOOK MARKET STARTUP
 
 const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 
+function notifyServerLogout() {
+  return fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+    keepalive: true
+  }).catch(() => null);
+}
+
 
 /* =========================
 PROTECT PAGE
@@ -77,6 +85,7 @@ LOGOUT SYSTEM
 ========================= */
 
 function logoutUser() {
+  notifyServerLogout();
   localStorage.removeItem("token");
   localStorage.removeItem("user");
 

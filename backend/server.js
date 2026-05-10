@@ -10,6 +10,13 @@ const cors = require("cors");
 const passport = require("passport");
 const path = require("path");
 const User = require("./models/user");
+const {
+  getAllowedFrontendOrigins,
+  getFrontendBaseUrl,
+  getUrlOrigin,
+  isProduction,
+  normalizeUrl
+} = require("./utils/urlConfig");
 
 // 🔥 SECURITY
 const helmet = require("helmet");
@@ -29,9 +36,11 @@ const app = express();
 // ❌ hide express info
 app.disable("x-powered-by");
 
-const clientUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL;
-const isProd = process.env.NODE_ENV === "production";
-const normalizedClientUrl = (clientUrl || "").replace(/\/$/, "");
+const clientUrl = getFrontendBaseUrl();
+const isProd = isProduction();
+const normalizedClientUrl = normalizeUrl(clientUrl);
+const clientOrigin = getUrlOrigin(clientUrl);
+
 if (isProd && normalizedClientUrl && /^http:\/\//i.test(normalizedClientUrl)) {
   throw new Error("CLIENT_URL/FRONTEND_URL must use HTTPS in production.");
 }
@@ -45,7 +54,7 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", clientUrl].filter(Boolean)
+      connectSrc: ["'self'", clientOrigin].filter(Boolean)
     }
   },
   crossOriginEmbedderPolicy: false,
@@ -91,33 +100,14 @@ app.use(express.urlencoded({ extended: true }));
    🔥 CORS FIX (IMPORTANT FOR DEPLOY)
 =================================== */
 
-const rawAllowedOrigins = process.env.ALLOWED_ORIGINS || "";
-const parsedAllowedOrigins = rawAllowedOrigins
-  .split(",")
-  .map((o) => o.trim().replace(/\/$/, ""))
-  .filter(Boolean);
-
-const allowedOrigins = Array.from(
-  new Set(
-    [
-      normalizedClientUrl,
-      process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : "",
-      "https://ebook-website-theta-nine.vercel.app",
-      ...parsedAllowedOrigins
-    ].filter(Boolean)
-  )
-);
-
-if (!isProd) {
-  allowedOrigins.push("http://localhost:5501", "http://127.0.0.1:5501", "http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173");
-}
+const allowedOrigins = getAllowedFrontendOrigins();
 
 app.use(
   cors({
     origin: function (origin, callback) {
       const allow =
         !origin ||
-        allowedOrigins.includes(String(origin).replace(/\/$/, ""));
+        allowedOrigins.includes(getUrlOrigin(origin) || normalizeUrl(origin));
       if (allow) {
         callback(null, true);
       } else {
@@ -216,6 +206,15 @@ app.get("/", (req, res) => {
   res.json({
     status: "success",
     message: "🚀 Backend Running",
+    env: process.env.NODE_ENV,
+    time: new Date()
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "success",
+    message: "API healthy",
     env: process.env.NODE_ENV,
     time: new Date()
   });

@@ -90,6 +90,12 @@ return null;
 
 function logoutAndRedirect(){
 
+fetch(`${API_BASE}/api/auth/logout`,{
+method:"POST",
+credentials:"include",
+keepalive:true
+}).catch(()=>null);
+
 localStorage.clear();
 window.location.href="../login.html";
 

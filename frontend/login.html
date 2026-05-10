@@ -136,18 +136,49 @@ async function initLogin(){
 
 const params = new URLSearchParams(window.location.search);
 const googleToken = params.get("token");
+const authError = params.get("error");
 
 const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
 const googleTokenFromHash = hashParams.get("token");
 const tokenToUse = googleTokenFromHash || googleToken;
 
+if(authError === "google_auth_failed"){
+alert("Google sign-in could not be completed. Please try again.");
+}
+
 if(tokenToUse){
 
 localStorage.setItem("token",tokenToUse);
 
-window.history.replaceState({},document.title,"login.html");
+window.history.replaceState({},document.title,window.location.pathname);
+
+await syncSessionToken(tokenToUse);
 
 await redirectUser(tokenToUse);
+
+}
+
+}
+
+async function syncSessionToken(token){
+
+if(!token) return;
+
+try{
+
+await fetch(`${API_BASE}/api/auth/session`,{
+method:"POST",
+credentials:"include",
+headers:{
+"Content-Type":"application/json",
+Authorization:`Bearer ${token}`
+},
+body:JSON.stringify({token})
+});
+
+}catch(err){
+
+console.log("Session sync skipped:",err);
 
 }
 
@@ -197,6 +228,7 @@ try{
 const res = await fetch(`${API_BASE}/api/auth/login`,{
 
 method:"POST",
+credentials:"include",
 
 headers:{
 "Content-Type":"application/json"
@@ -221,6 +253,8 @@ return;
 
 localStorage.setItem("token",data.token);
 localStorage.setItem("user",JSON.stringify(data.user));
+
+await syncSessionToken(data.token);
 
 
 redirectUser(data.token);
@@ -302,7 +336,7 @@ btn.innerHTML="Redirecting...";
 
 
 window.location.href=
-`${API_BASE}/api/auth/google?clientOrigin=${encodeURIComponent(window.location.origin)}`;
+`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL("login.html",window.location.href).href)}`;
 
 }
 

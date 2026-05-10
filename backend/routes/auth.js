@@ -2,36 +2,24 @@
 
 const express = require("express");
 const router = express.Router();
+const Joi = require("joi");
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
+const { clearAuthCookie, setAuthCookie } = require("../utils/authCookies");
+const { resolveFrontendRedirectUrl } = require("../utils/urlConfig");
 
-const getFrontendBaseUrl = () => {
-  const raw = process.env.CLIENT_URL || process.env.FRONTEND_URL || "";
-  const trimmed = raw.trim().replace(/\/$/, "");
-  if (!trimmed) {
-    return process.env.NODE_ENV === "production" ? "" : "http://localhost:3000";
-  }
-  if (process.env.NODE_ENV === "production" && !/^https:\/\//i.test(trimmed)) {
-    return "";
-  }
-  return trimmed;
-};
+const registerSchema = Joi.object({
+  name: Joi.string().trim().min(2).max(80).required(),
+  email: Joi.string().email({ tlds: { allow: false } }).required(),
+  password: Joi.string().min(6).max(128).required(),
+  role: Joi.string().valid("reader", "creator", "author").default("reader")
+});
 
-const getSafeFrontendFromState = (state) => {
-  if (!state) return getFrontendBaseUrl();
-  try {
-    const decoded = decodeURIComponent(state);
-    const normalized = decoded.trim().replace(/\/$/, "");
-    if (!/^https?:\/\//i.test(normalized)) return getFrontendBaseUrl();
-    if (process.env.NODE_ENV === "production" && !/^https:\/\//i.test(normalized)) {
-      return getFrontendBaseUrl();
-    }
-    return normalized;
-  } catch {
-    return getFrontendBaseUrl();
-  }
-};
+const loginSchema = Joi.object({
+  email: Joi.string().email({ tlds: { allow: false } }).required(),
+  password: Joi.string().min(1).required()
+});
 
 /* =========================================
    USERNAME GENERATOR (AUTO)
@@ -71,21 +59,65 @@ const generateToken = (user) => {
   );
 };
 
+const buildUserPayload = (user) => ({
+  id: user._id,
+  name: user.name,
+  username: user.username,
+  email: user.email,
+  role: user.role,
+});
+
+const buildFailureRedirect = (redirectUrl, code) => {
+  const url = new URL(redirectUrl);
+  url.searchParams.set("error", code);
+  url.hash = "";
+  return url.toString();
+};
+
+const buildSuccessRedirect = (redirectUrl, token) => {
+  const url = new URL(redirectUrl);
+  url.searchParams.delete("error");
+  url.hash = `token=${encodeURIComponent(token)}`;
+  return url.toString();
+};
+
+const touchLastLogin = async (user) => {
+  user.lastLogin = new Date();
+  await user.save({ validateBeforeSave: false });
+};
+
+const getTokenFromRequest = (req) => {
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+
+  if (typeof req.body?.token === "string" && req.body.token.trim()) {
+    return req.body.token.trim();
+  }
+
+  return "";
+};
+
 /* =========================================
    REGISTER (LOCAL)
 ========================================= */
 
 router.post("/register", async (req, res) => {
   try {
+    const { value, error } = registerSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true
+    });
 
-    let { name, email, password, role } = req.body;
-
-    if (!name || !email || !password) {
+    if (error) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: error.details[0].message,
       });
     }
+
+    let { name, email, password, role } = value;
 
     email = email.toLowerCase().trim();
 
@@ -94,13 +126,6 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Email already registered",
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters",
       });
     }
 
@@ -119,19 +144,16 @@ router.post("/register", async (req, res) => {
       provider: "local",
     });
 
+    await touchLastLogin(user);
+
     const token = generateToken(user);
+    setAuthCookie(res, token);
 
     res.status(201).json({
       success: true,
       message: "Registration successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
+      user: buildUserPayload(user),
     });
 
   } catch (error) {
@@ -152,22 +174,23 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
+    const { value, error } = loginSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true
+    });
 
-    let { email, password } = req.body;
-
-    if (!email || !password) {
+    if (error) {
       return res.status(400).json({
         success: false,
-        message: "Email & password required",
+        message: error.details[0].message,
       });
     }
 
+    let { email, password } = value;
+
     email = email.toLowerCase().trim();
 
-    const user = await User.findOne({
-      email,
-      provider: "local",
-    }).select("+password");
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
       return res.status(401).json({
@@ -183,6 +206,13 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        message: "This account uses Google sign-in. Please continue with Google.",
+      });
+    }
+
     const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
@@ -192,19 +222,16 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    await touchLastLogin(user);
+
     const token = generateToken(user);
+    setAuthCookie(res, token);
 
     res.json({
       success: true,
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
+      user: buildUserPayload(user),
     });
 
   } catch (error) {
@@ -230,10 +257,17 @@ router.get("/google", (req, res, next) => {
       message: "Google login is not configured on the server",
     });
   }
-  const frontendFromClient = req.query.clientOrigin || req.query.frontend;
-  const state = encodeURIComponent(
-    (typeof frontendFromClient === "string" && frontendFromClient.trim()) || getFrontendBaseUrl()
-  );
+  const requestedReturnTo = req.query.returnTo || req.query.clientOrigin || req.query.frontend;
+  const returnTo = resolveFrontendRedirectUrl(requestedReturnTo, "/login.html");
+
+  if (!returnTo) {
+    return res.status(500).json({
+      success: false,
+      message: "Frontend redirect URL is not configured correctly",
+    });
+  }
+
+  const state = encodeURIComponent(returnTo);
   return passport.authenticate("google", {
     scope: ["profile", "email"],
     state
@@ -247,33 +281,76 @@ router.get("/google", (req, res, next) => {
 router.get(
   "/google/callback",
   (req, res, next) => {
-    const frontendBase = getSafeFrontendFromState(req.query.state);
+    const frontendRedirect = resolveFrontendRedirectUrl(req.query.state, "/login.html");
     return passport.authenticate("google", {
       session: false,
-      failureRedirect: `${frontendBase}/login`,
+      failureRedirect: buildFailureRedirect(frontendRedirect, "google_auth_failed"),
     })(req, res, next);
   },
   async (req, res) => {
     try {
-      const frontendBase = getSafeFrontendFromState(req.query.state);
+      const frontendRedirect = resolveFrontendRedirectUrl(req.query.state, "/login.html");
+
+      await touchLastLogin(req.user);
 
       const token = generateToken(req.user);
+      setAuthCookie(res, token);
 
-      // Use URL fragment instead of querystring to reduce token leakage via referrers/logs
-      res.redirect(
-        `${frontendBase}/login#token=${token}`
-      );
+      res.redirect(buildSuccessRedirect(frontendRedirect, token));
 
     } catch (error) {
 
       console.error("Google Callback Error:", error);
 
-      const frontendBase = getSafeFrontendFromState(req.query.state);
-      res.redirect(`${frontendBase}/login`);
+      const frontendRedirect = resolveFrontendRedirectUrl(req.query.state, "/login.html");
+      res.redirect(buildFailureRedirect(frontendRedirect, "google_auth_failed"));
 
     }
   }
 );
+
+router.post("/session", async (req, res) => {
+  try {
+    const token = getTokenFromRequest(req);
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Token is required",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user || user.status !== "active" || user.isDeleted) {
+      return res.status(401).json({
+        success: false,
+        message: "User session is no longer valid",
+      });
+    }
+
+    setAuthCookie(res, token);
+
+    return res.json({
+      success: true,
+      message: "Session refreshed",
+      user: buildUserPayload(user),
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid session token",
+    });
+  }
+});
+
+router.post("/logout", (req, res) => {
+  clearAuthCookie(res);
+  return res.json({
+    success: true,
+    message: "Logout successful",
+  });
+});
 
 /* =========================================
    CREATE ADMIN

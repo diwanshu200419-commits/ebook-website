@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const { readCookieValue } = require("../utils/authCookies");
 
 /* =====================================
    🔐 PROTECT ROUTE (JWT VERIFY)
@@ -18,6 +19,11 @@ const protect = async (req, res, next) => {
     // Backward-compatible fallback for legacy frontend links
     if (!token && req.query && typeof req.query.token === "string") {
       token = req.query.token;
+    }
+
+    // Optional secure-cookie fallback for same-origin deployments
+    if (!token) {
+      token = readCookieValue(req);
     }
 
     if (!token) {

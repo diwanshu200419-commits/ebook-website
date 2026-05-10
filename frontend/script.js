@@ -158,6 +158,11 @@ function initNavbar() {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
+      fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+        keepalive: true
+      }).catch(() => null);
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "index.html";

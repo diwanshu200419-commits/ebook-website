@@ -298,6 +298,7 @@ btn.innerText="Creating...";
 try{
 const res=await fetch(`${API_BASE}/api/auth/register`,{
 method:"POST",
+credentials:"include",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({name,email,password,role})
 });
@@ -322,7 +323,7 @@ btn.innerText="Create Account";
 }
 
 function googleLogin(){
-window.location.href=`${API_BASE}/api/auth/google?clientOrigin=${encodeURIComponent(window.location.origin)}`;
+window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL("login.html",window.location.href).href)}`;
 }
 </script>
 
