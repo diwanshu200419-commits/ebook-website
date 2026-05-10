@@ -416,6 +416,10 @@ function renderCreatorBooks(data, token) {
           <span>${numberText(book.salesCount || 0)} sales</span>
           <span>${formatCurrency(book.earnings || 0)}</span>
         </div>
+        <div class="book-meta">
+          <span>AI: ${escapeHTML(book.aiProcessingState || book.aiStatus || "idle")}</span>
+          <span>${escapeHTML(book.aiSuggestion || "AI review details will appear here.")}</span>
+        </div>
         <div class="card-actions">
           <a class="solid-btn" href="content.html">Manage</a>
           <a class="ghost-link" href="${buildSecureFileUrl(book.downloadUrl, token)}">Download</a>

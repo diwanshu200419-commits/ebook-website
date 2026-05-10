@@ -11,6 +11,8 @@ const pageTitle = document.getElementById("pageTitle");
 const pageSub = document.getElementById("pageSub");
 const contentList = document.getElementById("contentList");
 const approvedList = document.getElementById("approvedList");
+const aiOverview = document.getElementById("aiOverview");
+const aiFlaggedList = document.getElementById("aiFlaggedList");
 
 const HEADERS = {
   review: {
@@ -59,6 +61,7 @@ navLinks.forEach((link) => {
 
     if (target === "review") loadPendingBooks();
     if (target === "approved") loadApprovedBooks();
+    if (target === "ai") loadAIOverview();
   });
 });
 
@@ -113,15 +116,18 @@ function renderPending(books) {
           </p>
           <div class="signals">
             <span class="signal ai">AI ${book.aiStatus || "pending"}</span>
+            <span class="signal originality">${Number(book.qualityScore || 0)}% quality</span>
           </div>
         </div>
       </div>
       <div class="actions">
+        <button class="changes" data-report-id="${book._id}">View Report</button>
         <button class="approve" data-id="${book._id}">Approve</button>
         <button class="reject" data-id="${book._id}">Reject</button>
       </div>
     `;
 
+    card.querySelector(".changes").onclick = () => openAiReport(book._id);
     card.querySelector(".approve").onclick = () => approveBook(book._id);
     card.querySelector(".reject").onclick = () => rejectBook(book._id);
 
@@ -187,6 +193,72 @@ async function rejectBook(bookId) {
   }
 }
 
+async function loadAIOverview() {
+  try {
+    const res = await fetch(`${API_BASE}/api/ai/admin/overview`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to load AI overview");
+    }
+
+    renderAiOverview(data.summary || {}, data.topFlagged || []);
+  } catch (err) {
+    console.error(err);
+    aiOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
+    aiFlaggedList.innerHTML = "<p>Failed to load AI overview</p>";
+  }
+}
+
+function renderAiOverview(summary, flagged) {
+  const statusMap = summary.statuses || {};
+  const processingMap = summary.processing || {};
+
+  aiOverview.innerHTML = [
+    { label: "Manual review", value: summary.manualReview || 0 },
+    { label: "High risk", value: summary.highRisk || 0 },
+    { label: "Auto approved", value: summary.autoApproved || 0 },
+    { label: "Queued", value: processingMap.queued || 0 },
+  ].map((card) => `
+    <article class="stat-card">
+      <h3>${escapeHTML(card.label)}</h3>
+      <p>${Number(card.value || 0).toLocaleString("en-IN")}</p>
+    </article>
+  `).join("");
+
+  if (!flagged.length) {
+    aiFlaggedList.innerHTML = `
+      <div class="empty-state">
+        <p>No risky AI cases right now. Status snapshot: ${escapeHTML(buildCompactMap(statusMap))}</p>
+      </div>
+    `;
+    return;
+  }
+
+  aiFlaggedList.innerHTML = flagged.map((book) => `
+    <article class="content-card">
+      <div class="content-info">
+        <div>
+          <h3>${escapeHTML(book.title)}</h3>
+          <p>${escapeHTML(book.moderationReason || "AI moderation details available in the report view.")}</p>
+          <div class="signals">
+            <span class="signal ai">${escapeHTML(book.aiStatus || "pending")}</span>
+            <span class="signal originality">Risk ${Number(book.plagiarismScore || 0)}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="changes" onclick="window.location.href='../ai/ai-review.html?id=${encodeURIComponent(book._id)}'">Open Report</button>
+      </div>
+    </article>
+  `).join("");
+}
+
+function openAiReport(bookId) {
+  window.location.href = `../ai/ai-review.html?id=${encodeURIComponent(bookId)}`;
+}
+
 function logoutUser() {
   fetch(`${API_BASE}/api/auth/logout`, {
     method: "POST",
@@ -208,6 +280,12 @@ function escapeHTML(str) {
       "'":"&#039;"
     }[m];
   });
+}
+
+function buildCompactMap(map) {
+  return Object.entries(map || {})
+    .map(([label, value]) => `${label}: ${value}`)
+    .join(" • ");
 }
 
 loadPendingBooks();

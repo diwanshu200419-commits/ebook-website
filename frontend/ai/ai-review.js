@@ -1,555 +1,376 @@
-/* =========================================
-AUTH & ROLE PROTECTION
-========================================= */
+const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+const token = localStorage.getItem("token");
+const params = new URLSearchParams(window.location.search);
+const bookId = params.get("id");
 
-protectPage(["admin"]);
+const titleEl = document.getElementById("contentTitle");
+const categoryEl = document.getElementById("contentCategory");
+const typeEl = document.getElementById("contentType");
+const creatorEl = document.getElementById("contentCreator");
+const priceMeta = document.getElementById("priceMeta");
+const overallScoreEl = document.getElementById("overallScore");
+const scoreStatusEl = document.getElementById("scoreStatus");
+const insightsList = document.querySelector(".ai-insights ul");
+const recommendationBox = document.getElementById("recommendationBox");
+const recommendationText = document.getElementById("recommendationText");
+const metricsGrid = document.querySelector(".metrics-grid");
+const adminActions = document.getElementById("adminActions");
+const backLink = document.getElementById("backLink");
+const viewerBadge = document.getElementById("viewerBadge");
 
-const admin = JSON.parse(
-  localStorage.getItem("user") || "{}"
-);
+let reviewData = null;
 
-if (!admin || !admin.id) {
-
-  alert("Unauthorized Access");
-
-  window.location.href = "../login.html";
-
-}
-
-/* =========================================
-DEMO AI REPORT
-(BACKEND WILL REPLACE THIS)
-========================================= */
-
-const aiReport = {
-
-  contentId: "c101",
-
-  title: "Advanced Java Handwritten Notes",
-
-  creator: "Yash Parmar",
-
-  category: "Handwritten Notes",
-
-  type: "Notes",
-
-  price: 99,
-
-  scores: {
-
-    overall: 92,
-
-    originality: 94,
-
-    readability: 88,
-
-    relevance: 90,
-
-    spamRisk: "Low",
-
-    copyrightRisk: "Low",
-
-    revenuePotential: "High"
-
-  },
-
-  insights: [
-
-    "Content appears original with no major plagiarism detected",
-
-    "Well-structured for student audience",
-
-    "Minor formatting improvements suggested",
-
-    "Strong demand in Indian & global education market"
-
-  ]
-
-};
-
-/* =========================================
-DOM ELEMENTS
-========================================= */
-
-const titleEl =
-  document.getElementById("contentTitle");
-
-const overallScoreEl =
-  document.getElementById("overallScore");
-
-const insightsList =
-  document.querySelector(".ai-insights ul");
-
-const recommendationBox =
-  document.querySelector(".ai-recommendation");
-
-const recommendationText =
-  recommendationBox.querySelector("p");
-
-const metricsGrid =
-  document.querySelector(".metrics-grid");
-
-/* =========================================
-INITIALIZE PAGE
-========================================= */
-
-initializeReviewPage();
-
-/* =========================================
-INITIALIZER
-========================================= */
+document.addEventListener("DOMContentLoaded", initializeReviewPage);
 
 function initializeReviewPage() {
+  configureViewerShell();
 
-  renderBasicInfo();
-
-  renderMetrics();
-
-  renderInsights();
-
-  renderRecommendation();
-
-  animateScore();
-
-}
-
-/* =========================================
-RENDER BASIC INFO
-========================================= */
-
-function renderBasicInfo() {
-
-  titleEl.textContent =
-    aiReport.title;
-
-  overallScoreEl.textContent =
-    aiReport.scores.overall + "%";
-
-}
-
-/* =========================================
-RENDER METRICS
-========================================= */
-
-function renderMetrics() {
-
-  metricsGrid.innerHTML = "";
-
-  const metrics = [
-
-    {
-      label: "Originality",
-      value: aiReport.scores.originality + "%",
-      className: "good"
-    },
-
-    {
-      label: "Readability",
-      value: aiReport.scores.readability + "%",
-      className: "good"
-    },
-
-    {
-      label: "Relevance",
-      value: aiReport.scores.relevance + "%",
-      className: "good"
-    },
-
-    {
-      label: "Copyright Risk",
-      value: aiReport.scores.copyrightRisk,
-      className: "safe"
-    },
-
-    {
-      label: "Spam Probability",
-      value: aiReport.scores.spamRisk,
-      className: "safe"
-    },
-
-    {
-      label: "Revenue Potential",
-      value: aiReport.scores.revenuePotential,
-      className: "good"
-    }
-
-  ];
-
-  metrics.forEach(metric => {
-
-    const card =
-      document.createElement("article");
-
-    card.className = "metric";
-
-    card.innerHTML = `
-
-      <h4>${metric.label}</h4>
-
-      <span class="${metric.className}">
-        ${metric.value}
-      </span>
-
-    `;
-
-    metricsGrid.appendChild(card);
-
-  });
-
-}
-
-/* =========================================
-RENDER INSIGHTS
-========================================= */
-
-function renderInsights() {
-
-  insightsList.innerHTML = "";
-
-  aiReport.insights.forEach(insight => {
-
-    const li =
-      document.createElement("li");
-
-    li.textContent = "✔ " + insight;
-
-    insightsList.appendChild(li);
-
-  });
-
-}
-
-/* =========================================
-AI RECOMMENDATION ENGINE
-========================================= */
-
-function getRecommendation(score, risk) {
-
-  if (
-    score >= 85 &&
-    risk === "Low"
-  ) {
-
-    return {
-      status: "approve",
-      message: "Recommended for publishing"
-    };
-
+  if (!token) {
+    redirectToLogin();
+    return;
   }
 
-  if (score >= 70) {
+  if (!bookId) {
+    renderErrorState("No book selected. Open this page from the dashboard or admin review queue.");
+    return;
+  }
 
+  loadReviewReport();
+}
+
+function configureViewerShell() {
+  const user = readCurrentUser();
+  const role = user?.role || "";
+  const isAdmin = role === "admin";
+
+  viewerBadge.textContent = isAdmin ? "ADMIN" : role ? "CREATOR VIEW" : "REVIEW";
+  backLink.href = isAdmin ? "../admin/admin.html" : "../dashboard/content.html";
+  backLink.textContent = isAdmin ? "← Back to Admin Dashboard" : "← Back to Content Studio";
+
+  if (role && !isAdmin) {
+    adminActions.classList.add("hidden");
+  }
+}
+
+async function loadReviewReport() {
+  try {
+    const response = await fetch(`${API_BASE}/api/ai/books/${encodeURIComponent(bookId)}/report`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load AI report");
+    }
+
+    reviewData = data;
+    renderReport(data);
+  } catch (error) {
+    console.error(error);
+    renderErrorState(error.message || "Unable to load AI review report");
+  }
+}
+
+function renderReport(data) {
+  const book = data.book || {};
+  const report = data.report || {};
+  const qualitySignals = report.qualitySignals || {};
+  const originalityScore = Math.max(0, 100 - Number(book.plagiarismScore || 0));
+  const readabilityScore = Number(qualitySignals.readabilityScore || 0);
+  const spamRisk = Number(qualitySignals.spamScore || 0);
+  const recommendation = buildRecommendation(book, report);
+
+  titleEl.textContent = book.title || "Untitled book";
+  categoryEl.textContent = book.aiCategory || book.category || "Book";
+  typeEl.textContent = book.type || "Book";
+  creatorEl.textContent = book.authorName || "Unknown creator";
+  priceMeta.innerHTML = `Price: <strong>${escapeHTML(formatPrice(book.price || 0))}</strong>`;
+
+  scoreStatusEl.textContent = recommendation.statusText;
+  scoreStatusEl.className = `score-status ${recommendation.className}`;
+
+  renderMetrics([
+    { label: "Originality", value: `${originalityScore}%`, className: originalityScore >= 75 ? "good" : originalityScore >= 50 ? "warn" : "bad" },
+    { label: "Readability", value: `${readabilityScore}%`, className: readabilityScore >= 65 ? "good" : readabilityScore >= 45 ? "warn" : "bad" },
+    { label: "Quality", value: `${Number(book.qualityScore || 0)}%`, className: Number(book.qualityScore || 0) >= 70 ? "good" : Number(book.qualityScore || 0) >= 45 ? "warn" : "bad" },
+    { label: "Similarity Risk", value: `${Number(book.plagiarismScore || 0)}%`, className: Number(book.plagiarismScore || 0) <= 25 ? "safe" : Number(book.plagiarismScore || 0) <= 55 ? "warn" : "bad" },
+    { label: "Queue State", value: String(report.processingState || book.aiProcessingState || "idle").replace(/_/g, " "), className: report.processingState === "failed" ? "bad" : report.processingState === "completed" ? "good" : "warn" },
+    { label: "Detected Category", value: book.aiCategory || report.suggestedCategory || book.category || "Book", className: "good" }
+  ]);
+
+  renderInsights(buildInsights(book, report));
+
+  recommendationBox.className = `ai-recommendation ${recommendation.className}`;
+  recommendationText.textContent = recommendation.message;
+  animateScore(Number(book.aiScore || 0));
+}
+
+function renderMetrics(metrics) {
+  metricsGrid.innerHTML = "";
+
+  metrics.forEach((metric) => {
+    const card = document.createElement("article");
+    card.className = "metric";
+    card.innerHTML = `
+      <h4>${escapeHTML(metric.label)}</h4>
+      <span class="${escapeHTML(metric.className)}">${escapeHTML(metric.value)}</span>
+    `;
+    metricsGrid.appendChild(card);
+  });
+}
+
+function buildInsights(book, report) {
+  const insights = [];
+
+  if (book.moderationReason) {
+    insights.push(book.moderationReason);
+  }
+  if (book.aiSuggestion && book.aiSuggestion !== book.moderationReason) {
+    insights.push(book.aiSuggestion);
+  }
+
+  (report.improvementSuggestions || []).forEach((item) => {
+    if (item && !insights.includes(item)) {
+      insights.push(item);
+    }
+  });
+
+  if (Array.isArray(report.generatedTags) && report.generatedTags.length) {
+    insights.push(`Suggested search tags: ${report.generatedTags.join(", ")}`);
+  }
+
+  if (report.pageCount) {
+    insights.push(`AI processed ${report.pageCount} page(s) across ${report.chunkCount || 0} text chunk(s).`);
+  }
+
+  if (Array.isArray(report.plagiarismMatches) && report.plagiarismMatches.length) {
+    const top = report.plagiarismMatches[0];
+    insights.push(`Closest similarity match: ${top.title} by ${top.authorName} (${Math.round(Number(top.score || 0) * 100)}% similarity).`);
+  } else {
+    insights.push("No significant similarity matches were detected against processed marketplace books.");
+  }
+
+  if (report.lastError) {
+    insights.push(`Processing note: ${report.lastError}`);
+  }
+
+  return insights.slice(0, 6);
+}
+
+function renderInsights(insights) {
+  insightsList.innerHTML = "";
+  insights.forEach((insight) => {
+    const li = document.createElement("li");
+    li.textContent = `• ${insight}`;
+    insightsList.appendChild(li);
+  });
+}
+
+function buildRecommendation(book, report) {
+  const processingState = String(report.processingState || book.aiProcessingState || "").toLowerCase();
+  const aiStatus = String(book.aiStatus || "").toLowerCase();
+
+  if (processingState === "queued" || processingState === "processing") {
     return {
-      status: "review",
-      message:
-        "Needs improvements before approval"
+      className: "review",
+      statusText: "AI review in progress",
+      message: "The upload is still being scanned. Marketplace visibility will update after the full moderation pass finishes."
     };
+  }
 
+  if (aiStatus === "approved") {
+    return {
+      className: "approve",
+      statusText: "Low moderation risk",
+      message: "Recommended for publishing"
+    };
+  }
+
+  if (aiStatus === "rejected") {
+    return {
+      className: "reject",
+      statusText: "High moderation risk",
+      message: "Not recommended for publishing without revision"
+    };
   }
 
   return {
-    status: "reject",
-    message:
-      "Not recommended for publishing"
+    className: "review",
+    statusText: "Needs manual review",
+    message: "Manual admin review is recommended before this upload goes live"
   };
-
 }
 
-/* =========================================
-RENDER RECOMMENDATION
-========================================= */
-
-function renderRecommendation() {
-
-  const recommendation =
-    getRecommendation(
-      aiReport.scores.overall,
-      aiReport.scores.copyrightRisk
-    );
-
-  recommendationBox.classList.remove(
-    "approve",
-    "review",
-    "reject"
-  );
-
-  recommendationBox.classList.add(
-    recommendation.status
-  );
-
-  recommendationText.textContent =
-    recommendation.message;
-
-}
-
-/* =========================================
-ANIMATE SCORE
-========================================= */
-
-function animateScore() {
-
+function animateScore(target) {
   let current = 0;
+  const safeTarget = Math.max(0, Math.min(100, Number(target || 0)));
+  const interval = setInterval(() => {
+    current += 1;
+    overallScoreEl.textContent = `${current}%`;
 
-  const target =
-    aiReport.scores.overall;
-
-  const interval =
-    setInterval(() => {
-
-      current++;
-
-      overallScoreEl.textContent =
-        current + "%";
-
-      if (current >= target) {
-
-        clearInterval(interval);
-
-      }
-
-    }, 15);
-
+    if (current >= safeTarget) {
+      clearInterval(interval);
+      overallScoreEl.textContent = `${safeTarget}%`;
+    }
+  }, 15);
 }
-
-/* =========================================
-ADMIN ACTIONS
-========================================= */
 
 async function approveContent() {
-
   await handleReviewAction({
-
-    status: "approved",
-
-    successMessage:
-      "✅ Content approved & published globally"
-
+    url: `${API_BASE}/api/admin/books/${encodeURIComponent(bookId)}/approve`,
+    method: "PUT",
+    body: {},
+    successMessage: "Content approved and published"
   });
-
 }
 
 async function requestChanges() {
-
-  const reason =
-    prompt("Enter required changes:");
-
-  if (!reason) return;
+  const reason = prompt("Enter required changes:");
+  if (!reason) {
+    return;
+  }
 
   await handleReviewAction({
-
-    status: "changes_requested",
-
-    note: reason,
-
-    successMessage:
-      "✏️ Changes requested from creator"
-
+    url: `${API_BASE}/api/admin/books/${encodeURIComponent(bookId)}/request-changes`,
+    method: "PUT",
+    body: { adminNotes: reason },
+    successMessage: "Changes requested from creator"
   });
-
 }
 
 async function rejectContent() {
-
-  const reason =
-    prompt("Enter rejection reason:");
-
-  if (!reason) return;
+  const reason = prompt("Enter rejection reason:");
+  if (!reason) {
+    return;
+  }
 
   await handleReviewAction({
-
-    status: "rejected",
-
-    note: reason,
-
-    successMessage:
-      "❌ Content rejected and creator notified"
-
+    url: `${API_BASE}/api/admin/books/${encodeURIComponent(bookId)}/reject`,
+    method: "PUT",
+    body: { adminNotes: reason },
+    successMessage: "Content rejected and creator notified"
   });
-
 }
 
-/* =========================================
-HANDLE REVIEW ACTION
-========================================= */
-
-async function handleReviewAction({
-
-  status,
-
-  note = "",
-
-  successMessage
-
-}) {
+async function handleReviewAction({ url, method, body, successMessage }) {
+  if (readCurrentUser()?.role !== "admin") {
+    return;
+  }
 
   try {
-
     disableButtons();
 
-    const payload =
-      createReviewPayload(
-        status,
-        note
-      );
-
-    console.log(
-      "ADMIN REVIEW PAYLOAD →",
-      payload
-    );
-
-    // FUTURE BACKEND API
-
-    /*
-    await fetch("/api/admin/review", {
-
-      method: "POST",
-
+    const response = await fetch(url, {
+      method,
       headers: {
-        "Content-Type":
-        "application/json"
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
       },
-
-      body:
-      JSON.stringify(payload)
-
+      body: JSON.stringify(body || {})
     });
-    */
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Review action failed");
+    }
 
     showToast(successMessage);
+    await loadReviewReport();
 
     setTimeout(() => {
-
       goBack();
-
     }, 1200);
-
-  }
-
-  catch (error) {
-
+  } catch (error) {
     console.error(error);
-
-    showToast(
-      "Something went wrong"
-    );
-
+    showToast(error.message || "Something went wrong");
     enableButtons();
-
   }
-
 }
-
-/* =========================================
-CREATE PAYLOAD
-========================================= */
-
-function createReviewPayload(
-  status,
-  note
-) {
-
-  return {
-
-    contentId:
-      aiReport.contentId,
-
-    status,
-
-    note,
-
-    reviewedBy:
-      admin.id,
-
-    reviewedAt:
-      new Date().toISOString(),
-
-    aiScore:
-      aiReport.scores.overall
-
-  };
-
-}
-
-/* =========================================
-BUTTON CONTROL
-========================================= */
 
 function disableButtons() {
-
-  document
-    .querySelectorAll(".btn")
-    .forEach(btn => {
-
-      btn.disabled = true;
-
-      btn.style.opacity = ".6";
-
-      btn.style.cursor =
-        "not-allowed";
-
-    });
-
+  document.querySelectorAll(".btn").forEach((button) => {
+    button.disabled = true;
+    button.style.opacity = ".6";
+    button.style.cursor = "not-allowed";
+  });
 }
 
 function enableButtons() {
-
-  document
-    .querySelectorAll(".btn")
-    .forEach(btn => {
-
-      btn.disabled = false;
-
-      btn.style.opacity = "1";
-
-      btn.style.cursor =
-        "pointer";
-
-    });
-
+  document.querySelectorAll(".btn").forEach((button) => {
+    button.disabled = false;
+    button.style.opacity = "1";
+    button.style.cursor = "pointer";
+  });
 }
 
-/* =========================================
-TOAST
-========================================= */
-
 function showToast(message) {
-
-  const toast =
-    document.createElement("div");
-
+  const toast = document.createElement("div");
   toast.className = "toast";
-
   toast.textContent = message;
-
   document.body.appendChild(toast);
 
   setTimeout(() => {
-
     toast.classList.add("show");
-
   }, 100);
 
   setTimeout(() => {
-
     toast.classList.remove("show");
-
     setTimeout(() => {
-
       toast.remove();
-
     }, 300);
-
   }, 2500);
-
 }
-
-/* =========================================
-NAVIGATION
-========================================= */
 
 function goBack() {
-
-  window.location.href =
-    "../admin/admin.html";
-
+  window.location.href = backLink.href;
 }
+
+function renderErrorState(message) {
+  titleEl.textContent = "AI report unavailable";
+  categoryEl.textContent = "Unavailable";
+  typeEl.textContent = "Unavailable";
+  creatorEl.textContent = "Unavailable";
+  priceMeta.innerHTML = `Price: <strong>Unavailable</strong>`;
+  scoreStatusEl.textContent = "Could not load report";
+  scoreStatusEl.className = "score-status bad";
+  recommendationBox.className = "ai-recommendation reject";
+  recommendationText.textContent = message;
+  overallScoreEl.textContent = "--";
+  metricsGrid.innerHTML = "";
+  renderInsights([message]);
+}
+
+function formatPrice(value) {
+  return Number(value || 0) > 0
+    ? `Rs. ${Number(value || 0).toLocaleString("en-IN")}`
+    : "Free";
+}
+
+function readCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function redirectToLogin() {
+  window.location.href = "../login.html";
+}
+
+function escapeHTML(value) {
+  return String(value || "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+window.approveContent = approveContent;
+window.requestChanges = requestChanges;
+window.rejectContent = rejectContent;
+window.goBack = goBack;

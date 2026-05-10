@@ -27,6 +27,8 @@ const rateLimit = require("express-rate-limit");
 const marketplaceRoutes = require("./routes/marketplace");
 const creatorRoutes = require("./routes/creator");
 const adminRoutes = require("./routes/admin");
+const aiRoutes = require("./routes/ai");
+const { initializeAIQueue } = require("./services/ai/queue");
 
 const app = express();
 
@@ -172,6 +174,8 @@ mongoose
     } else {
       console.log("ℹ️ ADMIN_EMAIL and ADMIN_PASSWORD not set - skipping admin seeding");
     }
+    await initializeAIQueue();
+    console.log("AI processing queue ready");
   })
   .catch((err) => {
     console.error("❌ MongoDB Error:", err.message);
@@ -195,6 +199,7 @@ app.use("/api/cart", require("./routes/cart"));
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/creator", creatorRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/ai", aiRoutes);
 
 /* ===================================
    ✅ HEALTH CHECK

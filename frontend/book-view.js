@@ -59,6 +59,7 @@ function renderManualBook() {
   document.getElementById("bookPreview").src = pdfPath;
   document.getElementById("bookNote").textContent = "Official preview loaded.";
   document.getElementById("downloadBtn").onclick = () => window.open(pdfPath, "_blank");
+  renderRecommendations([]);
 }
 
 async function addToCart(bookId) {
@@ -169,6 +170,59 @@ function renderBook(book, access) {
   }
 }
 
+async function loadRecommendations(bookId) {
+  try {
+    const token = getToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await fetch(`${API_BASE}/api/ai/recommendations?bookId=${encodeURIComponent(bookId)}&limit=4`, {
+      headers
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load recommendations");
+    }
+
+    renderRecommendations(data.books || []);
+  } catch (error) {
+    console.error(error);
+    renderRecommendations([]);
+  }
+}
+
+function renderRecommendations(books) {
+  const grid = document.getElementById("recommendationGrid");
+  if (!grid) {
+    return;
+  }
+
+  if (!books.length) {
+    grid.innerHTML = `
+      <article class="recommendation-card">
+        <div class="copy">
+          <h3>No related books yet</h3>
+          <p>Recommendations will appear here as more approved books are processed by the marketplace AI layer.</p>
+          <a href="explore.html">Browse marketplace</a>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
+  grid.innerHTML = books.map((book) => {
+    const cover = resolveAssetUrl(book.coverUrl || book.coverImage || "assets/covers/Ebook_AI.png");
+    return `
+      <article class="recommendation-card">
+        <img src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title)}">
+        <div class="copy">
+          <h3>${escapeHTML(book.title)}</h3>
+          <p>${escapeHTML(book.category || "Book")} · ${escapeHTML(book.authorName || "Creator")}</p>
+          <a href="book_view.html?id=${encodeURIComponent(book._id)}">View recommendation</a>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
 async function loadBookView() {
   const params = new URLSearchParams(window.location.search);
   const bookId = params.get("id");
@@ -186,8 +240,41 @@ async function loadBookView() {
     }
 
     renderBook(data.book, data.access || {});
+    loadRecommendations(bookId);
   } catch (error) {
     console.error(error);
     renderFallback(error.message || "Error loading book");
+    renderRecommendations([]);
   }
+}
+
+function resolveAssetUrl(value) {
+  const source = String(value || "");
+  if (!source) {
+    return "assets/covers/Ebook_AI.png";
+  }
+
+  if (/^(https?:|data:|assets\/|\.\.\/|\.\/)/i.test(source)) {
+    return source;
+  }
+
+  if (source.startsWith("/uploads")) {
+    return `${API_BASE}${source}`;
+  }
+
+  return source;
+}
+
+function escapeHTML(value) {
+  return String(value || "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function escapeAttribute(value) {
+  return escapeHTML(value).replace(/"/g, "&quot;");
 }

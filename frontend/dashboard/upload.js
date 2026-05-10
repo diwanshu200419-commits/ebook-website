@@ -19,11 +19,13 @@ const statusMessage = document.getElementById("statusMessage");
 const descriptionEl = document.getElementById("description");
 const descCount = document.getElementById("descCount");
 const submitBtn = document.querySelector(".btn.primary");
+const generateDescriptionBtn = document.getElementById("generateDescriptionBtn");
 
 let tags = [];
 let isUploading = false;
 let selectedPdfFile = null;
 let selectedCoverFile = null;
+let isInitialized = false;
 
 protectPage(["creator", "author", "admin"]);
 
@@ -31,9 +33,18 @@ if (!token || token === "null" || token === "undefined") {
   redirectToLogin();
 }
 
-document.addEventListener("DOMContentLoaded", initializePage);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializePage);
+} else {
+  initializePage();
+}
 
 function initializePage() {
+  if (isInitialized) {
+    return;
+  }
+
+  isInitialized = true;
   restoreDraft();
   bindForm();
   bindDescriptionCounter();
@@ -41,6 +52,7 @@ function initializePage() {
   bindThumbnail();
   bindDropZone();
   bindRoyaltyCalculator();
+  bindAiDescriptionGenerator();
   renderTags();
   updateRoyalty();
 }
@@ -192,17 +204,27 @@ function validateAndSetPdf(file) {
   }
 
   selectedPdfFile = file;
+  renderSelectedPdfState(file);
+  return true;
+}
+
+function renderSelectedPdfState(file) {
   dropZone.innerHTML = `
     <div class="uploaded-file">
       <h4>PDF ready: ${escapeHTML(file.name)}</h4>
-      <small>${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+      <small>${(file.size / 1024 / 1024).toFixed(2)} MB - click to replace</small>
     </div>
+    <input type="file" id="file" accept=".pdf" hidden>
   `;
-  return true;
+  syncFileInput();
 }
 
 function bindRoyaltyCalculator() {
   priceInput?.addEventListener("input", updateRoyalty);
+}
+
+function bindAiDescriptionGenerator() {
+  generateDescriptionBtn?.addEventListener("click", generateDescription);
 }
 
 function updateRoyalty() {
@@ -313,12 +335,19 @@ function sendUploadRequest(formData) {
 
       if (xhr.status === 201) {
         animateAIScore(response.moderation?.aiScore || response.aiScore || 0);
-        showStatus(response.message || "Upload completed successfully", "success");
+        showStatus(
+          response.aiProcessingState === "queued"
+            ? `${response.message || "Upload completed successfully"} Full PDF AI review is continuing in the background.`
+            : (response.message || "Upload completed successfully"),
+          response.aiStatus === "rejected" ? "error" : "success"
+        );
         showToast(
-          response.moderation?.status === "Approved"
-            ? "Book uploaded and published"
-            : "Book uploaded and sent for review",
-          "success"
+          response.aiProcessingState === "queued"
+            ? "Book uploaded and AI scan queued"
+            : response.aiStatus === "rejected"
+              ? "Upload flagged by initial AI checks"
+              : "Book uploaded successfully",
+          response.aiStatus === "rejected" ? "error" : "success"
         );
         localStorage.removeItem(DRAFT_KEY);
         resetForm();
@@ -341,6 +370,71 @@ function sendUploadRequest(formData) {
 
     xhr.send(formData);
   });
+}
+
+async function generateDescription() {
+  const title = document.getElementById("title").value.trim();
+  const category = document.getElementById("category").value;
+  const notes = descriptionEl.value.trim();
+
+  if (title.length < 3) {
+    showToast("Add a title before generating a description", "error");
+    return;
+  }
+
+  generateDescriptionBtn.disabled = true;
+  generateDescriptionBtn.textContent = "Generating...";
+  showStatus("Generating AI description suggestion...", "info");
+
+  try {
+    const response = await fetch(`${API_BASE}/api/ai/generate-description`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        title,
+        category,
+        tags,
+        notes,
+        excerpt: notes
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to generate description");
+    }
+
+    descriptionEl.value = data.description || descriptionEl.value;
+    if (!category && data.suggestedCategory) {
+      document.getElementById("category").value = data.suggestedCategory;
+    }
+
+    if (Array.isArray(data.generatedTags) && data.generatedTags.length) {
+      const mergedTags = [...new Set([...tags, ...data.generatedTags.map((tag) => String(tag || "").trim().toLowerCase())])]
+        .filter(Boolean)
+        .slice(0, 5);
+      tags = mergedTags;
+      renderTags();
+    }
+
+    updateDescriptionCounter();
+    showStatus(
+      data.provider === "openai"
+        ? "AI description generated with live model suggestions."
+        : "Description generated locally because no AI API key is configured.",
+      "success"
+    );
+    showToast("Description generated", "success");
+  } catch (error) {
+    showStatus(error.message || "Unable to generate description", "error");
+    showToast(error.message || "Unable to generate description", "error");
+  } finally {
+    generateDescriptionBtn.disabled = false;
+    generateDescriptionBtn.textContent = "Generate with AI";
+  }
 }
 
 function animateAIScore(target) {

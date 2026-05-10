@@ -81,6 +81,10 @@ function renderTable(books) {
         <span class="status-pill ${statusClass(book.status)}">${escapeHTML(book.status)}</span>
       </td>
       <td>
+        <strong>${escapeHTML(formatAiState(book))}</strong>
+        <span>${escapeHTML(buildAiSummary(book))}</span>
+      </td>
+      <td>
         <strong>${numberText(book.salesCount || 0)}</strong>
         <span>${numberText(book.downloads || 0)} downloads</span>
       </td>
@@ -90,6 +94,8 @@ function renderTable(books) {
       </td>
       <td>
         <div class="actions">
+          <button type="button" class="secondary-btn" data-ai-id="${book._id}">View AI</button>
+          <button type="button" class="secondary-btn" data-refresh-ai-id="${book._id}">Re-run AI</button>
           <button type="button" class="secondary-btn" data-edit-id="${book._id}">Edit</button>
           <button type="button" class="secondary-btn danger" data-delete-id="${book._id}">${book.isArchived ? "Delete" : "Archive/Delete"}</button>
         </div>
@@ -99,6 +105,14 @@ function renderTable(books) {
 
   table.querySelectorAll("[data-edit-id]").forEach((button) => {
     button.addEventListener("click", () => openEditModal(button.dataset.editId));
+  });
+
+  table.querySelectorAll("[data-ai-id]").forEach((button) => {
+    button.addEventListener("click", () => openAiReport(button.dataset.aiId));
+  });
+
+  table.querySelectorAll("[data-refresh-ai-id]").forEach((button) => {
+    button.addEventListener("click", () => reprocessAi(button.dataset.refreshAiId));
   });
 
   table.querySelectorAll("[data-delete-id]").forEach((button) => {
@@ -210,6 +224,31 @@ async function handleDelete(bookId) {
   }
 }
 
+function openAiReport(bookId) {
+  window.location.href = `../ai/ai-review.html?id=${encodeURIComponent(bookId)}`;
+}
+
+async function reprocessAi(bookId) {
+  try {
+    const response = await fetch(`${API_BASE}/api/ai/books/${bookId}/reprocess`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to queue AI review");
+    }
+
+    showMessage(data.message || "AI review queued", "success");
+    await loadBooks();
+  } catch (error) {
+    showMessage(error.message || "Unable to queue AI review", "error");
+  }
+}
+
 function showMessage(message, type) {
   const box = document.getElementById("messageBox");
   box.textContent = message;
@@ -234,6 +273,44 @@ function statusClass(status) {
     return "danger";
   }
   return "neutral";
+}
+
+function formatAiState(book) {
+  const processing = String(book.aiProcessingState || "").toLowerCase();
+  if (processing === "queued") {
+    return "Queued";
+  }
+  if (processing === "processing") {
+    return "Scanning";
+  }
+  if (processing === "failed") {
+    return "Failed";
+  }
+
+  const aiStatus = String(book.aiStatus || "").toLowerCase();
+  if (aiStatus === "approved") {
+    return "Approved";
+  }
+  if (aiStatus === "rejected") {
+    return "Rejected";
+  }
+
+  return "Pending";
+}
+
+function buildAiSummary(book) {
+  const parts = [];
+  if (Number.isFinite(Number(book.qualityScore))) {
+    parts.push(`Quality ${Number(book.qualityScore || 0)}%`);
+  }
+  if (Number.isFinite(Number(book.plagiarismScore))) {
+    parts.push(`Plagiarism ${Number(book.plagiarismScore || 0)}%`);
+  }
+  if (book.aiSuggestion) {
+    parts.push(String(book.aiSuggestion));
+  }
+
+  return parts.join(" • ") || "AI review data will appear here after processing.";
 }
 
 function formatCurrency(value) {

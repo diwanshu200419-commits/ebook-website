@@ -39,7 +39,7 @@
 
       </div>
 
-      <span class="badge">
+      <span class="badge" id="viewerBadge">
         ADMIN
       </span>
 
@@ -57,15 +57,15 @@
 
         <p>
           Category:
-          <strong>Handwritten Notes</strong>
+          <strong id="contentCategory">Handwritten Notes</strong>
         </p>
 
         <p>
           Type:
-          <strong>Notes</strong>
+          <strong id="contentType">Notes</strong>
         </p>
 
-        <p>
+        <p id="priceMeta">
           Price:
           <strong>₹99</strong>
         </p>
@@ -74,7 +74,7 @@
 
       <p class="creator">
         Uploaded by:
-        <strong>Yash Parmar</strong>
+        <strong id="contentCreator">Yash Parmar</strong>
       </p>
 
     </section>
@@ -93,7 +93,7 @@
 
       </div>
 
-      <p class="score-status good">
+      <p class="score-status good" id="scoreStatus">
         High Quality Content
       </p>
 
@@ -195,11 +195,11 @@
 
     <!-- ================= RECOMMENDATION ================= -->
 
-    <section class="ai-recommendation approve">
+    <section class="ai-recommendation approve" id="recommendationBox">
 
       <h3>AI Recommendation</h3>
 
-      <p>
+      <p id="recommendationText">
         Recommended for publishing
       </p>
 
@@ -207,7 +207,7 @@
 
     <!-- ================= ADMIN ACTIONS ================= -->
 
-    <section class="admin-actions">
+    <section class="admin-actions" id="adminActions">
 
       <button
         class="btn approve"
@@ -235,6 +235,7 @@
     <!-- ================= BACK BUTTON ================= -->
 
     <a
+      id="backLink"
       class="back"
       href="../admin/admin.html"
     >
@@ -245,9 +246,14 @@
 
   <!-- ================= SCRIPTS ================= -->
 
+  <script src="../config.js"></script>
   <script src="../auth.js"></script>
 
   <script src="ai-review.js"></script>
+
+  <script>
+    protectPage(["admin", "creator", "author"]);
+  </script>
 
 </body>
 

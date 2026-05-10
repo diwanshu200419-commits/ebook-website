@@ -8,9 +8,12 @@ const router = express.Router();
 
 const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
+const BookAI = require("../models/BookAI");
 const Payment = require("../models/Payment");
 const User = require("../models/user");
 const { buildAIReview } = require("../services/aiReview");
+const { enqueueBookAIProcessing } = require("../services/ai/queue");
+const { searchApprovedBooks } = require("../services/ai/search");
 const { serializeBook } = require("../services/bookData");
 const {
   ensureUploadDir,
@@ -348,14 +351,9 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       description: value.description,
       category: value.category,
       price: value.price,
+      tags: value.tags,
+      type: value.type,
     });
-
-    const moderationStatus =
-      aiReview.aiStatus === "approved"
-        ? "Approved"
-        : aiReview.aiStatus === "rejected"
-          ? "Rejected"
-          : "Admin_Review";
 
     const isPaid = Number(value.price || 0) > 0;
     const filePath = buildPublicUploadPath("books", pdfFile.filename);
@@ -379,35 +377,51 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       coverAlt: value.title,
       isPaid,
       requiresLogin: true,
-      status: moderationStatus,
-      aiStatus: aiReview.aiStatus,
+      status: aiReview.aiStatus === "rejected" ? "Rejected" : "AI_Review",
+      aiStatus: aiReview.aiStatus === "rejected" ? "rejected" : "pending",
       aiScore: aiReview.aiScore,
       plagiarismScore: aiReview.plagiarismScore,
       qualityScore: aiReview.qualityScore,
-      aiSuggestion: aiReview.aiSuggestion,
+      aiSuggestion:
+        aiReview.aiStatus === "rejected"
+          ? aiReview.aiSuggestion
+          : "AI scan queued. Full PDF moderation is processing in the background.",
+      moderationReason:
+        aiReview.aiStatus === "rejected"
+          ? aiReview.aiSuggestion
+          : "Initial validation passed. Full PDF AI review has been queued.",
+      aiCategory: value.category,
+      aiTags: value.tags,
+      aiProcessingState: aiReview.aiStatus === "rejected" ? "completed" : "queued",
     });
+
+    if (aiReview.aiStatus !== "rejected") {
+      enqueueBookAIProcessing(book._id, { allowStatusChange: true });
+    }
 
     const access = await getBookAccess(book, req.user);
 
     return res.status(201).json({
       success: true,
-      message: moderationStatus === "Approved"
-        ? "Book uploaded and published successfully"
-        : "Book uploaded successfully and sent for review",
+      message: aiReview.aiStatus === "rejected"
+        ? "Book uploaded, but the initial AI checks flagged it for rejection."
+        : "Book uploaded successfully and AI review has started.",
       book: buildBookPayload(book, access),
       moderation: {
-        status: moderationStatus,
-        aiStatus: aiReview.aiStatus,
+        status: book.status,
+        aiStatus: book.aiStatus,
         aiScore: aiReview.aiScore,
         plagiarismScore: aiReview.plagiarismScore,
         qualityScore: aiReview.qualityScore,
-        aiSuggestion: aiReview.aiSuggestion,
+        aiSuggestion: book.aiSuggestion,
+        processingState: book.aiProcessingState,
       },
-      aiStatus: aiReview.aiStatus,
+      aiStatus: book.aiStatus,
       aiScore: aiReview.aiScore,
       plagiarismScore: aiReview.plagiarismScore,
       qualityScore: aiReview.qualityScore,
-      aiSuggestion: aiReview.aiSuggestion,
+      aiSuggestion: book.aiSuggestion,
+      aiProcessingState: book.aiProcessingState,
     });
   } catch (error) {
     cleanupUploadedFiles(req);
@@ -435,72 +449,18 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
 ===================================== */
 router.get("/", async (req, res) => {
   try {
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 60);
-    const skip = (page - 1) * limit;
-    const category = String(req.query.category || "").trim();
-    const search = String(req.query.search || "").trim();
-    const sort = req.query.sort;
-
-    const filter = {
-      status: "Approved",
-      isArchived: { $ne: true },
-    };
-
-    if (category) {
-      filter.category = category;
-    }
-
-    if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { authorName: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { tags: { $in: [new RegExp(search, "i")] } },
-      ];
-    }
-
-    const [books, total, categoryCounts] = await Promise.all([
-      Book.find(filter)
-        .populate("author", "name username")
-        .sort(getSortConfig(sort))
-        .skip(skip)
-        .limit(limit),
-      Book.countDocuments(filter),
-      Book.aggregate([
-        { $match: { status: "Approved", isArchived: { $ne: true } } },
-        { $group: { _id: "$category", count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } },
-      ]),
-    ]);
-
-    const booksWithUrls = books.map((book) =>
-      serializeBook(book, {
-        backendBaseUrl,
-        includeFilePath: false,
-        previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
-      })
-    );
+    const result = await searchApprovedBooks({
+      backendBaseUrl,
+      page: req.query.page,
+      limit: req.query.limit,
+      category: req.query.category,
+      search: req.query.search,
+      sort: req.query.sort,
+    });
 
     return res.json({
       success: true,
-      page,
-      limit,
-      total,
-      pages: total ? Math.ceil(total / limit) : 0,
-      books: booksWithUrls,
-      filters: {
-        categories: categoryCounts.map((entry) => ({
-          name: entry._id || "Other",
-          count: entry.count,
-        })),
-      },
-      summary: {
-        totalApprovedBooks: total,
-        totalCategories: categoryCounts.length,
-        totalFreeBooks: booksWithUrls.filter((book) => Number(book.price || 0) <= 0).length,
-        totalPaidBooks: booksWithUrls.filter((book) => Number(book.price || 0) > 0).length,
-      },
+      ...result,
     });
   } catch (error) {
     console.error("Get Books Error:", error.message);
@@ -765,7 +725,13 @@ router.put("/:id", protect, async (req, res) => {
       }
     }
 
+    book.aiProcessingState = "queued";
+    book.aiStatus = "pending";
+    book.aiSuggestion = "Metadata updated. AI analysis is refreshing.";
+    book.moderationReason = "Metadata changed after upload. AI analysis queued again.";
+
     await book.save();
+    enqueueBookAIProcessing(book._id, { allowStatusChange: false });
     const access = await getBookAccess(book, req.user);
 
     return res.json({
@@ -814,7 +780,10 @@ router.delete("/:id", protect, async (req, res) => {
     }
 
     const filesToDelete = [book.filePath, book.previewPath, book.coverImage].filter(Boolean);
-    await Book.findByIdAndDelete(book._id);
+    await Promise.all([
+      Book.findByIdAndDelete(book._id),
+      BookAI.deleteOne({ book: book._id }),
+    ]);
     filesToDelete.forEach((publicPath) => safeDeletePublicFile(publicPath));
 
     return res.json({

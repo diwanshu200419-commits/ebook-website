@@ -1,125 +1,131 @@
-// services/aiReview.js
-const OpenAI = require('openai');
+const {
+  getModerationModel,
+  getOpenAIClient,
+  hasOpenAI,
+} = require("./ai/client");
+const {
+  buildKeywordList,
+  clamp,
+  normalizeWhitespace,
+  tokenizeText,
+} = require("./ai/text");
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
-}
+function buildInitialHeuristicReview(book) {
+  const title = normalizeWhitespace(book.title || "");
+  const description = normalizeWhitespace(book.description || "");
+  const text = normalizeWhitespace([
+    title,
+    description,
+    book.category || "",
+    book.type || "",
+    Array.isArray(book.tags) ? book.tags.join(", ") : "",
+  ].join("\n\n"));
+  const tokens = tokenizeText(text);
+  const uniqueRatio = tokens.length ? new Set(tokens).size / tokens.length : 0;
+  const tagCount = Array.isArray(book.tags) ? book.tags.length : 0;
 
-// Fallback heuristic AI review if OpenAI is not available
-function heuristicReview(book) {
-  const title = (book.title || "").trim();
-  const description = (book.description || "").trim();
-  const text = `${title} ${description}`.toLowerCase();
-  const words = text.split(/\s+/).filter(Boolean);
-
-  let qualityScore = 40;
-  if (title.length >= 8) qualityScore += 10;
-  if (description.length >= 120) qualityScore += 25;
-  if (description.length >= 300) qualityScore += 10;
-  if ((book.price || 0) >= 0) qualityScore += 5;
-  if (["Book", "Notes", "Study", "AI", "Comics"].includes(book.category)) qualityScore += 5;
+  let qualityScore = 42;
+  if (title.length >= 12) qualityScore += 10;
+  if (description.length >= 120) qualityScore += 22;
+  if (description.length >= 240) qualityScore += 10;
+  if (tagCount >= 3) qualityScore += 6;
+  if (tokens.length >= 80) qualityScore += 6;
   qualityScore = clamp(qualityScore, 0, 100);
 
-  const shortOrSpam = words.filter((w) => w.length <= 2).length;
-  const uniqueCount = new Set(words).size || 1;
-  const repetitionRatio = words.length ? 1 - uniqueCount / words.length : 0;
-  let plagiarismScore = 5;
-  plagiarismScore += clamp(Math.round(repetitionRatio * 120), 0, 70);
-  plagiarismScore += shortOrSpam > 40 ? 10 : 0;
+  let plagiarismScore = 8;
+  plagiarismScore += clamp(Math.round((1 - uniqueRatio) * 60), 0, 45);
   plagiarismScore += description.length < 80 ? 15 : 0;
+  plagiarismScore += tokens.length < 35 ? 12 : 0;
   plagiarismScore = clamp(plagiarismScore, 0, 100);
 
-  const aiScore = clamp(Math.round((qualityScore * 0.65) + ((100 - plagiarismScore) * 0.35)), 0, 100);
-
   let aiStatus = "pending";
-  if (plagiarismScore < 30 && qualityScore >= 70) {
-    aiStatus = "approved";
-  } else if (plagiarismScore >= 70 || qualityScore < 35) {
+  if (plagiarismScore >= 75 || qualityScore < 32) {
     aiStatus = "rejected";
+  } else if (plagiarismScore <= 24 && qualityScore >= 76) {
+    aiStatus = "approved";
   }
 
+  const aiScore = clamp(Math.round((qualityScore * 0.65) + ((100 - plagiarismScore) * 0.35)), 0, 100);
   const aiSuggestion =
-    aiStatus === "approved"
-      ? "Auto-approved by AI quality checks."
-      : aiStatus === "rejected"
-        ? "High risk content quality/plagiarism. Requires major revision."
-        : "Needs admin review before publishing.";
+    aiStatus === "rejected"
+      ? "Initial AI checks flagged this upload for weak originality or incomplete content."
+      : aiStatus === "approved"
+        ? "Initial AI checks look healthy. Full PDF moderation will confirm the final decision."
+        : "Initial AI checks passed, but the full PDF scan is still required.";
 
-  return { aiStatus, plagiarismScore, qualityScore, aiSuggestion, aiScore };
+  return {
+    aiStatus,
+    qualityScore,
+    plagiarismScore,
+    aiSuggestion,
+    aiScore,
+    keywords: buildKeywordList(text, 6),
+  };
 }
 
-// Real AI review using OpenAI
-async function openAIReview(book) {
-  if (!process.env.OPENAI_API_KEY) {
-    return heuristicReview(book);
+async function buildOpenAiInitialReview(book, fallback) {
+  if (!hasOpenAI()) {
+    return fallback;
   }
 
   try {
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+    const client = getOpenAIClient();
+    const response = await client.responses.create({
+      model: getModerationModel(),
+      instructions: [
+        "You perform a quick pre-screen for an ebook marketplace upload before deeper PDF analysis runs.",
+        "Return JSON only.",
+      ].join(" "),
+      input: [
+        `Title: ${book.title || ""}`,
+        `Description: ${book.description || ""}`,
+        `Category: ${book.category || ""}`,
+        `Type: ${book.type || ""}`,
+        `Price: ${book.price || 0}`,
+        `Tags: ${Array.isArray(book.tags) ? book.tags.join(", ") : ""}`,
+      ].join("\n"),
+      text: {
+        format: {
+          type: "json_schema",
+          name: "ebook_initial_review",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["qualityScore", "plagiarismScore", "aiStatus", "aiSuggestion"],
+            properties: {
+              qualityScore: { type: "integer", minimum: 0, maximum: 100 },
+              plagiarismScore: { type: "integer", minimum: 0, maximum: 100 },
+              aiStatus: { type: "string", enum: ["approved", "pending", "rejected"] },
+              aiSuggestion: { type: "string", minLength: 8, maxLength: 240 },
+            },
+          },
+        },
+      },
     });
 
-    const title = (book.title || "").trim();
-    const description = (book.description || "").trim();
-    const category = book.category || "Book";
-
-    const prompt = `
-You are an AI content moderator for an educational ebook marketplace. Analyze this book submission and provide:
-
-1. qualityScore (0-100): How good is the content quality?
-2. plagiarismScore (0-100): How likely is this to be plagiarized or low-quality spam?
-3. aiStatus: "approved", "pending", or "rejected"
-4. aiSuggestion: Short helpful feedback for the creator
-
-Book Details:
-- Title: ${title}
-- Description: ${description}
-- Category: ${category}
-- Price: ₹${book.price || 0}
-
-Respond with JSON only in this exact format:
-{
-  "qualityScore": 85,
-  "plagiarismScore": 10,
-  "aiStatus": "approved",
-  "aiSuggestion": "Great content!"
-}
-`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-    });
-
-    const content = response.choices[0]?.message?.content || "";
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    
-    if (jsonMatch) {
-      const result = JSON.parse(jsonMatch[0]);
-      const aiScore = clamp(Math.round((result.qualityScore * 0.65) + ((100 - result.plagiarismScore) * 0.35)), 0, 100);
-      return {
-        aiStatus: result.aiStatus || "pending",
-        plagiarismScore: clamp(result.plagiarismScore || 0, 0, 100),
-        qualityScore: clamp(result.qualityScore || 0, 0, 100),
-        aiSuggestion: result.aiSuggestion || "Needs admin review before publishing.",
-        aiScore
-      };
-    }
+    const parsed = JSON.parse(response.output_text || "{}");
+    const qualityScore = clamp(Number(parsed.qualityScore || fallback.qualityScore), 0, 100);
+    const plagiarismScore = clamp(Number(parsed.plagiarismScore || fallback.plagiarismScore), 0, 100);
+    return {
+      ...fallback,
+      qualityScore,
+      plagiarismScore,
+      aiStatus: ["approved", "pending", "rejected"].includes(parsed.aiStatus) ? parsed.aiStatus : fallback.aiStatus,
+      aiSuggestion: normalizeWhitespace(parsed.aiSuggestion || fallback.aiSuggestion),
+      aiScore: clamp(Math.round((qualityScore * 0.65) + ((100 - plagiarismScore) * 0.35)), 0, 100),
+    };
   } catch (error) {
-    console.error("OpenAI review error:", error.message);
+    console.error("Initial OpenAI review error:", error.message);
+    return fallback;
   }
-
-  return heuristicReview(book);
 }
 
 async function buildAIReview(book) {
-  if (process.env.OPENAI_API_KEY) {
-    return await openAIReview(book);
-  }
-  return heuristicReview(book);
+  const heuristic = buildInitialHeuristicReview(book);
+  return buildOpenAiInitialReview(book, heuristic);
 }
 
 module.exports = {
-  buildAIReview
+  buildAIReview,
 };

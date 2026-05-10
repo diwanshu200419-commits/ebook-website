@@ -395,10 +395,10 @@ body {
     width: 100%;
   }
 
-  .content-table th:nth-child(3),
-  .content-table td:nth-child(3),
   .content-table th:nth-child(4),
-  .content-table td:nth-child(4) {
+  .content-table td:nth-child(4),
+  .content-table th:nth-child(5),
+  .content-table td:nth-child(5) {
     display: none;
   }
 }

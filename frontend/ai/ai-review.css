@@ -18,6 +18,10 @@ overflow-x:hidden;
 box-sizing:border-box;
 }
 
+.hidden{
+display:none !important;
+}
+
 body::before{
 content:'';
 position:fixed;

@@ -150,6 +150,37 @@ const BookSchema = new mongoose.Schema({
     default: ""
   },
 
+  moderationReason: {
+    type: String,
+    default: ""
+  },
+
+  aiCategory: {
+    type: String,
+    default: ""
+  },
+
+  aiTags: {
+    type: [String],
+    default: []
+  },
+
+  aiProcessingState: {
+    type: String,
+    enum: ["idle", "queued", "processing", "completed", "failed"],
+    default: "idle"
+  },
+
+  aiReviewedAt: {
+    type: Date,
+    default: null
+  },
+
+  adminNotes: {
+    type: String,
+    default: ""
+  },
+
   /* =====================
      💰 EARNING SYSTEM
   ===================== */
@@ -190,6 +221,11 @@ const BookSchema = new mongoose.Schema({
   },
 
   archivedAt: {
+    type: Date,
+    default: null
+  },
+
+  publishedAt: {
     type: Date,
     default: null
   },
