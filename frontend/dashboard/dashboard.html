@@ -1,346 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-<title>Creator Dashboard | E-Book Market</title>
+<title>Dashboard | E-Book Market</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="dashboard.css">
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
+<script src="../config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="../auth.js"></script>
-
-<style>
-body{visibility:visible;}
-</style>
-
 </head>
-
 <body>
 
-<div class="layout">
+<div class="dashboard-shell">
 
-<!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <p class="sidebar-kicker">E-BOOK MARKET</p>
+      <h2>Command Center</h2>
+      <span id="sidebarRole">Reader Workspace</span>
+    </div>
 
-<aside class="sidebar">
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="active">Overview</a>
+      <a href="../explore.html" id="libraryNav">Marketplace</a>
+      <a href="content.html" data-creator-link>Content</a>
+      <a href="upload.html" data-creator-link>Upload</a>
+      <a href="earning.html" data-creator-link>Earnings</a>
+      <a href="analytics.html" data-creator-link>Analytics</a>
+      <a href="setting.html">Settings</a>
+    </nav>
 
-<h2 class="brand">E-BOOK MARKET</h2>
+    <div class="sidebar-footer">
+      <div class="sidebar-callout">
+        <p id="sidebarCalloutLabel">Library ready</p>
+        <strong id="sidebarCalloutValue">0 unlocked books</strong>
+      </div>
+      <button id="logoutBtn" class="ghost-btn" type="button">Logout</button>
+    </div>
+  </aside>
 
-<nav>
+  <main class="dashboard-main">
+    <header class="hero-card">
+      <div class="hero-copy">
+        <p class="eyebrow" id="heroEyebrow">Dashboard</p>
+        <h1 id="dashboardTitle">Loading your workspace...</h1>
+        <p id="dashboardSubtitle">Connecting to your purchases, uploads, and live account activity.</p>
+      </div>
 
-<a href="dashboard.html" class="active">🏠 Overview</a>
+      <div class="profile-panel">
+        <img id="profileAvatar" src="../assets/default-avatar.png" alt="Profile avatar">
+        <div>
+          <span class="profile-label">Profile</span>
+          <h3 id="profileName">Member</h3>
+          <p id="profileMeta">reader</p>
+        </div>
+        <span class="role-pill" id="profileRole">READER</span>
+      </div>
+    </header>
 
-<a href="content.html">📚 My Content</a>
+    <section class="summary-grid" id="summaryGrid"></section>
 
-<a href="upload.html">⬆ Upload Book</a>
+    <section class="panel chart-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker" id="chartKicker">Insights</p>
+          <h2 id="chartTitle">Performance overview</h2>
+        </div>
+        <span class="panel-badge" id="chartBadge">Live data</span>
+      </div>
 
-<a href="earning.html">💰 Earnings</a>
+      <div class="chart-shell">
+        <canvas id="dashboardChart"></canvas>
+        <div class="empty-copy hidden" id="chartEmpty">
+          No activity yet. Your chart will light up as soon as you purchase or publish books.
+        </div>
+      </div>
+    </section>
 
-<a href="analytics.html">📊 Analytics</a>
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker" id="primaryKicker">Library</p>
+          <h2 id="primaryTitle">Purchased books</h2>
+        </div>
+        <a class="inline-link" id="primaryAction" href="../explore.html">Explore books</a>
+      </div>
 
-<a href="setting.html">⚙ Settings</a>
+      <div class="book-grid" id="primaryGrid"></div>
+      <div class="empty-copy hidden" id="primaryEmpty"></div>
+    </section>
 
-</nav>
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker" id="secondaryKicker">History</p>
+          <h2 id="secondaryTitle">Order history</h2>
+        </div>
+      </div>
 
-<div class="sidebar-footer">
+      <div id="secondaryBody"></div>
+    </section>
 
-<button onclick="location.href='earning.html'" class="primary-btn">
-Withdraw
-</button>
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker" id="activityKicker">Profile</p>
+          <h2 id="activityTitle">Account snapshot</h2>
+        </div>
+      </div>
 
-<button id="logoutBtn" class="logout-btn">
-Logout
-</button>
-
+      <div id="activityBody"></div>
+    </section>
+  </main>
 </div>
-
-</aside>
-
-
-
-<!-- MAIN -->
-
-<main class="main">
-
-<header class="topbar">
-
-<div>
-
-<h1>
-Welcome back,
-<span id="userName">Creator</span> 👋
-</h1>
-
-<p>
-
-This month you earned
-<strong id="monthlyEarnings">₹0</strong>
-
-<span id="growthIndicator" class="growth positive">
-+0%
-</span>
-
-</p>
-
-</div>
-
-<div class="top-actions">
-
-<span class="badge" id="roleBadge">CREATOR</span>
-
-<div class="wallet">
-
-💰 Wallet
-<strong id="walletBalance">₹0</strong>
-
-</div>
-
-</div>
-
-</header>
-
-
-
-<!-- CREATOR SCORE -->
-
-<section class="creator-score">
-
-<div class="score-card">
-
-<h3>Creator Score</h3>
-
-<div id="creatorScore">0</div>
-
-<p>Performance rating based on sales & activity</p>
-
-</div>
-
-</section>
-
-
-
-<!-- QUICK ACTIONS -->
-
-<section class="quick-actions">
-
-<button onclick="location.href='upload.html'">
-+ Upload New Book
-</button>
-
-<button onclick="location.href='analytics.html'">
-View Analytics
-</button>
-
-<button onclick="location.href='earning.html'">
-Earnings Report
-</button>
-
-</section>
-
-
-
-<!-- STATS -->
-
-<section class="stats">
-
-<div class="card">
-<h3 id="totalEarnings">₹0</h3>
-<p>Total Earnings</p>
-</div>
-
-<div class="card">
-<h3 id="totalDownloads">0</h3>
-<p>Total Downloads</p>
-</div>
-
-<div class="card">
-<h3 id="totalBooks">0</h3>
-<p>Published Books</p>
-</div>
-
-<div class="card highlight">
-<h3 id="globalRank">—</h3>
-<p>Global Rank</p>
-</div>
-
-</section>
-
-
-
-<!-- EARNINGS CHART -->
-
-<section class="chart-section">
-
-<h2>Earnings Performance</h2>
-
-<canvas id="earningsChart"></canvas>
-
-</section>
-
-<!-- ================= CREATOR PERFORMANCE ================= -->
-
-<section class="chart-section">
-
-<div class="section-header">
-<h2>Creator Performance</h2>
-<span>AI Performance Radar</span>
-</div>
-
-<canvas id="creatorRadar"></canvas>
-
-</section>
-
-
-<!-- GLOBAL SALES -->
-
-<section class="chart-section">
-
-<h2>Global Sales</h2>
-
-<canvas id="globalSalesChart"></canvas>
-
-</section>
-
-
-
-<!-- DOWNLOAD HEATMAP -->
-
-<section class="chart-section">
-
-<h2>Download Activity</h2>
-
-<canvas id="downloadHeatmap"></canvas>
-
-</section>
-
-
-
-<!-- AI FORECAST -->
-
-<section class="ai-forecast">
-
-<h2>AI Revenue Forecast</h2>
-
-<div class="forecast-grid">
-
-<div class="forecast-card">
-<h3 id="forecastRevenue">₹0</h3>
-<p>Predicted Revenue</p>
-</div>
-
-<div class="forecast-card">
-<h3 id="forecastGrowth">0%</h3>
-<p>Growth Prediction</p>
-</div>
-
-<div class="forecast-card">
-<h3 id="salesMomentum">Low</h3>
-<p>Sales Momentum</p>
-</div>
-
-</div>
-
-</section>
-
-
-
-<!-- TOP BOOKS -->
-
-<section class="top-books">
-
-<h2>Top Performing Books</h2>
-
-<div id="topBooksContainer" class="books-grid">
-
-<p>Loading books...</p>
-
-</div>
-
-</section>
-
-
-
-<!-- RECENT SALES -->
-
-<section class="sales-feed">
-
-<h2>Recent Sales</h2>
-
-<div id="salesFeed">
-
-<p>No recent sales yet</p>
-
-</div>
-
-</section>
-
-
-
-<!-- CREATOR LEADERBOARD -->
-
-<section class="leaderboard">
-
-<h2>Creator Leaderboard</h2>
-
-<div id="leaderboardContainer"></div>
-
-</section>
-
-
-
-<!-- TRENDING AUTHORS -->
-
-<section class="leaderboard">
-
-<h2>Trending Authors</h2>
-
-<div id="trendingAuthors"></div>
-
-</section>
-
-
-
-<!-- AI BOOK RECOMMENDATIONS -->
-
-<section class="top-books">
-
-<h2>Recommended Books</h2>
-
-<div id="recommendedBooks" class="books-grid"></div>
-
-</section>
-
-
-
-<!-- NOTES MARKET -->
-
-<section class="notes-section">
-
-<h2>Handwritten Notes Marketplace</h2>
-
-<p>
-
-Upload handwritten notes and earn from students worldwide.
-
-</p>
-
-<button onclick="location.href='upload.html'" class="primary-btn">
-
-Upload Notes
-
-</button>
-
-</section>
-
-</main>
-
-</div>
-
-
 
 <script src="dashboard.js"></script>
 

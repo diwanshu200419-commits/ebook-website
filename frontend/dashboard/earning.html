@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../config.js"></script>
 <script src="../auth.js"></script>
 
 </head>
@@ -142,7 +143,7 @@ Minimum ₹500 • Withdrawals processed within 3-5 working days
 
 <div class="section-header">
 <h2>Global Sales</h2>
-<span>Country wise revenue</span>
+<span>Category-wise creator revenue</span>
 </div>
 
 <canvas id="globalSalesChart"></canvas>
@@ -271,7 +272,7 @@ Minimum ₹500 • Withdrawals processed within 3-5 working days
 No payout method configured
 </p>
 
-<button class="btn-secondary">
+<button class="btn-secondary" onclick="location.href='setting.html'">
 Update Payout Details
 </button>
 

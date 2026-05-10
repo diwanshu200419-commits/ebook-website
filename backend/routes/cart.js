@@ -5,6 +5,7 @@ const router = express.Router();
 const { protect } = require("../middleware/auth");
 const Cart = require("../models/Cart");
 const Book = require("../models/book");
+const Payment = require("../models/Payment");
 
 async function getOrCreateCart(userId) {
   let cart = await Cart.findOne({ user: userId });
@@ -39,11 +40,23 @@ router.post("/add", protect, async (req, res) => {
     if (!book) {
       return res.status(404).json({ success: false, message: "Book not found" });
     }
+    if (book.isArchived) {
+      return res.status(400).json({ success: false, message: "Book is no longer available" });
+    }
     if ((book.status || "") !== "Approved") {
       return res.status(400).json({ success: false, message: "Book is not available for purchase" });
     }
     if (!book.isPaid || Number(book.price || 0) <= 0) {
       return res.status(400).json({ success: false, message: "Free books do not require cart checkout" });
+    }
+
+    const existingPayment = await Payment.findOne({
+      user: req.user.id,
+      book: book._id,
+      status: "approved"
+    }).select("_id");
+    if (existingPayment) {
+      return res.status(400).json({ success: false, message: "You already purchased this book" });
     }
 
     const cart = await getOrCreateCart(req.user.id);

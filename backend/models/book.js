@@ -19,6 +19,12 @@ const BookSchema = new mongoose.Schema({
     required: true
   },
 
+  type: {
+    type: String,
+    enum: ["Book", "Notes", "Study", "AI", "Comics", "Other"],
+    default: "Book"
+  },
+
   category: {
     type: String,
     enum: [
@@ -32,9 +38,25 @@ const BookSchema = new mongoose.Schema({
       "Self Help",
       "Fiction",
       "Competitive",
+      "Programming",
+      "Business",
+      "Design",
+      "Finance",
+      "Self Growth",
+      "Handwritten",
       "Other"
     ],
     default: "Book"
+  },
+
+  language: {
+    type: String,
+    default: "English"
+  },
+
+  tags: {
+    type: [String],
+    default: []
   },
 
   description: {
@@ -62,6 +84,11 @@ const BookSchema = new mongoose.Schema({
 
   coverImage: {
     type: String
+  },
+
+  coverAlt: {
+    type: String,
+    default: ""
   },
 
   isPaid: {
@@ -132,6 +159,11 @@ const BookSchema = new mongoose.Schema({
     default: 0
   },
 
+  views: {
+    type: Number,
+    default: 0
+  },
+
   salesCount: {
     type: Number,
     default: 0
@@ -150,6 +182,16 @@ const BookSchema = new mongoose.Schema({
   isFeatured: {
     type: Boolean,
     default: false
+  },
+
+  isArchived: {
+    type: Boolean,
+    default: false
+  },
+
+  archivedAt: {
+    type: Date,
+    default: null
   },
 
   createdAt: {

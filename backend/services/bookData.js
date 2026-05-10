@@ -1,6 +1,25 @@
 const DEFAULT_COVER = "/assets/covers/Ebook_AI.png";
 
-function serializeBook(book) {
+function buildAbsoluteUrl(baseUrl, relativePath) {
+  const normalizedBase = String(baseUrl || "").replace(/\/$/, "");
+  const normalizedPath = String(relativePath || "");
+
+  if (!normalizedBase || !normalizedPath || /^https?:\/\//i.test(normalizedPath)) {
+    return normalizedPath;
+  }
+
+  return `${normalizedBase}${normalizedPath}`;
+}
+
+function serializeBook(book, options = {}) {
+  const {
+    backendBaseUrl = "",
+    previewUrl = "",
+    downloadUrl = "",
+    includeFilePath = true,
+    statusLabel = "",
+  } = options;
+
   const raw = book && typeof book.toObject === "function"
     ? book.toObject()
     : book;
@@ -23,19 +42,26 @@ function serializeBook(book) {
     price: Number(raw?.price || 0),
     coverImage: raw?.coverImage || DEFAULT_COVER,
     cover: raw?.coverImage || DEFAULT_COVER,
-    previewPath: raw?.previewPath || raw?.filePath || "",
-    previewPdf: raw?.previewPath || raw?.filePath || "",
-    filePath: raw?.filePath || "",
-    pdfUrl: raw?.filePath || "",
+    coverUrl: raw?.coverImage
+      ? buildAbsoluteUrl(backendBaseUrl, raw.coverImage)
+      : DEFAULT_COVER,
+    previewPath: previewUrl || raw?.previewPath || "",
+    previewPdf: previewUrl || raw?.previewPath || "",
+    filePath: includeFilePath ? raw?.filePath || "" : "",
+    pdfUrl: downloadUrl || "",
     isPaid: Boolean(raw?.isPaid),
     requiresLogin: Boolean(raw?.requiresLogin),
-    status: raw?.status || "Draft",
+    status: statusLabel || (raw?.isArchived ? "Archived" : raw?.status || "Draft"),
+    rawStatus: raw?.status || "Draft",
+    isArchived: Boolean(raw?.isArchived),
     adminNotes: raw?.adminNotes || "",
     aiScore: Number(raw?.aiScore || 0),
     downloads: Number(raw?.downloads || 0),
+    views: Number(raw?.views || 0),
     salesCount: Number(raw?.salesCount || 0),
     sales: Number(raw?.salesCount || 0),
     earnings: Number(raw?.earnings || 0),
+    revenue: Number(raw?.earnings || 0),
     platformRevenue: Number(raw?.platformRevenue || 0),
     isFeatured: Boolean(raw?.isFeatured),
     createdAt: raw?.createdAt,
@@ -119,6 +145,7 @@ function escapeRegex(value) {
 
 module.exports = {
   DEFAULT_COVER,
+  buildAbsoluteUrl,
   serializeBook,
   buildLastMonthsSeries,
   buildCountrySales,

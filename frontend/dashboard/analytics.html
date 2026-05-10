@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../config.js"></script>
 <script src="../auth.js"></script>
 
 </head>
@@ -173,7 +174,7 @@ Live Sales
 
 <div class="chart-card">
 
-<h3>Revenue Forecast (AI Estimate)</h3>
+<h3>Revenue Forecast</h3>
 
 <canvas id="forecastChart"></canvas>
 
@@ -182,7 +183,7 @@ Live Sales
 
 <div class="chart-card">
 
-<h3>Country-wise Sales</h3>
+<h3>Category Revenue Mix</h3>
 
 <canvas id="countryChart"></canvas>
 
@@ -239,6 +240,9 @@ Live Sales
 
 <script src="analytics.js"></script>
 <script src="motion-system.js"></script>
+<script>
+protectPage(["creator","author","admin"]);
+</script>
 
 </body>
 

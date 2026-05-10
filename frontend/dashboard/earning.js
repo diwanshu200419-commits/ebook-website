@@ -1,506 +1,360 @@
-/* =====================================
-E-BOOK MARKET – CREATOR WALLET JS
-Production Version (Clean + Bug Free)
-===================================== */
-
 const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 const token = localStorage.getItem("token");
 
-let earningChart = null;
-let globalSalesChart = null;
+let earningsChart = null;
+let categoryChart = null;
 let refreshTimer = null;
 
-/* =====================================
-AUTH CHECK
-===================================== */
-
-if (!token) redirectToLogin();
-
-/* =====================================
-INIT
-===================================== */
+if (!token) {
+  redirectToLogin();
+}
 
 document.addEventListener("DOMContentLoaded", () => {
-
   initWallet();
   startAutoRefresh();
 
   const withdrawBtn = document.getElementById("withdrawBtn");
-  if (withdrawBtn) withdrawBtn.addEventListener("click", withdraw);
-
+  withdrawBtn?.addEventListener("click", withdraw);
 });
 
-/* =====================================
-AUTO REFRESH
-===================================== */
+function startAutoRefresh() {
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer);
+  }
 
-function startAutoRefresh(){
-
-  if(refreshTimer) clearInterval(refreshTimer);
-
-  refreshTimer = setInterval(()=>{
-    initWallet();
-  },30000);
-
+  refreshTimer = window.setInterval(initWallet, 30000);
 }
 
-/* =====================================
-LOAD WALLET
-===================================== */
-
-async function initWallet(){
-
-  try{
-
+async function initWallet() {
+  try {
     showLoading();
 
-    const res = await fetch(`${API_BASE}/api/earnings/user`,{
-      headers:{ Authorization:`Bearer ${token}` }
+    const response = await fetch(`${API_BASE}/api/earnings/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     });
 
-    if(res.status === 401) return redirectToLogin();
+    if (response.status === 401) {
+      return redirectToLogin();
+    }
 
-    if(!res.ok) throw new Error("API Error");
-
-    const data = await res.json();
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to load earnings");
+    }
 
     renderBalances(data);
     renderChart(data.chart);
+    renderCategoryChart(data.categoryRevenue || data.category || {});
     renderTopBooks(data.topBooks || []);
     renderTransactions(data.transactions || []);
-    renderPayout(data.payout);
-    renderGlobalSalesMap(data.countrySales || {});
-    calculateCreatorScore(data);
-    calculateForecast(data.chart);
-
-  }catch(err){
-
-    console.error("Wallet Error:",err);
-    showError();
-
+    renderPayout(data.payout || {});
+    renderForecast(data.chart);
+    renderCreatorScore(data.creatorScore || 0);
+  } catch (error) {
+    console.error("Wallet load failed:", error);
+    showError(error.message || "Unable to load earnings");
   }
-
 }
 
-/* =====================================
-BALANCE CARDS
-===================================== */
-
-function renderBalances(data){
-
+function renderBalances(data) {
   animateCurrency("pendingAmount", data.pending || 0);
   animateCurrency("availableAmount", data.available || 0);
   animateCurrency("withdrawnAmount", data.withdrawn || 0);
   animateCurrency("lifetimeAmount", data.lifetime || 0);
-
 }
 
-/* =====================================
-CREATOR SCORE
-===================================== */
-
-function calculateCreatorScore(data){
-
-  const el = document.getElementById("creatorScore");
-  if(!el) return;
-
-  const score =
-    (data.totalSales || 0) * 2 +
-    (data.totalBooks || 0) * 5 +
-    (data.lifetime || 0) / 100;
-
-  el.innerText = Math.min(100, Math.floor(score));
-
+function renderCreatorScore(score) {
+  const element = document.getElementById("creatorScore");
+  if (element) {
+    element.textContent = Math.max(0, Math.min(100, Math.round(score)));
+  }
 }
 
-/* =====================================
-TOP BOOKS
-===================================== */
-
-function renderTopBooks(books){
-
+function renderTopBooks(books) {
   const tbody = document.getElementById("topEarningBooks");
-  if(!tbody) return;
+  if (!tbody) {
+    return;
+  }
 
-  if(!books.length){
-
+  if (!books.length) {
     tbody.innerHTML = `<tr><td colspan="3">No earnings yet</td></tr>`;
     return;
-
   }
 
-  tbody.innerHTML="";
-
-  books.forEach(book=>{
-
-    const row=document.createElement("tr");
-
-    row.innerHTML=`
+  tbody.innerHTML = books.map((book) => `
+    <tr>
       <td>${escapeHTML(book.title)}</td>
-      <td>${book.sales}</td>
-      <td>₹${formatCurrency(book.earnings)}</td>
-    `;
-
-    tbody.appendChild(row);
-
-  });
-
+      <td>${Number(book.sales || 0).toLocaleString("en-IN")}</td>
+      <td>Rs. ${Number(book.earnings || 0).toLocaleString("en-IN")}</td>
+    </tr>
+  `).join("");
 }
 
-/* =====================================
-TRANSACTIONS
-===================================== */
-
-function renderTransactions(transactions){
-
-  const tbody=document.getElementById("transactionList");
-  if(!tbody) return;
-
-  if(!transactions.length){
-
-    tbody.innerHTML=`<tr><td colspan="4">No transactions</td></tr>`;
+function renderTransactions(transactions) {
+  const tbody = document.getElementById("transactionList");
+  if (!tbody) {
     return;
-
   }
 
-  tbody.innerHTML="";
+  if (!transactions.length) {
+    tbody.innerHTML = `<tr><td colspan="4">No transactions yet</td></tr>`;
+    return;
+  }
 
-  transactions.forEach(tx=>{
-
-    const row=document.createElement("tr");
-
-    row.innerHTML=`
-      <td>${formatDate(tx.date)}</td>
-      <td>${escapeHTML(tx.title)}</td>
-      <td>₹${formatCurrency(tx.amount)}</td>
-      <td class="status ${tx.status}">
-        ${tx.status}
-      </td>
-    `;
-
-    tbody.appendChild(row);
-
-  });
-
+  tbody.innerHTML = transactions.map((transaction) => `
+    <tr>
+      <td>${formatDate(transaction.date)}</td>
+      <td>${escapeHTML(transaction.title)}</td>
+      <td>Rs. ${Number(transaction.amount || 0).toLocaleString("en-IN")}</td>
+      <td class="status ${String(transaction.status || "").toLowerCase()}">${escapeHTML(transaction.status)}</td>
+    </tr>
+  `).join("");
 }
 
-/* =====================================
-EARNINGS CHART
-===================================== */
+function renderChart(chart) {
+  if (!chart?.labels?.length) {
+    if (earningsChart) {
+      earningsChart.destroy();
+      earningsChart = null;
+    }
+    return;
+  }
 
-function renderChart(chart){
+  const canvas = document.getElementById("earningChart");
+  const context = canvas.getContext("2d");
 
-  if(!chart || !chart.labels) return;
+  if (earningsChart) {
+    earningsChart.destroy();
+  }
 
-  const canvas=document.getElementById("earningChart");
-  if(!canvas) return;
-
-  const ctx=canvas.getContext("2d");
-
-  if(earningChart) earningChart.destroy();
-
-  const forecast = chart.values.map(v=>v*1.15);
-
-  earningChart=new Chart(ctx,{
-    type:"line",
-
-    data:{
-      labels:chart.labels,
-      datasets:[
-      {
-        label:"Earnings",
-        data:chart.values,
-        borderColor:"#8b5cf6",
-        backgroundColor:"rgba(139,92,246,0.2)",
-        fill:true,
-        tension:0.4
-      },
-      {
-        label:"AI Forecast",
-        data:forecast,
-        borderColor:"#22c55e",
-        borderDash:[5,5],
-        fill:false
-      }
+  earningsChart = new Chart(context, {
+    type: "line",
+    data: {
+      labels: chart.labels,
+      datasets: [
+        {
+          label: "Creator earnings",
+          data: chart.values,
+          borderColor: "#8b5cf6",
+          backgroundColor: "rgba(139,92,246,0.2)",
+          fill: true,
+          tension: 0.4
+        }
       ]
     },
-
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{ labels:{ color:"#fff" } }
-      },
-      scales:{
-        x:{ ticks:{ color:"#94a3b8" } },
-        y:{ ticks:{ color:"#94a3b8" } }
-      }
-    }
-
+    options: chartOptions()
   });
-
 }
 
-/* =====================================
-GLOBAL SALES MAP
-===================================== */
-
-function renderGlobalSalesMap(countrySales){
-
+function renderCategoryChart(categoryRevenue) {
   const canvas = document.getElementById("globalSalesChart");
-  if(!canvas) return;
+  const context = canvas.getContext("2d");
 
-  const ctx = canvas.getContext("2d");
+  if (categoryChart) {
+    categoryChart.destroy();
+  }
 
-  const countries = Object.keys(countrySales);
-  const values = Object.values(countrySales);
+  const labels = Object.keys(categoryRevenue || {});
+  const values = Object.values(categoryRevenue || {});
+  const hasData = values.some((value) => Number(value || 0) > 0);
 
-  if(globalSalesChart) globalSalesChart.destroy();
-
-  globalSalesChart = new Chart(ctx,{
-    type:"doughnut",
-
-    data:{
-      labels:countries,
-      datasets:[{
-        data:values,
-        backgroundColor:[
-          "#6366f1",
-          "#8b5cf6",
-          "#22c55e",
-          "#f59e0b",
-          "#ef4444",
-          "#06b6d4",
-          "#3b82f6"
-        ]
-      }]
+  categoryChart = new Chart(context, {
+    type: "doughnut",
+    data: {
+      labels: hasData ? labels : ["No category revenue yet"],
+      datasets: [
+        {
+          data: hasData ? values : [1],
+          backgroundColor: hasData
+            ? ["#8b5cf6", "#22c55e", "#0ea5e9", "#f59e0b", "#fb7185", "#60a5fa", "#a855f7"]
+            : ["rgba(148,163,184,0.25)"],
+          borderWidth: 0
+        }
+      ]
     },
-
-    options:{
-      responsive:true,
-      plugins:{
-        legend:{
-          position:"bottom",
-          labels:{ color:"#e6e9f0" }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            color: "#e6e9f0"
+          }
         }
       }
     }
-
   });
-
 }
 
-/* =====================================
-WITHDRAW
-===================================== */
+function renderForecast(chart) {
+  const values = chart?.values || [];
+  const lastMonth = values.at(-1) || 0;
+  const previousMonth = values.at(-2) || 0;
+  const growth = previousMonth > 0 ? ((lastMonth - previousMonth) / previousMonth) * 100 : 0;
+  const predicted = Math.max(0, Math.round(lastMonth * (1 + growth / 100)));
 
-async function withdraw(){
+  document.getElementById("forecastRevenue").textContent = `Rs. ${predicted.toLocaleString("en-IN")}`;
+  document.getElementById("forecastGrowth").textContent = `${growth.toFixed(1)}%`;
+  document.getElementById("salesMomentum").textContent =
+    growth > 15 ? "High" : growth > 3 ? "Steady" : "Early";
+}
 
-  const availableText=document.getElementById("availableAmount")?.innerText || "0";
+async function withdraw() {
+  const availableText = document.getElementById("availableAmount")?.textContent || "0";
+  const available = Number(availableText.replace(/[^\d.]/g, "")) || 0;
 
-  const available=parseInt(
-    availableText.replace(/[₹,]/g,"")
-  );
-
-  if(available < 500){
-
-    toast("Minimum ₹500 required","error");
+  if (available < 500) {
+    toast("Minimum Rs. 500 is required to withdraw", "error");
     return;
-
   }
 
-  if(!confirm(`Withdraw ₹${formatCurrency(available)} ?`)) return;
+  const confirmed = window.confirm(`Withdraw Rs. ${available.toLocaleString("en-IN")} to your saved payout method?`);
+  if (!confirmed) {
+    return;
+  }
 
-  try{
-
-    const res=await fetch(`${API_BASE}/api/earnings/withdraw`,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        Authorization:`Bearer ${token}`
+  try {
+    const response = await fetch(`${API_BASE}/api/earnings/withdraw`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
       }
     });
 
-    if(!res.ok) throw new Error();
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Withdrawal failed");
+    }
 
-    toast("Withdrawal request sent","success");
-
+    toast(data.message || "Withdrawal request sent", "success");
     initWallet();
-
-  }catch(err){
-
-    toast("Withdrawal failed","error");
-
+  } catch (error) {
+    toast(error.message || "Withdrawal failed", "error");
   }
-
 }
 
-/* =====================================
-PAYOUT METHOD
-===================================== */
-
-function renderPayout(payout){
-
-  const el=document.getElementById("paymentMethod");
-  if(!el) return;
-
-  if(!payout){
-    el.innerText="No payout method configured";
+function renderPayout(payout) {
+  const element = document.getElementById("paymentMethod");
+  if (!element) {
     return;
   }
 
-  if(payout.upi){
-    el.innerText=`UPI • ${payout.upi}`;
-  }
-  else if(payout.bank){
-    el.innerText=`Bank • ${payout.bank}`;
+  if (payout.upiId) {
+    element.textContent = `UPI payout · ${payout.upiId}`;
+    return;
   }
 
+  if (payout.bankAccount) {
+    element.textContent = `Bank payout · ${payout.bankAccount}`;
+    return;
+  }
+
+  element.textContent = "No payout method configured yet";
 }
 
-/* =====================================
-ANIMATED CURRENCY
-===================================== */
+function animateCurrency(id, value) {
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
 
-function animateCurrency(id,value){
+  const target = Number(value || 0);
+  let current = 0;
+  const step = Math.max(1, target / 40);
 
-  const el=document.getElementById(id);
-  if(!el) return;
-
-  let start=0;
-  const duration=800;
-  const step=value/(duration/16);
-
-  const timer=setInterval(()=>{
-
-    start+=step;
-
-    if(start>=value){
-      start=value;
-      clearInterval(timer);
+  const timer = window.setInterval(() => {
+    current += step;
+    if (current >= target) {
+      current = target;
+      window.clearInterval(timer);
     }
 
-    el.innerText=formatCurrency(Math.floor(start));
-
-  },16);
-
+    element.textContent = current.toLocaleString("en-IN", {
+      maximumFractionDigits: 0
+    });
+  }, 20);
 }
 
-/* =====================================
-UTILS
-===================================== */
-
-function formatCurrency(num){
-  return num.toLocaleString("en-IN");
+function chartOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: "#fff"
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: "#94a3b8"
+        },
+        grid: {
+          color: "rgba(148,163,184,0.1)"
+        }
+      },
+      y: {
+        ticks: {
+          color: "#94a3b8"
+        },
+        grid: {
+          color: "rgba(148,163,184,0.1)"
+        }
+      }
+    }
+  };
 }
 
-function formatDate(date){
-  return new Date(date).toLocaleDateString("en-IN");
-}
-
-function escapeHTML(str){
-  return str.replace(/[&<>"']/g,m=>({
-    "&":"&amp;",
-    "<":"&lt;",
-    ">":"&gt;",
-    '"':"&quot;",
-    "'":"&#39;"
-  }[m]));
-}
-
-/* =====================================
-UI STATES
-===================================== */
-
-function showLoading(){
-
-  ["pendingAmount","availableAmount","withdrawnAmount","lifetimeAmount"]
-  .forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.innerText="...";
+function formatDate(value) {
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
   });
-
 }
 
-function showError(){
+function escapeHTML(value) {
+  return String(value || "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
 
-  const table=document.getElementById("transactionList");
+function showLoading() {
+  ["pendingAmount", "availableAmount", "withdrawnAmount", "lifetimeAmount"].forEach((id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = "...";
+    }
+  });
+}
 
-  if(table){
-    table.innerHTML=`
-      <tr>
-        <td colspan="4">⚠ Unable to load data</td>
-      </tr>
-    `;
+function showError(message) {
+  const table = document.getElementById("transactionList");
+  if (table) {
+    table.innerHTML = `<tr><td colspan="4">${escapeHTML(message)}</td></tr>`;
   }
-
 }
 
-/* =====================================
-NAVIGATION
-===================================== */
-
-function redirectToLogin(){
+function redirectToLogin() {
   localStorage.clear();
-  window.location.href="../login.html";
+  window.location.href = "../login.html";
 }
 
-/* =====================================
-TOAST
-===================================== */
+function toast(message, type = "info") {
+  const toastElement = document.createElement("div");
+  toastElement.className = `toast ${type}`;
+  toastElement.textContent = message;
+  document.body.appendChild(toastElement);
 
-function toast(message,type="info"){
-
-  const div=document.createElement("div");
-  div.className=`toast ${type}`;
-  div.innerText=message;
-
-  document.body.appendChild(div);
-
-  setTimeout(()=>{
-    div.remove();
-  },3000);
-
-}
-/* =====================================
-AI REVENUE FORECAST
-===================================== */
-
-function calculateForecast(chart){
-
-  if(!chart || !chart.values) return;
-
-  const values = chart.values;
-
-  const lastMonth = values[values.length - 1] || 0;
-  const prevMonth = values[values.length - 2] || 0;
-
-  const growthRate = prevMonth > 0
-    ? ((lastMonth - prevMonth) / prevMonth) * 100
-    : 0;
-
-  const predicted = Math.round(lastMonth * (1 + growthRate/100));
-
-  const forecastRevenue = document.getElementById("forecastRevenue");
-  const forecastGrowth = document.getElementById("forecastGrowth");
-  const momentum = document.getElementById("salesMomentum");
-
-  if(forecastRevenue)
-    forecastRevenue.innerText = "₹" + predicted.toLocaleString("en-IN");
-
-  if(forecastGrowth)
-    forecastGrowth.innerText = growthRate.toFixed(1) + "%";
-
-  if(momentum){
-
-    if(growthRate > 20)
-      momentum.innerText = "🔥 High";
-
-    else if(growthRate > 5)
-      momentum.innerText = "📈 Medium";
-
-    else
-      momentum.innerText = "⚠ Slow";
-
-  }
-
+  window.setTimeout(() => toastElement.remove(), 3000);
 }

@@ -1,645 +1,607 @@
-/*===================================
-🚀 DASHBOARD JS – ULTRA SaaS VERSION
-===================================*/
-
 const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 
-let earningsChartInstance = null;
-let globalSalesChartInstance = null;
-let heatmapChart = null;
-
-let liveEarningsTimer = null;
-
-/*===================================
-INIT
-===================================*/
+let dashboardChart = null;
 
 document.addEventListener("DOMContentLoaded", initDashboard);
 
 async function initDashboard() {
+  const token = getToken();
+  if (!token) {
+    return logoutAndRedirect();
+  }
 
-const token = getToken();
-if(!token) return logoutAndRedirect();
+  setupLogout();
 
-let user = getStoredUser();
+  try {
+    const response = await fetch(`${API_BASE}/api/dashboard/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
 
-try{
+    if (response.status === 401) {
+      return logoutAndRedirect();
+    }
 
-if(!user){
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Failed to load dashboard");
+    }
 
-const res = await fetch(`${API_BASE}/api/user/profile`,{
-headers:{Authorization:`Bearer ${token}`}
-});
-
-if(!res.ok) throw new Error();
-
-const data = await res.json();
-user = data.user;
-
-localStorage.setItem("user",JSON.stringify(user));
-
+    renderDashboard(data, token);
+  } catch (error) {
+    console.error("Dashboard load failed:", error);
+    renderFatalState(error.message || "Unable to load dashboard");
+  }
 }
 
-renderUser(user);
-setupLogout();
+function getToken() {
+  const token = localStorage.getItem("token");
+  if (!token || token === "null" || token === "undefined") {
+    return "";
+  }
 
-await loadDashboardData(token);
-liveSalesPopup();
-
-/* AUTO REFRESH DASHBOARD */
-setInterval(()=>{
-loadDashboardData(token);
-},30000);
-
-/* SIMULATE LIVE SALES */
-simulateLiveSales();
-
-}catch(err){
-
-console.error("Init Failed:",err);
-logoutAndRedirect();
-
+  return token;
 }
 
+function setupLogout() {
+  const logoutBtn = document.getElementById("logoutBtn");
+  logoutBtn?.addEventListener("click", logoutAndRedirect);
 }
 
-/*===================================
-AUTH HELPERS
-===================================*/
+function logoutAndRedirect() {
+  fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+    keepalive: true
+  }).catch(() => null);
 
-function getToken(){
-
-const token = localStorage.getItem("token");
-
-if(!token || token==="null" || token==="undefined") return null;
-
-return token;
-
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  window.location.href = "../login.html";
 }
 
-function getStoredUser(){
+function renderDashboard(data, token) {
+  localStorage.setItem("user", JSON.stringify({
+    name: data.profile?.name,
+    username: data.profile?.username,
+    email: data.profile?.email,
+    role: data.role
+  }));
 
-try{
-const stored = localStorage.getItem("user");
-return stored ? JSON.parse(stored) : null;
-}catch{
-return null;
+  const viewer = data.viewer === "creator" ? "creator" : "reader";
+
+  renderNavigation(viewer, data);
+  renderHero(viewer, data);
+  renderSummary(viewer, data);
+  renderChart(viewer, data);
+
+  if (viewer === "creator") {
+    renderCreatorBooks(data, token);
+    renderCreatorTopBooks(data);
+    renderCreatorActivity(data);
+    return;
+  }
+
+  renderReaderPurchases(data, token);
+  renderReaderOrders(data);
+  renderReaderProfile(data);
 }
 
+function renderNavigation(viewer, data) {
+  const creatorLinks = document.querySelectorAll("[data-creator-link]");
+  creatorLinks.forEach((link) => {
+    link.style.display = viewer === "creator" ? "" : "none";
+  });
+
+  setText("sidebarRole", viewer === "creator" ? "Creator Workspace" : "Reader Workspace");
+  setText(
+    "sidebarCalloutLabel",
+    viewer === "creator" ? "Available balance" : "Unlocked library"
+  );
+  setText(
+    "sidebarCalloutValue",
+    viewer === "creator"
+      ? formatCurrency(data.creatorStats?.walletBalance || 0)
+      : `${data.readerStats?.downloadsUnlocked || 0} unlocked books`
+  );
 }
 
-function logoutAndRedirect(){
+function renderHero(viewer, data) {
+  const profile = data.profile || {};
+  const joined = profile.joinedAt ? formatDate(profile.joinedAt) : "Recently";
 
-fetch(`${API_BASE}/api/auth/logout`,{
-method:"POST",
-credentials:"include",
-keepalive:true
-}).catch(()=>null);
+  document.getElementById("profileAvatar").src = profile.avatar || "../assets/default-avatar.png";
+  setText("profileName", profile.name || "Member");
+  setText("profileMeta", `${profile.username || "member"} · Joined ${joined}`);
+  setText("profileRole", String(profile.role || viewer).toUpperCase());
 
-localStorage.clear();
-window.location.href="../login.html";
+  if (viewer === "creator") {
+    setText("heroEyebrow", "Creator Dashboard");
+    setText("dashboardTitle", `${profile.name || "Creator"}, your catalog is connected.`);
+    setText(
+      "dashboardSubtitle",
+      "Track real earnings, upload health, book approvals, and marketplace momentum from one place."
+    );
+    return;
+  }
 
+  setText("heroEyebrow", "Reader Dashboard");
+  setText("dashboardTitle", `${profile.name || "Reader"}, your library is ready.`);
+  setText(
+    "dashboardSubtitle",
+    "See what you purchased, what is ready to download, and every payment status tied to your account."
+  );
 }
 
-/*===================================
-USER RENDER
-===================================*/
+function renderSummary(viewer, data) {
+  const summaryGrid = document.getElementById("summaryGrid");
+  const cards = viewer === "creator"
+    ? [
+        {
+          label: "Total earnings",
+          value: formatCurrency(data.creatorStats?.totalEarnings || 0),
+          note: `${data.creatorStats?.totalSales || 0} confirmed sales`
+        },
+        {
+          label: "This month",
+          value: formatCurrency(data.creatorStats?.monthlyEarnings || 0),
+          note: "Current month revenue"
+        },
+        {
+          label: "Marketplace reach",
+          value: numberText(data.creatorStats?.totalViews || 0),
+          note: `${data.creatorStats?.totalDownloads || 0} downloads recorded`
+        },
+        {
+          label: "Creator score",
+          value: `${data.creatorStats?.creatorScore || 0}/100`,
+          note: `${data.creatorStats?.totalBooks || 0} active uploads`
+        }
+      ]
+    : [
+        {
+          label: "Purchased books",
+          value: numberText(data.readerStats?.totalPurchased || 0),
+          note: `${data.readerStats?.downloadsUnlocked || 0} available to download`
+        },
+        {
+          label: "Total spent",
+          value: formatCurrency(data.readerStats?.totalSpent || 0),
+          note: "Approved purchases only"
+        },
+        {
+          label: "Pending payments",
+          value: numberText(data.readerStats?.pendingOrders || 0),
+          note: "Waiting for review or confirmation"
+        },
+        {
+          label: "Rejected payments",
+          value: numberText(data.readerStats?.rejectedOrders || 0),
+          note: "Payments that need attention"
+        }
+      ];
 
-function renderUser(user){
-
-setText("userName",user.name || "Creator");
-setText("roleBadge",(user.role || "creator").toUpperCase());
-
+  summaryGrid.innerHTML = cards.map((card) => `
+    <article class="summary-card">
+      <p>${escapeHTML(card.label)}</p>
+      <h3>${escapeHTML(card.value)}</h3>
+      <span>${escapeHTML(card.note)}</span>
+    </article>
+  `).join("");
 }
 
-/*===================================
-LOGOUT
-===================================*/
+function renderChart(viewer, data) {
+  const chartTitle = document.getElementById("chartTitle");
+  const chartKicker = document.getElementById("chartKicker");
+  const chartBadge = document.getElementById("chartBadge");
+  const empty = document.getElementById("chartEmpty");
+  const canvas = document.getElementById("dashboardChart");
+  const context = canvas.getContext("2d");
 
-function setupLogout(){
+  const chartData = viewer === "creator"
+    ? {
+        labels: data.chart?.labels || [],
+        values: data.chart?.values || [],
+        title: "Monthly creator earnings",
+        kicker: "Revenue",
+        badge: "MongoDB-backed",
+        type: "line"
+      }
+    : {
+        labels: ["Approved", "Pending", "Rejected"],
+        values: [
+          data.readerStats?.totalPurchased || 0,
+          data.readerStats?.pendingOrders || 0,
+          data.readerStats?.rejectedOrders || 0
+        ],
+        title: "Order status overview",
+        kicker: "Orders",
+        badge: "Real payment records",
+        type: "doughnut"
+      };
 
-const logoutBtn = document.getElementById("logoutBtn");
+  setText("chartTitle", chartData.title);
+  setText("chartKicker", chartData.kicker);
+  setText("chartBadge", chartData.badge);
 
-if(logoutBtn){
-logoutBtn.addEventListener("click",logoutAndRedirect);
+  const hasSignal = chartData.values.some((value) => Number(value || 0) > 0);
+  empty.classList.toggle("hidden", hasSignal);
+  canvas.classList.toggle("hidden", !hasSignal);
+
+  if (dashboardChart) {
+    dashboardChart.destroy();
+    dashboardChart = null;
+  }
+
+  if (!hasSignal) {
+    return;
+  }
+
+  dashboardChart = new Chart(context, {
+    type: chartData.type,
+    data: {
+      labels: chartData.labels,
+      datasets: [
+        {
+          label: viewer === "creator" ? "Revenue" : "Orders",
+          data: chartData.values,
+          borderColor: "#8b5cf6",
+          backgroundColor: viewer === "creator"
+            ? "rgba(99, 102, 241, 0.2)"
+            : ["#8b5cf6", "#0ea5e9", "#fb7185"],
+          fill: viewer === "creator",
+          tension: 0.38,
+          borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: "#cbd5e1"
+          }
+        }
+      },
+      scales: viewer === "creator"
+        ? {
+            x: {
+              ticks: { color: "#94a3b8" },
+              grid: { color: "rgba(148, 163, 184, 0.12)" }
+            },
+            y: {
+              ticks: {
+                color: "#94a3b8",
+                callback: (value) => `Rs. ${value}`
+              },
+              grid: { color: "rgba(148, 163, 184, 0.12)" }
+            }
+          }
+        : {}
+    }
+  });
 }
 
+function renderReaderPurchases(data, token) {
+  setText("primaryKicker", "Library");
+  setText("primaryTitle", "Purchased books");
+
+  const action = document.getElementById("primaryAction");
+  action.href = "../explore.html";
+  action.textContent = "Explore marketplace";
+
+  const grid = document.getElementById("primaryGrid");
+  const empty = document.getElementById("primaryEmpty");
+  const purchases = data.purchases || [];
+
+  if (!purchases.length) {
+    grid.innerHTML = "";
+    empty.classList.remove("hidden");
+    empty.textContent = "No approved purchases yet. When you buy a book, it will appear here with a secure download button.";
+    return;
+  }
+
+  empty.classList.add("hidden");
+  grid.innerHTML = purchases.map((purchase) => `
+    <article class="book-card">
+        <img src="${escapeAttribute(resolveAssetUrl(purchase.coverUrl || purchase.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(purchase.title)}">
+      <div class="book-card-body">
+        <span class="status-pill success">${escapeHTML(purchase.status)}</span>
+        <h3>${escapeHTML(purchase.title)}</h3>
+        <p>${escapeHTML(purchase.category || "Book")} · ${escapeHTML(purchase.authorName || "Creator")}</p>
+        <div class="book-meta">
+          <span>${formatCurrency(purchase.amount || 0)}</span>
+          <span>${formatDate(purchase.purchaseDate)}</span>
+        </div>
+        <div class="card-actions">
+          <a class="solid-btn" href="${buildSecureFileUrl(purchase.downloadUrl, token)}">Download</a>
+          <a class="ghost-link" href="../book_view.html?id=${encodeURIComponent(purchase.bookId)}">Open details</a>
+        </div>
+      </div>
+    </article>
+  `).join("");
 }
 
-/*===================================
-LOAD DATA
-===================================*/
+function renderReaderOrders(data) {
+  setText("secondaryKicker", "Payments");
+  setText("secondaryTitle", "Order history");
 
-async function loadDashboardData(token){
+  const body = document.getElementById("secondaryBody");
+  const orders = data.orderHistory || [];
 
-try{
+  if (!orders.length) {
+    body.innerHTML = `<div class="empty-copy">No payment history yet. Stripe and manual checkout records will appear here automatically.</div>`;
+    return;
+  }
 
-const res = await fetch(`${API_BASE}/api/dashboard/user`,{
-headers:{Authorization:`Bearer ${token}`}
-});
-
-if(res.status===401) return logoutAndRedirect();
-
-const data = await res.json();
-
-updateStats(data);
-
-renderChart(data.chart);
-
-// creator radar
-renderCreatorRadar(data);
-
-renderGlobalSales(data.countrySales || {});
-renderTopBooks(data.topBooks || []);
-renderRecentSales(data.recentSales || []);
-
-updateLiveEarnings(data);
-
-renderDownloadHeatmap(data.downloadHeatmap || {});
-renderLeaderboard(data.leaderboard || []);
-renderTrendingAuthors(data.trendingAuthors || []);
-renderRecommendations(data.recommendedBooks || []);
-
-calculateCreatorScore(data);
-calculateForecast(data);
-
-}catch(err){
-
-console.error("Dashboard Load Failed:",err);
-
+  body.innerHTML = `
+    <div class="data-list">
+      ${orders.map((order) => `
+        <article class="data-row">
+          <div>
+            <h3>${escapeHTML(order.title)}</h3>
+            <p>${escapeHTML(order.transactionId || "Transaction pending")}</p>
+          </div>
+          <div class="data-row-meta">
+            <span class="status-pill ${statusClass(order.status)}">${escapeHTML(order.status)}</span>
+            <strong>${formatCurrency(order.amount || 0)}</strong>
+            <small>${formatDate(order.purchaseDate)}</small>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
+function renderReaderProfile(data) {
+  setText("activityKicker", "Account");
+  setText("activityTitle", "Profile snapshot");
+
+  const profile = data.profile || {};
+  const body = document.getElementById("activityBody");
+
+  body.innerHTML = `
+    <div class="profile-grid">
+      <article class="mini-card">
+        <span>Username</span>
+        <strong>${escapeHTML(profile.username || "member")}</strong>
+      </article>
+      <article class="mini-card">
+        <span>Role</span>
+        <strong>${escapeHTML(profile.role || "reader")}</strong>
+      </article>
+      <article class="mini-card">
+        <span>Joined</span>
+        <strong>${escapeHTML(formatDate(profile.joinedAt))}</strong>
+      </article>
+      <article class="mini-card">
+        <span>Email</span>
+        <strong>${escapeHTML(profile.email || "Not available")}</strong>
+      </article>
+    </div>
+  `;
 }
 
-/*===================================
-LIVE EARNINGS COUNTER
-===================================*/
+function renderCreatorBooks(data, token) {
+  setText("primaryKicker", "Catalog");
+  setText("primaryTitle", "Uploaded books");
 
-function updateLiveEarnings(data){
+  const action = document.getElementById("primaryAction");
+  action.href = "upload.html";
+  action.textContent = "Upload a new book";
 
-let earnings = data.totalEarnings || 0;
+  const grid = document.getElementById("primaryGrid");
+  const empty = document.getElementById("primaryEmpty");
+  const books = data.uploadedBooks || [];
 
-if(liveEarningsTimer) clearInterval(liveEarningsTimer);
+  if (!books.length) {
+    grid.innerHTML = "";
+    empty.classList.remove("hidden");
+    empty.textContent = "No uploads yet. Your first approved upload will immediately become available for marketplace discovery.";
+    return;
+  }
 
-liveEarningsTimer = setInterval(()=>{
-
-earnings += Math.floor(Math.random()*20);
-
-setText("totalEarnings",formatCurrency(earnings));
-
-},4000);
-
+  empty.classList.add("hidden");
+  grid.innerHTML = books.map((book) => `
+    <article class="book-card">
+        <img src="${escapeAttribute(resolveAssetUrl(book.coverUrl || book.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(book.title)}">
+      <div class="book-card-body">
+        <span class="status-pill ${statusClass(book.status)}">${escapeHTML(book.status)}</span>
+        <h3>${escapeHTML(book.title)}</h3>
+        <p>${escapeHTML(book.category || "Book")} · ${book.isPaid ? formatCurrency(book.price || 0) : "Free"}</p>
+        <div class="book-meta">
+          <span>${numberText(book.salesCount || 0)} sales</span>
+          <span>${formatCurrency(book.earnings || 0)}</span>
+        </div>
+        <div class="card-actions">
+          <a class="solid-btn" href="content.html">Manage</a>
+          <a class="ghost-link" href="${buildSecureFileUrl(book.downloadUrl, token)}">Download</a>
+        </div>
+      </div>
+    </article>
+  `).join("");
 }
 
-/*===================================
-UPDATE STATS
-===================================*/
+function renderCreatorTopBooks(data) {
+  setText("secondaryKicker", "Performance");
+  setText("secondaryTitle", "Top performing books");
 
-function updateStats(data){
+  const body = document.getElementById("secondaryBody");
+  const topBooks = data.topBooks || [];
 
-animateValue("totalEarnings",0,data.totalEarnings,1200);
-setText("monthlyEarnings",formatCurrency(data.monthlyEarnings));
-setText("walletBalance",formatCurrency(data.walletBalance));
+  if (!topBooks.length) {
+    body.innerHTML = `<div class="empty-copy">No performance data yet. Sales, earnings, and download leaders will appear after your first transactions.</div>`;
+    return;
+  }
 
-setText("totalDownloads",data.totalDownloads || 0);
-setText("totalBooks",data.totalBooks || 0);
-
+  body.innerHTML = `
+    <div class="data-list">
+      ${topBooks.map((book) => `
+        <article class="data-row">
+          <div>
+            <h3>${escapeHTML(book.title)}</h3>
+            <p>${escapeHTML(book.category || "Book")}</p>
+          </div>
+          <div class="data-row-meta">
+            <strong>${formatCurrency(book.earnings || 0)}</strong>
+            <small>${numberText(book.sales || 0)} sales · ${numberText(book.downloads || 0)} downloads</small>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
-/*===================================
-EARNINGS CHART
-===================================*/
+function renderCreatorActivity(data) {
+  setText("activityKicker", "Sales");
+  setText("activityTitle", "Recent creator activity");
 
-function renderChart(chartData){
+  const body = document.getElementById("activityBody");
+  const sales = data.recentSales || [];
 
-if(!chartData?.labels) return;
+  if (!sales.length) {
+    body.innerHTML = `
+      <div class="profile-grid">
+        <article class="mini-card">
+          <span>Approval statuses</span>
+          <strong>${buildCompactStatus(data.statusBreakdown || {})}</strong>
+        </article>
+        <article class="mini-card">
+          <span>Category coverage</span>
+          <strong>${buildCompactStatus(data.categoryCounts || {})}</strong>
+        </article>
+      </div>
+    `;
+    return;
+  }
 
-const canvas = document.getElementById("earningsChart");
-if(!canvas) return;
-
-if(earningsChartInstance) earningsChartInstance.destroy();
-
-earningsChartInstance = new Chart(canvas,{
-
-type:"line",
-
-data:{
-labels:chartData.labels,
-datasets:[{
-label:"Earnings",
-data:chartData.values,
-borderColor:"#8b5cf6",
-backgroundColor:"rgba(139,92,246,0.2)",
-fill:true,
-tension:0.4
-}]
-},
-
-options:{
-responsive:true,
-plugins:{
-legend:{labels:{color:"#fff"}}
-}
-}
-
-});
-
-}
-/* creator radar chart */
-function renderCreatorRadar(data){
-
-const canvas=document.getElementById("creatorRadar");
-if(!canvas) return;
-
-new Chart(canvas,{
-type:"radar",
-data:{
-labels:["Downloads","Books","Revenue","Growth","Engagement"],
-datasets:[{
-label:"Creator Score",
-data:[
-data.totalDownloads/10,
-data.totalBooks*10,
-data.totalEarnings/100,
-Math.random()*100,
-Math.random()*100
-],
-backgroundColor:"rgba(139,92,246,0.3)",
-borderColor:"#8b5cf6"
-}]
-}
-});
-
+  body.innerHTML = `
+    <div class="data-list">
+      ${sales.map((sale) => `
+        <article class="data-row">
+          <div>
+            <h3>${escapeHTML(sale.book)}</h3>
+            <p>${escapeHTML(sale.buyer || "Buyer")}</p>
+          </div>
+          <div class="data-row-meta">
+            <span class="status-pill success">${escapeHTML(sale.status)}</span>
+            <strong>${formatCurrency(sale.amount || 0)}</strong>
+            <small>${formatDate(sale.createdAt)}</small>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
-/*===================================
-GLOBAL SALES
-===================================*/
-
-function renderGlobalSales(countrySales){
-
-const canvas=document.getElementById("globalSalesChart");
-if(!canvas) return;
-
-if(globalSalesChartInstance) globalSalesChartInstance.destroy();
-
-globalSalesChartInstance=new Chart(canvas,{
-
-type:"doughnut",
-
-data:{
-labels:Object.keys(countrySales),
-datasets:[{
-
-data:Object.values(countrySales),
-
-backgroundColor:[
-"#8b5cf6",
-"#22c55e",
-"#3b82f6",
-"#f59e0b",
-"#ef4444"
-]
-
-}]
+function renderFatalState(message) {
+  setText("dashboardTitle", "We could not load your dashboard");
+  setText("dashboardSubtitle", message);
+  document.getElementById("summaryGrid").innerHTML = `
+    <article class="summary-card">
+      <p>Status</p>
+      <h3>Offline</h3>
+      <span>${escapeHTML(message)}</span>
+    </article>
+  `;
+  document.getElementById("primaryGrid").innerHTML = "";
+  document.getElementById("secondaryBody").innerHTML = `<div class="empty-copy">${escapeHTML(message)}</div>`;
+  document.getElementById("activityBody").innerHTML = `<div class="empty-copy">Try signing out and back in, then refresh this page.</div>`;
+  document.getElementById("chartEmpty").classList.remove("hidden");
+  document.getElementById("dashboardChart").classList.add("hidden");
 }
 
-});
+function buildSecureFileUrl(relativeUrl, token) {
+  if (!relativeUrl) {
+    return "#";
+  }
 
+  const separator = relativeUrl.includes("?") ? "&" : "?";
+  return `${API_BASE}${relativeUrl}${separator}token=${encodeURIComponent(token)}`;
 }
 
-/*===================================
-DOWNLOAD HEATMAP
-===================================*/
+function buildCompactStatus(map) {
+  const entries = Object.entries(map || {});
+  if (!entries.length) {
+    return "No data yet";
+  }
 
-function renderDownloadHeatmap(data){
-
-const canvas=document.getElementById("downloadHeatmap");
-if(!canvas) return;
-
-if(heatmapChart) heatmapChart.destroy();
-
-heatmapChart=new Chart(canvas,{
-
-type:"bar",
-
-data:{
-labels:Object.keys(data),
-datasets:[{
-label:"Downloads",
-data:Object.values(data),
-backgroundColor:"#22c55e"
-}]
+  return entries
+    .map(([label, value]) => `${label}: ${value}`)
+    .join(" · ");
 }
 
-});
+function resolveAssetUrl(value) {
+  const source = String(value || "");
+  if (!source) {
+    return "../assets/covers/Ebook_AI.png";
+  }
 
+  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(source)) {
+    return source;
+  }
+
+  if (source.startsWith("/uploads")) {
+    return `${API_BASE}${source}`;
+  }
+
+  return source;
 }
 
-/*===================================
-TOP BOOKS
-===================================*/
-
-function renderTopBooks(books){
-
-const container=document.getElementById("topBooksContainer");
-if(!container) return;
-
-container.innerHTML="";
-
-books.forEach(book=>{
-
-const div=document.createElement("div");
-div.className="book-card";
-
-div.innerHTML=`
-
-<h4>${escapeHTML(book.title)}</h4>
-<p>Downloads: ${book.downloads || 0}</p>
-<p>Earnings: ${formatCurrency(book.earnings)}</p>
-
-`;
-
-container.appendChild(div);
-
-});
-
+function statusClass(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized.includes("approved") || normalized.includes("success")) {
+    return "success";
+  }
+  if (normalized.includes("pending") || normalized.includes("review")) {
+    return "pending";
+  }
+  if (normalized.includes("reject") || normalized.includes("archived")) {
+    return "danger";
+  }
+  return "neutral";
 }
 
-/*===================================
-RECENT SALES
-===================================*/
-
-function renderRecentSales(sales){
-
-const container=document.getElementById("salesFeed");
-if(!container) return;
-
-container.innerHTML="";
-
-sales.forEach(sale=>{
-
-const div=document.createElement("div");
-
-div.className="sale-item";
-
-div.innerHTML=`
-<strong>${escapeHTML(sale.book)}</strong>
-<span>${formatCurrency(sale.amount)}</span>
-`;
-
-container.appendChild(div);
-
-});
-
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.textContent = value;
+  }
 }
 
-/*===================================
-LEADERBOARD
-===================================*/
-
-function renderLeaderboard(list){
-
-const container=document.getElementById("leaderboardContainer");
-if(!container) return;
-
-container.innerHTML="";
-
-list.forEach((user,index)=>{
-
-const div=document.createElement("div");
-
-div.innerHTML=`
-#${index+1} ${escapeHTML(user.name)} — ${formatCurrency(user.earnings)}
-`;
-
-container.appendChild(div);
-
-});
-
+function numberText(value) {
+  return Number(value || 0).toLocaleString("en-IN");
 }
 
-/*===================================
-TRENDING AUTHORS
-===================================*/
-
-function renderTrendingAuthors(authors){
-
-const container=document.getElementById("trendingAuthors");
-if(!container) return;
-
-container.innerHTML="";
-
-authors.forEach(author=>{
-
-const div=document.createElement("div");
-
-div.innerHTML=`
-<strong>${escapeHTML(author.name)}</strong>
-<p>${author.books} books</p>
-`;
-
-container.appendChild(div);
-
-});
-
+function formatCurrency(value) {
+  return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
-/*===================================
-RECOMMENDED BOOKS
-===================================*/
+function formatDate(value) {
+  if (!value) {
+    return "N/A";
+  }
 
-function renderRecommendations(books){
-
-const container=document.getElementById("recommendedBooks");
-if(!container) return;
-
-container.innerHTML="";
-
-books.forEach(book=>{
-
-const div=document.createElement("div");
-
-div.className="book-card";
-
-div.innerHTML=`
-<h4>${escapeHTML(book.title)}</h4>
-<p>${book.category}</p>
-`;
-
-container.appendChild(div);
-
-});
-
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
 }
 
-/*===================================
-CREATOR SCORE
-===================================*/
-
-function calculateCreatorScore(data){
-
-const score =
-(data.totalDownloads||0)*0.1 +
-(data.totalBooks||0)*5 +
-(data.totalEarnings||0)/500;
-
-setText("creatorScore",Math.min(100,Math.floor(score)));
-
+function escapeHTML(value) {
+  return String(value || "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
 }
 
-/*===================================
-AI FORECAST
-===================================*/
-
-function calculateForecast(data){
-
-const revenue = (data.monthlyEarnings||0)*1.15;
-
-const growth = Math.floor(Math.random()*20)+5;
-
-setText("forecastRevenue",formatCurrency(revenue));
-setText("forecastGrowth",growth+"%");
-setText("salesMomentum",growth>15?"High":"Moderate");
-
-}
-
-/*===================================
-SIMULATE LIVE SALES
-===================================*/
-
-function simulateLiveSales(){
-
-const container = document.getElementById("salesFeed");
-if(!container) return;
-
-const books=[
-"JavaScript Guide",
-"Python Basics",
-"Data Structures",
-"AI Fundamentals",
-"Web Development"
-];
-
-setInterval(()=>{
-
-const book = books[Math.floor(Math.random()*books.length)];
-const amount = Math.floor(Math.random()*400)+100;
-
-const div=document.createElement("div");
-
-div.className="sale-item";
-
-div.innerHTML=`
-<strong>${book}</strong>
-<span>₹${amount}</span>
-`;
-
-container.prepend(div);
-
-if(container.children.length>5){
-container.removeChild(container.lastChild);
-}
-
-},5000);
-
-}
-
-/*===================================
-LIVE SALES POPUP
-===================================*/
-
-function liveSalesPopup(){
-
-const books=[
-"AI Fundamentals",
-"JavaScript Guide",
-"Python Basics",
-"Data Structures",
-"Web Development"
-];
-
-setInterval(()=>{
-
-const book=books[Math.floor(Math.random()*books.length)];
-const amount=Math.floor(Math.random()*400)+100;
-
-const popup=document.createElement("div");
-
-popup.className="sale-popup";
-
-popup.innerHTML=`
-📚 ${book} sold
-<span>₹${amount}</span>
-`;
-
-document.body.appendChild(popup);
-
-setTimeout(()=>popup.remove(),4000);
-
-},8000);
-
-}
-
-/*===================================
-UTILS
-===================================*/
-
-
-function setText(id,value){
-
-const el=document.getElementById(id);
-if(el) el.innerText=value;
-
-}
-
-function formatCurrency(value){
-
-return "₹"+Number(value||0).toLocaleString("en-IN");
-
-}
-
-function escapeHTML(str){
-
-if(!str) return "";
-
-return str.replace(/[&<>"']/g,function(m){
-return{
-"&":"&amp;",
-"<":"&lt;",
-">":"&gt;",
-'"':"&quot;",
-"'":"&#039;"
-}[m];
-});
-
-}
-
-// animated counter
-
-function animateValue(id, start, end, duration){
-
-const el = document.getElementById(id);
-if(!el) return;
-
-let startTimestamp = null;
-
-function step(timestamp){
-
-if(!startTimestamp) startTimestamp = timestamp;
-
-const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-
-const value = Math.floor(progress * (end - start) + start);
-
-el.innerText = "₹" + value.toLocaleString("en-IN");
-
-if(progress < 1){
-window.requestAnimationFrame(step);
-}
-
-}
-
-window.requestAnimationFrame(step);
-
+function escapeAttribute(value) {
+  return escapeHTML(value).replace(/"/g, "&quot;");
 }

@@ -1,143 +1,628 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Upload Content | E-Book Market</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <link rel="stylesheet" href="upload.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <script src="../auth.js"></script>
+<head>
+
+<meta charset="UTF-8" />
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
+
+<title>
+Upload Content | E-Book Market
+</title>
+
+<!-- CSS -->
+
+<link
+  rel="stylesheet"
+  href="upload.css"
+/>
+
+<!-- GOOGLE FONT -->
+
+<link
+  rel="preconnect"
+  href="https://fonts.googleapis.com"
+/>
+
+<link
+  rel="preconnect"
+  href="https://fonts.gstatic.com"
+  crossorigin
+/>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+  rel="stylesheet"
+/>
+
 </head>
+
 <body>
 
-<div class="upload-wrapper">
+<!-- =========================
+MAIN LAYOUT
+========================= -->
 
-  <div class="upload-card">
+<main class="upload-layout">
 
-    <header class="upload-header">
-      <h1>Upload New Content</h1>
-      <p class="sub">
-        Publish knowledge • Earn globally • AI-powered quality review
-      </p>
-    </header>
+<!-- =========================
+SIDEBAR
+========================= -->
 
-    <form id="uploadForm" autocomplete="off">
+<aside class="creator-sidebar">
 
-      <!-- ================= TITLE ================= -->
-      <label for="title">Content Title *</label>
-      <input type="text" id="title" required minlength="5"
-        placeholder="Advanced Java Handwritten Notes for BCA" />
+<div class="creator-brand">
 
-      <!-- ================= TYPE ================= -->
-      <label for="type">Content Type *</label>
-      <select id="type" required>
-        <option value="">Select Type</option>
-        <option value="Book">📘 E-Book</option>
-        <option value="Notes">📝 Handwritten Notes</option>
-        <option value="Comics">💬 Comics</option>
-        <option value="AI">🤖 AI-Assisted Content</option>
-      </select>
+<h2>E-BOOK MARKET</h2>
 
-      <!-- ================= CATEGORY ================= -->
-      <label for="category">Category *</label>
-      <select id="category" required>
-        <option value="">Select Category</option>
-        <option value="Education">Education</option>
-        <option value="Technology">Technology</option>
-        <option value="Self Help">Self Help</option>
-        <option value="Fiction">Fiction</option>
-        <option value="Competitive">Competitive Exams</option>
-        <option value="Other">Other</option>
-      </select>
-
-      <!-- ================= LANGUAGE ================= -->
-      <label for="language">Language</label>
-      <select id="language">
-        <option value="English">English</option>
-        <option value="Hindi">Hindi</option>
-        <option value="Hinglish">Hinglish</option>
-      </select>
-
-      <!-- ================= TAGS ================= -->
-      <label>Tags (Max 5)</label>
-      <div class="tag-input" id="tagContainer">
-        <input type="text" id="tagInput"
-          placeholder="Press Enter to add tag"/>
-      </div>
-
-      <!-- ================= PRICE ================= -->
-      <label for="price">Price (₹)</label>
-      <input type="number" id="price" min="0" placeholder="0 = Free" />
-
-      <div class="earning-box">
-        <p>You earn:</p>
-        <strong>₹<span id="earnPreview">0</span></strong>
-        <small>(81% creator share)</small>
-      </div>
-
-      <!-- ================= THUMBNAIL ================= -->
-      <label>Thumbnail (Recommended 800x600)</label>
-      <div class="thumbnail-upload">
-        <input type="file" id="thumbnail" accept="image/*" hidden />
-        <div class="thumbnail-box" id="thumbnailBox">
-          <span>Click to Upload Thumbnail</span>
-        </div>
-      </div>
-
-      <!-- ================= FILE UPLOAD ================= -->
-      <label>Upload PDF *</label>
-      <div class="drop-zone" id="dropZone">
-        <p>Drag & Drop PDF here</p>
-        <small>or click to browse (Max 50MB)</small>
-        <input type="file" id="file" accept=".pdf" hidden />
-      </div>
-
-      <div class="progress-container">
-        <div class="progress-bar" id="progressBar"></div>
-      </div>
-
-      <!-- ================= DESCRIPTION ================= -->
-      <label for="description">Description (Max 300)</label>
-      <textarea id="description" maxlength="300"
-        placeholder="Explain what users will learn..."></textarea>
-      <small id="descCount">0 / 300</small>
-
-      <!-- ================= COPYRIGHT ================= -->
-      <label class="checkbox">
-        <input type="checkbox" id="copyright" required />
-        I confirm this content is original.
-      </label>
-
-      <!-- ================= AI PREVIEW ================= -->
-      <div class="ai-review-box">
-        <h4>AI Quality Score</h4>
-        <div class="ai-score" id="aiScore">--</div>
-      </div>
-
-      <!-- ================= STATUS MESSAGE ================= -->
-      <div class="status-message" id="statusMessage"></div>
-
-      <!-- ================= BUTTONS ================= -->
-      <div class="btn-row">
-        <button type="button" class="btn secondary" onclick="saveDraft()">
-          Save Draft
-        </button>
-        <button type="button" class="btn primary" onclick="uploadContent()">
-          Submit for Review
-        </button>
-      </div>
-
-    </form>
-
-    <a class="back" href="dashboard.html">← Back to Dashboard</a>
-
-  </div>
+<p>
+Creator Studio
+</p>
 
 </div>
 
+<nav class="creator-nav">
+
+<a href="dashboard.html">
+📊 Dashboard
+</a>
+
+<a href="content.html">
+📚 My Content
+</a>
+
+<a href="analytics.html">
+📈 Analytics
+</a>
+
+<a href="earning.html">
+💰 Earnings
+</a>
+
+<a
+  href="upload.html"
+  class="active"
+>
+⬆ Upload
+</a>
+
+<a href="setting.html">
+⚙ Settings
+</a>
+
+</nav>
+
+</aside>
+
+<!-- =========================
+CONTENT AREA
+========================= -->
+
+<section class="upload-content">
+
+<!-- =========================
+TOP HEADER
+========================= -->
+
+<header class="upload-topbar">
+
+<div>
+
+<h1>
+Upload New Content
+</h1>
+
+<p>
+Publish knowledge • Earn globally •
+AI-powered quality review
+</p>
+
+</div>
+
+<div class="creator-badge">
+
+<span>
+Creator Studio
+</span>
+
+</div>
+
+</header>
+
+<!-- =========================
+UPLOAD CARD
+========================= -->
+
+<div class="upload-card">
+
+<form
+  id="uploadForm"
+  autocomplete="off"
+>
+
+<!-- =========================
+BASIC DETAILS
+========================= -->
+
+<div class="form-section">
+
+<div class="section-title">
+
+<h3>
+Basic Details
+</h3>
+
+<p>
+Add title, category &
+content type
+</p>
+
+</div>
+
+<div class="form-grid">
+
+<!-- TITLE -->
+
+<div class="form-group full">
+
+<label for="title">
+Content Title *
+</label>
+
+<input
+  type="text"
+  id="title"
+  required
+  minlength="5"
+  placeholder="Advanced Java Handwritten Notes for BCA"
+/>
+
+</div>
+
+<!-- TYPE -->
+
+<div class="form-group">
+
+<label for="type">
+Content Type *
+</label>
+
+<select id="type" required>
+
+<option value="">
+Select Type
+</option>
+
+<option value="Book">
+📘 E-Book
+</option>
+
+<option value="Notes">
+📝 Handwritten Notes
+</option>
+
+<option value="Comics">
+💬 Comics
+</option>
+
+<option value="AI">
+🤖 AI-Assisted Content
+</option>
+
+</select>
+
+</div>
+
+<!-- CATEGORY -->
+
+<div class="form-group">
+
+<label for="category">
+Category *
+</label>
+
+<select id="category" required>
+
+<option value="">
+Select Category
+</option>
+
+<option value="Education">
+Education
+</option>
+
+<option value="Technology">
+Technology
+</option>
+
+<option value="Programming">
+Programming
+</option>
+
+<option value="Business">
+Business
+</option>
+
+<option value="Design">
+Design
+</option>
+
+<option value="Finance">
+Finance
+</option>
+
+<option value="Self Help">
+Self Help
+</option>
+
+<option value="Fiction">
+Fiction
+</option>
+
+<option value="Competitive">
+Competitive Exams
+</option>
+
+<option value="Handwritten">
+Handwritten
+</option>
+
+<option value="Other">
+Other
+</option>
+
+</select>
+
+</div>
+
+<!-- LANGUAGE -->
+
+<div class="form-group">
+
+<label for="language">
+Language
+</label>
+
+<select id="language">
+
+<option value="English">
+English
+</option>
+
+<option value="Hindi">
+Hindi
+</option>
+
+<option value="Hinglish">
+Hinglish
+</option>
+
+</select>
+
+</div>
+
+<!-- PRICE -->
+
+<div class="form-group">
+
+<label for="price">
+Price (₹)
+</label>
+
+<input
+  type="number"
+  id="price"
+  min="0"
+  placeholder="0 = Free"
+/>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- =========================
+TAGS
+========================= -->
+
+<div class="form-section">
+
+<div class="section-title">
+
+<h3>
+Tags
+</h3>
+
+<p>
+Add up to 5 searchable tags
+</p>
+
+</div>
+
+<div
+  class="tag-input"
+  id="tagContainer"
+>
+
+<input
+  type="text"
+  id="tagInput"
+  placeholder="Press Enter to add tag"
+/>
+
+</div>
+
+</div>
+
+<!-- =========================
+EARNING PREVIEW
+========================= -->
+
+<div class="earning-box">
+
+<div>
+
+<p>
+Estimated Creator Earnings
+</p>
+
+<strong>
+₹<span id="earnPreview">0</span>
+</strong>
+
+</div>
+
+<small>
+81% creator share
+</small>
+
+</div>
+
+<!-- =========================
+THUMBNAIL + FILE
+========================= -->
+
+<div class="upload-grid">
+
+<!-- THUMBNAIL -->
+
+<div class="upload-box">
+
+<h3>
+Thumbnail
+</h3>
+
+<p>
+Recommended:
+800 × 600
+</p>
+
+<input
+  type="file"
+  id="thumbnail"
+  accept="image/*"
+  hidden
+/>
+
+<div
+  class="thumbnail-box"
+  id="thumbnailBox"
+>
+
+<div class="upload-icon">
+🖼
+</div>
+
+<span>
+Upload Thumbnail
+</span>
+
+<small>
+PNG / JPG
+</small>
+
+</div>
+
+</div>
+
+<!-- PDF -->
+
+<div class="upload-box">
+
+<h3>
+PDF Upload
+</h3>
+
+<p>
+Max Size: 50MB
+</p>
+
+<div
+  class="drop-zone"
+  id="dropZone"
+>
+
+<div class="upload-icon">
+📄
+</div>
+
+<p>
+Drag & Drop PDF here
+</p>
+
+<small>
+or click to browse
+</small>
+
+<input
+  type="file"
+  id="file"
+  accept=".pdf"
+  hidden
+/>
+
+</div>
+
+<div class="progress-container">
+
+<div
+  class="progress-bar"
+  id="progressBar"
+></div>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- =========================
+DESCRIPTION
+========================= -->
+
+<div class="form-section">
+
+<div class="section-title">
+
+<h3>
+Description
+</h3>
+
+<p>
+Explain what users will learn
+</p>
+
+</div>
+
+<textarea
+  id="description"
+  maxlength="300"
+  placeholder="Explain what users will learn..."
+></textarea>
+
+<small id="descCount">
+0 / 300
+</small>
+
+</div>
+
+<!-- =========================
+COPYRIGHT
+========================= -->
+
+<label class="checkbox">
+
+<input
+  type="checkbox"
+  id="copyright"
+  required
+/>
+
+<span>
+I confirm this content is original
+and does not violate copyright.
+</span>
+
+</label>
+
+<!-- =========================
+AI REVIEW
+========================= -->
+
+<section class="ai-review-box">
+
+<div>
+
+<h4>
+AI Quality Score
+</h4>
+
+<p>
+Instant AI-powered quality analysis
+</p>
+
+</div>
+
+<div
+  class="ai-score"
+  id="aiScore"
+>
+--
+</div>
+
+</section>
+
+<!-- =========================
+STATUS
+========================= -->
+
+<div
+  class="status-message"
+  id="statusMessage"
+></div>
+
+<!-- =========================
+BUTTONS
+========================= -->
+
+<div class="btn-row">
+
+<button
+  type="button"
+  class="btn secondary"
+  onclick="saveDraft()"
+>
+
+Save Draft
+
+</button>
+
+<button
+  type="button"
+  class="btn primary"
+  onclick="uploadContent()"
+>
+
+Submit for Review
+
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+<!-- =========================
+BACK
+========================= -->
+
+<a
+  class="back"
+  href="dashboard.html"
+>
+
+← Back to Dashboard
+
+</a>
+
+</section>
+
+</main>
+
+<!-- JS -->
+
+<script src="../config.js"></script>
+
 <script src="../auth.js"></script>
+
 <script src="upload.js"></script>
 
 </body>
+
 </html>

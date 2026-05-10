@@ -1,54 +1,84 @@
-// =====================================
-// 📊 USER DASHBOARD ROUTES
-// =====================================
-
 const express = require("express");
 const router = express.Router();
+
 const { protect } = require("../middleware/auth");
 const Book = require("../models/book");
+const Payment = require("../models/Payment");
+const {
+  buildCreatorDashboard,
+  buildReaderDashboard,
+} = require("../services/dashboardData");
 
-/* =====================================
-   GET USER DASHBOARD DATA
-   GET /api/dashboard
-===================================== */
+const backendBaseUrl = (
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ""
+).replace(/\/$/, "");
+
+async function buildDashboardPayload(user) {
+  const [userPayments, creatorBooks, creatorPayments] = await Promise.all([
+    Payment.find({ user: user.id })
+      .populate("book", "title category coverImage price authorName isPaid status filePath previewPath downloads views salesCount earnings isArchived")
+      .populate("creator", "name username"),
+    Book.find({ author: user.id }).sort({ createdAt: -1 }),
+    Payment.find({ creator: user.id, status: "approved" })
+      .populate("book", "title category coverImage price authorName isPaid status filePath previewPath downloads views salesCount earnings isArchived")
+      .populate("user", "name email"),
+  ]);
+
+  const reader = buildReaderDashboard(user, userPayments, backendBaseUrl);
+  const creator = buildCreatorDashboard(user, creatorBooks, creatorPayments, backendBaseUrl);
+
+  return {
+    success: true,
+    role: user.role,
+    viewer: user.role === "reader" ? "reader" : "creator",
+    profile: reader.profile,
+    purchases: reader.purchases,
+    orderHistory: reader.orderHistory,
+    readerStats: reader.readerStats,
+    uploadedBooks: creator.uploadedBooks,
+    creatorStats: creator.creatorStats,
+    recentSales: creator.recentSales,
+    topBooks: creator.topBooks,
+    chart: creator.chart,
+    monthlyRevenue: creator.monthlyRevenue,
+    monthlySales: creator.monthlySales,
+    categoryRevenue: creator.categoryRevenue,
+    categoryCounts: creator.categoryCounts,
+    statusBreakdown: creator.statusBreakdown,
+
+    // Backward-compatible creator keys used by existing pages.
+    totalEarnings: creator.creatorStats.totalEarnings,
+    monthlyEarnings: creator.creatorStats.monthlyEarnings,
+    totalDownloads: creator.creatorStats.totalDownloads,
+    totalBooks: creator.creatorStats.totalBooks,
+    walletBalance: creator.creatorStats.walletBalance,
+  };
+}
 
 router.get("/", protect, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const payload = await buildDashboardPayload(req.user);
 
-    // 1️⃣ Get purchases
-    const Payment = require("../models/Payment");
-    const purchases = await Payment.find({ user: userId, status: "approved" });
-    const totalSpent = purchases.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const totalPurchased = purchases.length;
-
-    // 2️⃣ Get user's own books (if they are a creator)
-    const books = await Book.find({ author: userId });
-    const totalDownloads = books.reduce((sum, book) => sum + (book.downloads || 0), 0);
-
-    // 3️⃣ Format stats for frontend
-    const stats = {
-      totalBooks: totalPurchased,
-      totalSalesAmount: totalSpent,
-      totalDownloads: totalDownloads,
-    };
-
-    // 4️⃣ Recent Activity
-    const recentActivity = purchases.slice(0, 5).map(p => ({
-      message: "Asset purchased successfully",
-      createdAt: p.createdAt,
-      amount: p.amount
-    }));
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      stats,
-      recentActivity
+      stats: {
+        totalBooks: payload.readerStats.totalPurchased,
+        totalSalesAmount: payload.readerStats.totalSpent,
+        totalDownloads: payload.creatorStats.totalDownloads,
+      },
+      recentActivity: payload.orderHistory.slice(0, 5).map((order) => ({
+        message: `${order.title} payment ${order.status}`,
+        createdAt: order.purchaseDate,
+        amount: order.amount,
+      })),
+      viewer: payload.viewer,
+      profile: payload.profile,
     });
-
   } catch (error) {
-    console.error("🔥 Dashboard Error:", error.message);
-    res.status(500).json({
+    console.error("Dashboard Error:", error.message);
+    return res.status(500).json({
       success: false,
       message: "Server Error",
     });
@@ -57,115 +87,11 @@ router.get("/", protect, async (req, res) => {
 
 router.get("/user", protect, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const Payment = require("../models/Payment");
-    
-    const purchases = await Payment.find({ user: userId, status: "approved" });
-    const totalSpent = purchases.reduce((sum, p) => sum + (p.amount || 0), 0);
-
-    const books = await Book.find({ author: userId });
-    const totalBooks = books.length;
-    const totalDownloads = books.reduce((sum, book) => sum + (book.downloads || 0), 0);
-    const totalEarnings = books.reduce((sum, book) => sum + (book.earnings || 0), 0);
-
-    // =====================================
-    // 2️⃣ MONTHLY EARNINGS CALCULATION
-    // =====================================
-
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    const monthlyEarnings = books.reduce((sum, book) => {
-      if (!book.createdAt) return sum;
-
-      const bookDate = new Date(book.createdAt);
-
-      if (
-        bookDate.getMonth() === currentMonth &&
-        bookDate.getFullYear() === currentYear
-      ) {
-        return sum + (book.earnings || 0);
-      }
-
-      return sum;
-    }, 0);
-
-    // =====================================
-    // 3️⃣ WALLET BALANCE (Future payout logic)
-    // =====================================
-
-    const walletBalance = totalEarnings; // Later: subtract withdrawn amount
-
-    // =====================================
-    // 4️⃣ REAL CHART DATA (Last 6 Months)
-    // =====================================
-
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    const chartData = {
-      labels: [],
-      values: []
-    };
-
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date();
-      date.setMonth(date.getMonth() - i);
-
-      const month = date.getMonth();
-      const year = date.getFullYear();
-
-      const monthlyValue = books.reduce((sum, book) => {
-        if (!book.createdAt) return sum;
-
-        const bookDate = new Date(book.createdAt);
-
-        if (
-          bookDate.getMonth() === month &&
-          bookDate.getFullYear() === year
-        ) {
-          return sum + (book.earnings || 0);
-        }
-
-        return sum;
-      }, 0);
-
-      chartData.labels.push(monthNames[month]);
-      chartData.values.push(monthlyValue);
-    }
-
-    // =====================================
-    // 5️⃣ TOP PERFORMING BOOKS
-    // =====================================
-
-    const topBooks = books
-      .sort((a, b) => (b.downloads || 0) - (a.downloads || 0))
-      .slice(0, 5)
-      .map((book) => ({
-        id: book._id,
-        title: book.title,
-        downloads: book.downloads || 0,
-        earnings: book.earnings || 0,
-      }));
-
-    // =====================================
-    // 6️⃣ FINAL RESPONSE
-    // =====================================
-
-    res.status(200).json({
-      success: true,
-      totalEarnings,
-      monthlyEarnings,
-      totalDownloads,
-      totalBooks,
-      walletBalance,
-      chart: chartData,
-      topBooks,
-    });
-
+    const payload = await buildDashboardPayload(req.user);
+    return res.status(200).json(payload);
   } catch (error) {
-    console.error("🔥 Dashboard Error:", error.message);
-    res.status(500).json({
+    console.error("Dashboard Error:", error.message);
+    return res.status(500).json({
       success: false,
       message: "Server Error",
     });

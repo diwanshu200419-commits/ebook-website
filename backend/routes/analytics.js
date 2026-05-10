@@ -1,68 +1,63 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middleware/auth");
-const Book = require("../models/book");
-const User = require("../models/user");
 
-/* ======================================
-   TEST ROUTE
-====================================== */
+const { protect, authorize } = require("../middleware/auth");
+const Book = require("../models/book");
+const Payment = require("../models/Payment");
+const {
+  buildCreatorDashboard,
+} = require("../services/dashboardData");
+
+const backendBaseUrl = (
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ""
+).replace(/\/$/, "");
+
 router.get("/test", (req, res) => {
   res.json({ message: "Analytics working" });
 });
 
-/* ======================================
-   CREATOR ANALYTICS
-====================================== */
-router.get("/creator", protect, async (req, res) => {
+router.get("/creator", protect, authorize("creator", "author", "admin"), async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
 
-    const books = await Book.find({ author: userId });
+    const [books, payments] = await Promise.all([
+      Book.find({ author: userId }).sort({ createdAt: -1 }),
+      Payment.find({ creator: userId, status: "approved" })
+        .populate("book", "title category coverImage price authorName isPaid status filePath previewPath downloads views salesCount earnings isArchived")
+        .populate("user", "name email"),
+    ]);
 
-    const totalBooks = books.length;
+    const creator = buildCreatorDashboard(req.user, books, payments, backendBaseUrl);
 
-    const totalSales = books.reduce((sum, b) => {
-      return sum + (b.salesCount || 0);
-    }, 0);
-
-    const totalRevenue = books.reduce((sum, b) => {
-      return sum + (b.earnings || 0);
-    }, 0);
-
-    const totalEarnings = totalRevenue;
-
-    const totalViews = books.reduce((sum, b) => {
-      return sum + (b.downloads || 0);
-    }, 0);
-
-    // Temporary Monthly Demo Data
-    const monthlyRevenue = [1200, 2100, 1800, 2600, 3200, 4100];
-    const monthlySales = [5, 8, 6, 10, 12, 15];
+    const analytics = {
+      totalBooks: creator.creatorStats.totalBooks,
+      totalSales: creator.creatorStats.totalSales,
+      totalRevenue: creator.creatorStats.totalEarnings,
+      totalEarnings: creator.creatorStats.totalEarnings,
+      totalViews: creator.creatorStats.totalViews,
+      chart: creator.chart,
+      monthlyRevenue: creator.monthlyRevenue,
+      monthlySales: creator.monthlySales,
+      creatorScore: creator.creatorStats.creatorScore,
+      categoryRevenue: creator.categoryRevenue,
+      statusBreakdown: creator.statusBreakdown,
+      topBooks: creator.topBooks,
+    };
 
     res.status(200).json({
       success: true,
-      analytics: {
-        totalBooks,
-        totalSales,
-        totalRevenue,
-        totalEarnings,
-        totalViews,
-        monthlyRevenue,
-        monthlySales
-      }
+      ...analytics,
+      analytics,
     });
-
-  } catch (err) {
-    console.error("Analytics Error:", err);
+  } catch (error) {
+    console.error("Analytics Error:", error);
     res.status(500).json({
       success: false,
-      message: "Analytics error"
+      message: "Analytics error",
     });
   }
 });
 
-/* ======================================
-   EXPORT ROUTER (VERY IMPORTANT)
-====================================== */
 module.exports = router;

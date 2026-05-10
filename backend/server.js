@@ -10,6 +10,7 @@ const cors = require("cors");
 const passport = require("passport");
 const path = require("path");
 const User = require("./models/user");
+const { uploadsRoot } = require("./utils/uploads");
 const {
   getAllowedFrontendOrigins,
   getFrontendBaseUrl,
@@ -138,12 +139,9 @@ app.use((req, res, next) => {
    📂 STATIC FILES (IMPORTANT)
 =================================== */
 
-// Serve non-sensitive upload assets publicly.
-app.use("/uploads/covers", express.static(path.join(__dirname, "uploads/covers")));
-app.use("/uploads/payments", express.static(path.join(__dirname, "uploads/payments")));
-
-// Support frontend access to covers without backendBaseUrl if needed
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Serve only non-sensitive upload assets publicly.
+app.use("/uploads/covers", express.static(path.join(uploadsRoot, "covers")));
+app.use("/uploads/payments", express.static(path.join(uploadsRoot, "payments")));
 
 /* ===================================
    ✅ DATABASE

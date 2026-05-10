@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { getRevenueSplit } = require("../utils/revenue");
 
 const paymentSchema = new mongoose.Schema({
 
@@ -68,9 +69,9 @@ const paymentSchema = new mongoose.Schema({
    🔥 AUTO CALCULATION
 ============================ */
 paymentSchema.pre("save", function (next) {
-
-  this.platformFee = this.amount * 0.18;
-  this.creatorAmount = this.amount * 0.82;
+  const split = getRevenueSplit(this.amount);
+  this.platformFee = split.platformFee;
+  this.creatorAmount = split.creatorAmount;
 
   next();
 });

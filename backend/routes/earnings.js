@@ -1,116 +1,133 @@
 const express = require("express");
 const router = express.Router();
-const { protect } = require("../middleware/auth");
+
+const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
+const Payment = require("../models/Payment");
+const WithdrawRequest = require("../models/WithdrawRequest");
+const {
+  buildCreatorDashboard,
+} = require("../services/dashboardData");
+const { roundMoney } = require("../utils/revenue");
 
-/* =====================================
-   GET USER EARNINGS
-   GET /api/earnings/user
-===================================== */
+const backendBaseUrl = (
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ""
+).replace(/\/$/, "");
 
-router.get("/user", protect, async (req, res) => {
+router.get("/user", protect, authorize("creator", "author", "admin"), async (req, res) => {
   try {
-
     const userId = req.user.id;
 
-    // Get all books by this creator
-    const books = await Book.find({ author: userId });
+    const [books, payments, withdrawRequests] = await Promise.all([
+      Book.find({ author: userId }).sort({ createdAt: -1 }),
+      Payment.find({ creator: userId, status: "approved" })
+        .populate("book", "title category coverImage price authorName isPaid status filePath previewPath downloads views salesCount earnings isArchived")
+        .populate("user", "name email"),
+      WithdrawRequest.find({ user: userId }).sort({ requestedAt: -1 }),
+    ]);
 
-    let pending = 0;
-    let available = 0;
-    let withdrawn = 0;
-    let lifetime = 0;
+    const creator = buildCreatorDashboard(req.user, books, payments, backendBaseUrl);
 
-    let category = {
-      books: 0,
-      notes: 0,
-      study: 0,
-      ai: 0
-    };
+    const pending = roundMoney(
+      withdrawRequests
+        .filter((item) => ["pending", "approved"].includes(item.status))
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    );
+    const withdrawn = roundMoney(
+      withdrawRequests
+        .filter((item) => ["paid"].includes(item.status))
+        .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    );
+    const available = Math.max(
+      0,
+      roundMoney(creator.creatorStats.walletBalance - pending)
+    );
 
-    let transactions = [];
+    const transactions = payments
+      .slice()
+      .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+      .map((payment) => ({
+        id: payment._id,
+        title: payment.book?.title || "Book removed",
+        type: payment.book?.category || "Book",
+        amount: roundMoney(payment.creatorAmount || 0),
+        status: payment.status,
+        date: payment.createdAt,
+        transactionId: payment.transactionId,
+      }));
 
-    books.forEach(book => {
-
-      const earnings = book.earnings || 0;
-      const downloads = book.downloads || 0;
-
-      lifetime += earnings;
-
-      // Simple payout logic
-      available += earnings;
-
-      // Category breakdown
-      if (book.category === "Book") category.books += earnings;
-      if (book.category === "Notes") category.notes += earnings;
-      if (book.category === "Study") category.study += earnings;
-      if (book.category === "AI") category.ai += earnings;
-
-      // Add transaction entry
-      transactions.push({
-        title: book.title,
-        type: book.category || "Book",
-        amount: earnings,
-        status: "available",
-        date: book.createdAt || new Date()
-      });
-
-    });
-
-    // Monthly chart (dummy for now — later DB based)
-    const chart = {
-      labels: ["Jan","Feb","Mar","Apr","May","Jun"],
-      values: [1200, 2100, 1800, 2600, 3200, 2800]
-    };
+    const topBooks = creator.topBooks.map((book) => ({
+      title: book.title,
+      sales: book.sales,
+      earnings: book.earnings,
+      coverUrl: book.coverUrl,
+      status: book.status,
+    }));
 
     res.json({
       pending,
       available,
       withdrawn,
-      lifetime,
+      lifetime: creator.creatorStats.totalEarnings,
+      totalSales: creator.creatorStats.totalSales,
+      totalBooks: creator.creatorStats.totalBooks,
+      creatorScore: creator.creatorStats.creatorScore,
       transactions,
-      chart,
-      category
+      chart: creator.chart,
+      category: creator.categoryRevenue,
+      payout: req.user.payout || {},
+      topBooks,
+      categoryRevenue: creator.categoryRevenue,
+      statusBreakdown: creator.statusBreakdown,
     });
-
-  } catch (err) {
-    console.error("Earnings Route Error:", err);
+  } catch (error) {
+    console.error("Earnings Route Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
 
-/* =====================================
-   REQUEST WITHDRAWAL
-   POST /api/earnings/withdraw
-===================================== */
-
-router.post("/withdraw", protect, async (req, res) => {
+router.post("/withdraw", protect, authorize("creator", "author", "admin"), async (req, res) => {
   try {
-
     const userId = req.user.id;
 
-    const books = await Book.find({ author: userId });
-
-    const totalAvailable = books.reduce(
-      (sum, book) => sum + (book.earnings || 0),
+    const pendingRequests = await WithdrawRequest.find({
+      user: userId,
+      status: { $in: ["pending", "approved"] },
+    });
+    const pendingAmount = pendingRequests.reduce(
+      (sum, request) => sum + Number(request.amount || 0),
       0
     );
 
-    if (totalAvailable < 500) {
+    const availableBalance = Math.max(
+      0,
+      Number(req.user.wallet?.availableBalance || 0) - pendingAmount
+    );
+
+    if (availableBalance < 500) {
       return res.status(400).json({
-        message: "Minimum ₹500 required to withdraw"
+        success: false,
+        message: "Minimum Rs. 500 available balance is required to withdraw",
       });
     }
 
-    // Future: create WithdrawRequest model
-    // For now we just simulate success
-
-    res.json({
-      message: "Withdrawal request submitted successfully"
+    const withdrawRequest = await WithdrawRequest.create({
+      user: userId,
+      amount: roundMoney(availableBalance),
+      status: "pending",
+      method: req.user.payout?.upiId ? "upi" : "bank",
+      accountDetails: req.user.payout || {},
     });
 
-  } catch (err) {
-    console.error("Withdraw Error:", err);
+    res.json({
+      success: true,
+      message: "Withdrawal request submitted successfully",
+      request: withdrawRequest,
+    });
+  } catch (error) {
+    console.error("Withdraw Error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });

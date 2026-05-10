@@ -5,154 +5,175 @@
 <title>Content Studio | E-Book Market</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="content.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<script src="../config.js"></script>
 <script src="../auth.js"></script>
 </head>
-
 <body>
 
-<div class="dashboard-layout">
-
-  <!-- ================= SIDEBAR ================= -->
-  <aside class="sidebar">
-    <div class="logo">E-BOOK MARKET</div>
+<div class="studio-shell">
+  <aside class="studio-sidebar">
+    <p class="sidebar-kicker">Creator Studio</p>
+    <h2>E-BOOK MARKET</h2>
     <nav>
       <a href="dashboard.html">Dashboard</a>
       <a href="analytics.html">Analytics</a>
       <a href="earning.html">Earnings</a>
-      <a class="active">Content</a>
+      <a href="upload.html">Upload</a>
+      <a href="content.html" class="active">Content</a>
       <a href="setting.html">Settings</a>
     </nav>
   </aside>
 
-  <!-- ================= MAIN ================= -->
-  <main class="content-container">
-
-    <!-- ===== PAGE HEADER ===== -->
-    <div class="content-header">
+  <main class="studio-main">
+    <header class="page-header">
       <div>
-        <h1>Content Studio</h1>
-        <p>Create, manage & monetize your digital books</p>
+        <p class="eyebrow">Catalog</p>
+        <h1>Your uploaded books</h1>
+        <p>Manage approval status, pricing, metadata, and safe archiving for every upload.</p>
+      </div>
+      <a class="primary-btn" href="upload.html">Upload new book</a>
+    </header>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span>Total uploads</span>
+        <strong id="totalBooks">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Published</span>
+        <strong id="publishedCount">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Total sales</span>
+        <strong id="totalSales">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Total earnings</span>
+        <strong id="totalRevenue">Rs. 0</strong>
+      </article>
+    </section>
+
+    <section class="content-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Live from MongoDB</p>
+          <h2>Book inventory</h2>
+        </div>
       </div>
 
-      <button class="btn-primary" id="openUploadBtn">
-        + Upload New Book
-      </button>
-    </div>
+      <div id="messageBox" class="message hidden"></div>
 
-    <!-- ===== STATS ROW ===== -->
-    <div class="content-stats">
-
-      <div class="stat-card">
-        <h4>Total Books</h4>
-        <p id="totalBooks">0</p>
+      <div class="table-wrap">
+        <table class="content-table">
+          <thead>
+            <tr>
+              <th>Book</th>
+              <th>Status</th>
+              <th>Sales</th>
+              <th>Earnings</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bookTable"></tbody>
+        </table>
       </div>
 
-      <div class="stat-card">
-        <h4>Total Sales</h4>
-        <p id="totalSales">0</p>
+      <div id="emptyState" class="empty-state hidden">
+        No books uploaded yet. Start with your first real PDF upload and it will appear here instantly.
       </div>
-
-      <div class="stat-card">
-        <h4>Total Revenue</h4>
-        <p id="totalRevenue">₹0</p>
-      </div>
-
-      <div class="stat-card">
-        <h4>Published</h4>
-        <p id="publishedCount">0</p>
-      </div>
-
-    </div>
-
-    <!-- ===== BOOK LIST ===== -->
-    <div class="content-card">
-
-      <table class="content-table">
-        <thead>
-          <tr>
-            <th>Cover</th>
-            <th>Title</th>
-            <th>Price</th>
-            <th>Status</th>
-            <th>Sales</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody id="bookTable">
-          <!-- JS will load books here -->
-        </tbody>
-
-      </table>
-
-      <div id="emptyState" class="empty-state">
-        <p>No books yet.</p>
-        <span>Start by uploading your first book.</span>
-      </div>
-
-    </div>
-
+    </section>
   </main>
 </div>
 
-
-<!-- ================= UPLOAD MODAL ================= -->
-
-<div id="uploadModal" class="modal">
-
-  <div class="modal-content">
-
-    <h2>Upload New Book</h2>
-
-    <div class="form-group">
-      <label>Book Title</label>
-      <input type="text" id="bookTitle">
+<div class="modal hidden" id="editModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">Edit metadata</p>
+        <h2>Edit book</h2>
+      </div>
+      <button type="button" class="icon-btn" id="closeModalBtn">Close</button>
     </div>
 
-    <div class="form-group">
-      <label>Description</label>
-      <textarea id="bookDescription"></textarea>
-    </div>
+    <form id="editForm" class="modal-form">
+      <input type="hidden" id="editBookId">
 
-    <div class="form-group">
-      <label>Price (₹)</label>
-      <input type="number" id="bookPrice">
-    </div>
+      <label>
+        Title
+        <input type="text" id="editTitle" minlength="3" required>
+      </label>
 
-    <div class="form-group">
-      <label>Status</label>
-      <select id="bookStatus">
-        <option value="draft">Draft</option>
-        <option value="published">Published</option>
-      </select>
-    </div>
+      <label>
+        Category
+        <select id="editCategory" required>
+          <option value="Book">Book</option>
+          <option value="Notes">Notes</option>
+          <option value="Study">Study</option>
+          <option value="AI">AI</option>
+          <option value="Comics">Comics</option>
+          <option value="Education">Education</option>
+          <option value="Technology">Technology</option>
+          <option value="Self Help">Self Help</option>
+          <option value="Fiction">Fiction</option>
+          <option value="Competitive">Competitive</option>
+          <option value="Programming">Programming</option>
+          <option value="Business">Business</option>
+          <option value="Design">Design</option>
+          <option value="Finance">Finance</option>
+          <option value="Self Growth">Self Growth</option>
+          <option value="Handwritten">Handwritten</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
 
-    <div class="form-group">
-      <label>Upload PDF</label>
-      <input type="file" id="bookFile" accept=".pdf">
-    </div>
+      <label>
+        Type
+        <select id="editType" required>
+          <option value="Book">Book</option>
+          <option value="Notes">Notes</option>
+          <option value="Study">Study</option>
+          <option value="AI">AI</option>
+          <option value="Comics">Comics</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
 
-    <div class="modal-actions">
-      <button class="btn-secondary" id="closeModalBtn">
-        Cancel
-      </button>
+      <label>
+        Language
+        <input type="text" id="editLanguage" maxlength="40">
+      </label>
 
-      <button class="btn-primary" id="saveBookBtn">
-        Save Book
-      </button>
-    </div>
+      <label>
+        Price
+        <input type="number" id="editPrice" min="0" step="0.01" required>
+      </label>
 
+      <label>
+        Tags
+        <input type="text" id="editTags" placeholder="comma, separated, tags">
+      </label>
+
+      <label class="full-width">
+        Description
+        <textarea id="editDescription" minlength="30" maxlength="5000" required></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="secondary-btn" id="cancelModalBtn">Cancel</button>
+        <button type="submit" class="primary-btn">Save changes</button>
+      </div>
+    </form>
   </div>
 </div>
 
-
-<script src="../auth.js"></script>
 <script src="content.js"></script>
-
 <script>
-  protectPage(["creator","author"]);
+  protectPage(["creator", "author", "admin"]);
 </script>
 
 </body>

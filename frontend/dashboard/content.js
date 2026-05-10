@@ -1,217 +1,276 @@
-/* =====================================
-   CONFIG
-===================================== */
-
 const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
 const token = localStorage.getItem("token");
 
-if (!token) {
-  window.location.href = "../login.html";
+let booksCache = [];
+
+document.addEventListener("DOMContentLoaded", initContentStudio);
+
+async function initContentStudio() {
+  if (!token) {
+    window.location.href = "../login.html";
+    return;
+  }
+
+  bindModalControls();
+  await loadBooks();
 }
-
-/* =====================================
-   DOM ELEMENTS
-===================================== */
-
-const bookTable = document.getElementById("bookTable");
-const emptyState = document.getElementById("emptyState");
-
-const totalBooksEl = document.getElementById("totalBooks");
-const totalSalesEl = document.getElementById("totalSales");
-const totalRevenueEl = document.getElementById("totalRevenue");
-const publishedCountEl = document.getElementById("publishedCount");
-
-const uploadModal = document.getElementById("uploadModal");
-const openUploadBtn = document.getElementById("openUploadBtn");
-const closeModalBtn = document.getElementById("closeModalBtn");
-const saveBookBtn = document.getElementById("saveBookBtn");
-
-/* =====================================
-   INIT
-===================================== */
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadBooks();
-});
-
-/* =====================================
-   LOAD BOOKS
-===================================== */
 
 async function loadBooks() {
   try {
-    const res = await fetch(`${API_BASE}/api/books/my/books`, {
+    const response = await fetch(`${API_BASE}/api/books/my/books`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
     });
 
-    if (!res.ok) throw new Error("Failed to load books");
+    if (response.status === 401) {
+      localStorage.clear();
+      window.location.href = "../login.html";
+      return;
+    }
 
-    const data = await res.json();
-    const books = data.books || [];
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load books");
+    }
 
-    renderBooks(books);
-    updateStats(books);
-
-  } catch (err) {
-    console.error(err);
+    booksCache = data.books || [];
+    renderStats(booksCache, data.summary || {});
+    renderTable(booksCache);
+  } catch (error) {
+    console.error("Content load failed:", error);
+    showMessage(error.message || "Unable to load your content", "error");
   }
 }
 
-/* =====================================
-   RENDER BOOKS
-===================================== */
+function renderStats(books, summary) {
+  const totalBooks = summary.totalBooks ?? books.length;
+  const publishedCount = summary.publishedBooks ?? books.filter((book) => book.rawStatus === "Approved" && !book.isArchived).length;
+  const totalSales = books.reduce((sum, book) => sum + Number(book.salesCount || 0), 0);
+  const totalRevenue = books.reduce((sum, book) => sum + Number(book.earnings || 0), 0);
 
-function renderBooks(books) {
-  bookTable.innerHTML = "";
+  document.getElementById("totalBooks").textContent = numberText(totalBooks);
+  document.getElementById("publishedCount").textContent = numberText(publishedCount);
+  document.getElementById("totalSales").textContent = numberText(totalSales);
+  document.getElementById("totalRevenue").textContent = formatCurrency(totalRevenue);
+}
 
-  if (books.length === 0) {
-    emptyState.style.display = "block";
+function renderTable(books) {
+  const table = document.getElementById("bookTable");
+  const emptyState = document.getElementById("emptyState");
+
+  if (!books.length) {
+    table.innerHTML = "";
+    emptyState.classList.remove("hidden");
     return;
   }
 
-  emptyState.style.display = "none";
-
-  books.forEach(book => {
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
+  emptyState.classList.add("hidden");
+  table.innerHTML = books.map((book) => `
+    <tr>
       <td>
-        <img src="${book.coverImage || '../assets/default-cover.png'}"
-             class="table-cover">
+        <div class="book-cell">
+            <img src="${escapeAttribute(resolveAssetUrl(book.coverUrl || book.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(book.title)}">
+          <div>
+            <strong>${escapeHTML(book.title)}</strong>
+            <span>${escapeHTML(book.category || "Book")} · ${book.isPaid ? formatCurrency(book.price || 0) : "Free"}</span>
+          </div>
+        </div>
       </td>
-
-      <td>${book.title}</td>
-
-      <td>₹${book.price}</td>
-
       <td>
-        <span class="status-badge ${book.status}">
-          ${book.status}
-        </span>
+        <span class="status-pill ${statusClass(book.status)}">${escapeHTML(book.status)}</span>
       </td>
-
-      <td>${book.sales || 0}</td>
-
       <td>
-        <button onclick="deleteBook('${book._id}')">
-          Delete
-        </button>
+        <strong>${numberText(book.salesCount || 0)}</strong>
+        <span>${numberText(book.downloads || 0)} downloads</span>
       </td>
-    `;
+      <td>
+        <strong>${formatCurrency(book.earnings || 0)}</strong>
+        <span>${numberText(book.views || 0)} views</span>
+      </td>
+      <td>
+        <div class="actions">
+          <button type="button" class="secondary-btn" data-edit-id="${book._id}">Edit</button>
+          <button type="button" class="secondary-btn danger" data-delete-id="${book._id}">${book.isArchived ? "Delete" : "Archive/Delete"}</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
 
-    bookTable.appendChild(row);
+  table.querySelectorAll("[data-edit-id]").forEach((button) => {
+    button.addEventListener("click", () => openEditModal(button.dataset.editId));
+  });
+
+  table.querySelectorAll("[data-delete-id]").forEach((button) => {
+    button.addEventListener("click", () => handleDelete(button.dataset.deleteId));
   });
 }
 
-/* =====================================
-   UPDATE STATS
-===================================== */
-
-function updateStats(books) {
-
-  const totalBooks = books.length;
-  const totalSales = books.reduce((sum, b) => sum + (b.sales || 0), 0);
-  const totalRevenue = books.reduce((sum, b) => sum + ((b.sales || 0) * (b.price || 0)), 0);
-  const publishedCount = books.filter(b => b.status === "Approved").length;
-
-  totalBooksEl.textContent = totalBooks;
-  totalSalesEl.textContent = totalSales;
-  totalRevenueEl.textContent = `₹${totalRevenue}`;
-  publishedCountEl.textContent = publishedCount;
+function bindModalControls() {
+  document.getElementById("closeModalBtn").addEventListener("click", closeEditModal);
+  document.getElementById("cancelModalBtn").addEventListener("click", closeEditModal);
+  document.getElementById("editForm").addEventListener("submit", submitEdit);
 }
 
-/* =====================================
-   MODAL CONTROL
-===================================== */
-
-openUploadBtn.addEventListener("click", () => {
-  uploadModal.style.display = "flex";
-});
-
-closeModalBtn.addEventListener("click", () => {
-  uploadModal.style.display = "none";
-});
-
-/* =====================================
-   UPLOAD BOOK
-===================================== */
-
-saveBookBtn.addEventListener("click", uploadBook);
-
-async function uploadBook() {
-
-  const title = document.getElementById("bookTitle").value.trim();
-  const description = document.getElementById("bookDescription").value.trim();
-  const price = document.getElementById("bookPrice").value;
-  const status = document.getElementById("bookStatus").value;
-  const file = document.getElementById("bookFile").files[0];
-
-  if (!title || !price || !file) {
-    return alert("Please fill required fields");
+function openEditModal(bookId) {
+  const book = booksCache.find((item) => item._id === bookId);
+  if (!book) {
+    return;
   }
 
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("description", description);
-  formData.append("price", price);
-  formData.append("status", status);
-  formData.append("pdf", file);
+  document.getElementById("editBookId").value = book._id;
+  document.getElementById("editTitle").value = book.title || "";
+  document.getElementById("editCategory").value = book.category || "Book";
+  document.getElementById("editType").value = book.type || "Book";
+  document.getElementById("editLanguage").value = book.language || "English";
+  document.getElementById("editPrice").value = Number(book.price || 0);
+  document.getElementById("editTags").value = (book.tags || []).join(", ");
+  document.getElementById("editDescription").value = book.description || "";
+
+  document.getElementById("editModal").classList.remove("hidden");
+}
+
+function closeEditModal() {
+  document.getElementById("editModal").classList.add("hidden");
+}
+
+async function submitEdit(event) {
+  event.preventDefault();
+
+  const bookId = document.getElementById("editBookId").value;
+  const payload = {
+    title: document.getElementById("editTitle").value.trim(),
+    category: document.getElementById("editCategory").value,
+    type: document.getElementById("editType").value,
+    language: document.getElementById("editLanguage").value.trim() || "English",
+    price: Number(document.getElementById("editPrice").value || 0),
+    tags: document.getElementById("editTags").value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+    description: document.getElementById("editDescription").value.trim()
+  };
 
   try {
-    const res = await fetch(`${API_BASE}/api/books/upload`, {
-      method: "POST",
+    const response = await fetch(`${API_BASE}/api/books/${bookId}`, {
+      method: "PUT",
       headers: {
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
-      body: formData
+      body: JSON.stringify(payload)
     });
 
-    if (!res.ok) throw new Error("Upload failed");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to update book");
+    }
 
-    uploadModal.style.display = "none";
-    clearForm();
-    loadBooks();
-
-  } catch (err) {
-    alert("Failed to upload book");
+    closeEditModal();
+    showMessage("Book updated successfully", "success");
+    await loadBooks();
+  } catch (error) {
+    showMessage(error.message || "Unable to update book", "error");
   }
 }
 
-/* =====================================
-   DELETE BOOK
-===================================== */
+async function handleDelete(bookId) {
+  const book = booksCache.find((item) => item._id === bookId);
+  if (!book) {
+    return;
+  }
 
-async function deleteBook(bookId) {
+  const confirmed = window.confirm(
+    book.isArchived
+      ? "Delete this archived book permanently? This should only be used when it has no order history."
+      : "Delete this book? If it already has order history, it will be archived instead to protect buyers."
+  );
 
-  const confirmDelete = confirm("Are you sure you want to delete this book?");
-  if (!confirmDelete) return;
+  if (!confirmed) {
+    return;
+  }
 
   try {
-    const res = await fetch(`${API_BASE}/api/books/${bookId}`, {
+    const response = await fetch(`${API_BASE}/api/books/${bookId}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`
       }
     });
 
-    if (!res.ok) throw new Error("Delete failed");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Unable to remove book");
+    }
 
-    loadBooks();
-
-  } catch (err) {
-    alert("Failed to delete book");
+    showMessage(data.message || "Book updated", "success");
+    await loadBooks();
+  } catch (error) {
+    showMessage(error.message || "Unable to remove book", "error");
   }
 }
 
-/* =====================================
-   CLEAR FORM
-===================================== */
+function showMessage(message, type) {
+  const box = document.getElementById("messageBox");
+  box.textContent = message;
+  box.className = `message ${type}`;
+  box.classList.remove("hidden");
 
-function clearForm() {
-  document.getElementById("bookTitle").value = "";
-  document.getElementById("bookDescription").value = "";
-  document.getElementById("bookPrice").value = "";
-  document.getElementById("bookFile").value = "";
+  window.clearTimeout(showMessage.timer);
+  showMessage.timer = window.setTimeout(() => {
+    box.classList.add("hidden");
+  }, 3200);
+}
+
+function statusClass(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized.includes("approved")) {
+    return "success";
+  }
+  if (normalized.includes("pending") || normalized.includes("review")) {
+    return "pending";
+  }
+  if (normalized.includes("reject") || normalized.includes("archive")) {
+    return "danger";
+  }
+  return "neutral";
+}
+
+function formatCurrency(value) {
+  return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+function resolveAssetUrl(value) {
+  const source = String(value || "");
+  if (!source) {
+    return "../assets/covers/Ebook_AI.png";
+  }
+
+  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(source)) {
+    return source;
+  }
+
+  if (source.startsWith("/uploads")) {
+    return `${API_BASE}${source}`;
+  }
+
+  return source;
+}
+
+function numberText(value) {
+  return Number(value || 0).toLocaleString("en-IN");
+}
+
+function escapeHTML(value) {
+  return String(value || "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function escapeAttribute(value) {
+  return escapeHTML(value).replace(/"/g, "&quot;");
 }
