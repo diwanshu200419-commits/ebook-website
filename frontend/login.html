@@ -115,17 +115,6 @@ Don’t have an account?
 const API_BASE = window.API_BASE || "";
 
 /* ======================================
-AUTO REDIRECT IF ALREADY LOGGED IN
-====================================== */
-
-const existingToken = localStorage.getItem("token");
-
-if(existingToken){
-redirectUser(existingToken);
-}
-
-
-/* ======================================
 INIT LOGIN PAGE
 ====================================== */
 
@@ -155,6 +144,15 @@ window.history.replaceState({},document.title,window.location.pathname);
 await syncSessionToken(tokenToUse);
 
 await redirectUser(tokenToUse);
+
+return;
+
+}
+
+const existingToken = localStorage.getItem("token");
+
+if(existingToken){
+await redirectUser(existingToken);
 
 }
 
@@ -314,7 +312,10 @@ window.location.href="dashboard/dashboard.html";
 
 }catch{
 
-localStorage.clear();
+if(localStorage.getItem("token") === token){
+localStorage.removeItem("token");
+localStorage.removeItem("user");
+}
 
 }
 
