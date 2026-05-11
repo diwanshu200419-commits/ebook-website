@@ -4,3 +4,8 @@ backend/.env
 backend/uploads
 *.pdf
 *.pptx
+backend/*.out
+backend/*.err
+frontend/*.out
+frontend/*.err
+backend/public-tunnel-url.txt

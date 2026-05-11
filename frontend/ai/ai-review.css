@@ -86,6 +86,13 @@ margin:0;
 line-height:1.7;
 }
 
+.header-right{
+display:flex;
+flex-direction:column;
+align-items:flex-end;
+gap:12px;
+}
+
 .badge{
 
 padding:10px 20px;
@@ -102,6 +109,56 @@ letter-spacing:1px;
 
 box-shadow:
 0 10px 30px rgba(139,92,246,.35);
+}
+
+.provider-panel{
+min-width:220px;
+padding:14px 16px;
+border-radius:20px;
+background:rgba(255,255,255,.04);
+border:1px solid rgba(255,255,255,.08);
+text-align:left;
+}
+
+.provider-panel[data-provider="openai"]{
+background:rgba(59,130,246,.12);
+border-color:rgba(59,130,246,.2);
+}
+
+.provider-panel[data-provider="ollama"]{
+background:rgba(16,185,129,.12);
+border-color:rgba(16,185,129,.22);
+}
+
+.provider-panel[data-provider="local"]{
+background:rgba(245,158,11,.12);
+border-color:rgba(245,158,11,.22);
+}
+
+.provider-panel[data-provider="loading"]{
+background:rgba(255,255,255,.04);
+}
+
+.provider-kicker{
+display:block;
+font-size:11px;
+font-weight:700;
+letter-spacing:1px;
+text-transform:uppercase;
+color:#94a3b8;
+margin-bottom:6px;
+}
+
+.provider-panel strong{
+display:block;
+font-size:1rem;
+margin-bottom:4px;
+}
+
+.provider-panel small{
+display:block;
+color:#cbd5e1;
+line-height:1.5;
 }
 
 /* ===============================
@@ -578,6 +635,11 @@ TABLET
 
 .ai-header{
 flex-direction:column;
+align-items:flex-start;
+}
+
+.header-right{
+width:100%;
 align-items:flex-start;
 }
 

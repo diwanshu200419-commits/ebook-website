@@ -2,13 +2,16 @@
 // 🚀 E-BOOK MARKETPLACE BACKEND (FINAL PRO VERSION)
 // ===============================
 
-require("dotenv").config();
+const path = require("path");
+
+require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
 
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const passport = require("passport");
-const path = require("path");
 const User = require("./models/user");
 const { uploadsRoot } = require("./utils/uploads");
 const {
@@ -108,9 +111,10 @@ const allowedOrigins = getAllowedFrontendOrigins();
 app.use(
   cors({
     origin: function (origin, callback) {
+      const normalizedOrigin = getUrlOrigin(origin) || normalizeUrl(origin);
       const allow =
         !origin ||
-        allowedOrigins.includes(getUrlOrigin(origin) || normalizeUrl(origin));
+        allowedOrigins.includes(normalizedOrigin);
       if (allow) {
         callback(null, true);
       } else {

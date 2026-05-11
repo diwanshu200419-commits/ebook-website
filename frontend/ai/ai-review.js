@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "";
 const token = localStorage.getItem("token");
 const params = new URLSearchParams(window.location.search);
 const bookId = params.get("id");
@@ -17,6 +17,9 @@ const metricsGrid = document.querySelector(".metrics-grid");
 const adminActions = document.getElementById("adminActions");
 const backLink = document.getElementById("backLink");
 const viewerBadge = document.getElementById("viewerBadge");
+const providerPanel = document.getElementById("providerPanel");
+const providerBadge = document.getElementById("providerBadge");
+const providerMeta = document.getElementById("providerMeta");
 
 let reviewData = null;
 
@@ -90,6 +93,7 @@ function renderReport(data) {
 
   scoreStatusEl.textContent = recommendation.statusText;
   scoreStatusEl.className = `score-status ${recommendation.className}`;
+  renderProvider(report.aiProvider, report.aiModel);
 
   renderMetrics([
     { label: "Originality", value: `${originalityScore}%`, className: originalityScore >= 75 ? "good" : originalityScore >= 50 ? "warn" : "bad" },
@@ -105,6 +109,15 @@ function renderReport(data) {
   recommendationBox.className = `ai-recommendation ${recommendation.className}`;
   recommendationText.textContent = recommendation.message;
   animateScore(Number(book.aiScore || 0));
+}
+
+function renderProvider(provider, model) {
+  const normalized = String(provider || "local").toLowerCase();
+  const descriptor = describeProvider(normalized, model);
+
+  providerPanel.dataset.provider = normalized;
+  providerBadge.textContent = descriptor.label;
+  providerMeta.textContent = descriptor.meta;
 }
 
 function renderMetrics(metrics) {
@@ -339,7 +352,36 @@ function renderErrorState(message) {
   recommendationText.textContent = message;
   overallScoreEl.textContent = "--";
   metricsGrid.innerHTML = "";
+  renderProvider("loading", "Unavailable");
   renderInsights([message]);
+}
+
+function describeProvider(provider, model) {
+  if (provider === "openai") {
+    return {
+      label: "OpenAI",
+      meta: model ? `Model: ${model}` : "Live hosted model"
+    };
+  }
+
+  if (provider === "ollama") {
+    return {
+      label: "Local AI via Ollama",
+      meta: model ? `Model: ${model}` : "Running on this machine"
+    };
+  }
+
+  if (provider === "loading") {
+    return {
+      label: "Loading...",
+      meta: model || "Checking active model..."
+    };
+  }
+
+  return {
+    label: "Local Rules Engine",
+    meta: model && model !== "local-heuristic" ? `Mode: ${model}` : "Fallback mode with no live model server"
+  };
 }
 
 function formatPrice(value) {

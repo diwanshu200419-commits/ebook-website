@@ -697,6 +697,57 @@ margin-bottom:6px;
 color:#94a3b8;
 }
 
+.ai-provider-indicator{
+margin-top:14px;
+display:flex;
+flex-direction:column;
+gap:8px;
+}
+
+.ai-provider-pill{
+display:inline-flex;
+align-items:center;
+width:max-content;
+max-width:100%;
+padding:8px 12px;
+border-radius:999px;
+font-size:12px;
+font-weight:700;
+letter-spacing:.4px;
+background:rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.1);
+color:#e2e8f0;
+}
+
+.ai-provider-pill[data-provider="openai"]{
+background:rgba(59,130,246,.14);
+border-color:rgba(59,130,246,.22);
+color:#bfdbfe;
+}
+
+.ai-provider-pill[data-provider="ollama"]{
+background:rgba(16,185,129,.14);
+border-color:rgba(16,185,129,.22);
+color:#bbf7d0;
+}
+
+.ai-provider-pill[data-provider="local"]{
+background:rgba(245,158,11,.14);
+border-color:rgba(245,158,11,.22);
+color:#fde68a;
+}
+
+.ai-provider-pill[data-provider="waiting"]{
+background:rgba(255,255,255,.06);
+border-color:rgba(255,255,255,.1);
+color:#e2e8f0;
+}
+
+.ai-provider-indicator small{
+color:#cbd5e1;
+line-height:1.6;
+}
+
 .ai-score{
 
 width:90px;

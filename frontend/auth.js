@@ -3,7 +3,7 @@ GLOBAL AUTH SYSTEM
 E-BOOK MARKET STARTUP
 ========================= */
 
-const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "";
 
 function notifyServerLogout() {
   return fetch(`${API_BASE}/api/auth/logout`, {

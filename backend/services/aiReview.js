@@ -1,14 +1,29 @@
 const {
+  getConfiguredAiProvider,
   getModerationModel,
+  hasOllama,
   getOpenAIClient,
   hasOpenAI,
 } = require("./ai/client");
+const { runStructuredOllamaChat } = require("./ai/ollama");
 const {
   buildKeywordList,
   clamp,
   normalizeWhitespace,
   tokenizeText,
 } = require("./ai/text");
+
+const INITIAL_REVIEW_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["qualityScore", "plagiarismScore", "aiStatus", "aiSuggestion"],
+  properties: {
+    qualityScore: { type: "integer", minimum: 0, maximum: 100 },
+    plagiarismScore: { type: "integer", minimum: 0, maximum: 100 },
+    aiStatus: { type: "string", enum: ["approved", "pending", "rejected"] },
+    aiSuggestion: { type: "string", minLength: 8, maxLength: 240 },
+  },
+};
 
 function buildInitialHeuristicReview(book) {
   const title = normalizeWhitespace(book.title || "");
@@ -59,6 +74,8 @@ function buildInitialHeuristicReview(book) {
     plagiarismScore,
     aiSuggestion,
     aiScore,
+    provider: "local",
+    model: "local-heuristic",
     keywords: buildKeywordList(text, 6),
   };
 }
@@ -89,17 +106,7 @@ async function buildOpenAiInitialReview(book, fallback) {
           type: "json_schema",
           name: "ebook_initial_review",
           strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["qualityScore", "plagiarismScore", "aiStatus", "aiSuggestion"],
-            properties: {
-              qualityScore: { type: "integer", minimum: 0, maximum: 100 },
-              plagiarismScore: { type: "integer", minimum: 0, maximum: 100 },
-              aiStatus: { type: "string", enum: ["approved", "pending", "rejected"] },
-              aiSuggestion: { type: "string", minLength: 8, maxLength: 240 },
-            },
-          },
+          schema: INITIAL_REVIEW_SCHEMA,
         },
       },
     });
@@ -114,6 +121,8 @@ async function buildOpenAiInitialReview(book, fallback) {
       aiStatus: ["approved", "pending", "rejected"].includes(parsed.aiStatus) ? parsed.aiStatus : fallback.aiStatus,
       aiSuggestion: normalizeWhitespace(parsed.aiSuggestion || fallback.aiSuggestion),
       aiScore: clamp(Math.round((qualityScore * 0.65) + ((100 - plagiarismScore) * 0.35)), 0, 100),
+      provider: "openai",
+      model: getModerationModel(),
     };
   } catch (error) {
     console.error("Initial OpenAI review error:", error.message);
@@ -121,9 +130,60 @@ async function buildOpenAiInitialReview(book, fallback) {
   }
 }
 
+async function buildOllamaInitialReview(book, fallback) {
+  if (!hasOllama()) {
+    return fallback;
+  }
+
+  try {
+    const parsed = await runStructuredOllamaChat({
+      instructions: [
+        "You perform a quick pre-screen for an ebook marketplace upload before deeper PDF analysis runs.",
+        "Be conservative and return JSON only.",
+      ].join(" "),
+      prompt: [
+        `Title: ${book.title || ""}`,
+        `Description: ${book.description || ""}`,
+        `Category: ${book.category || ""}`,
+        `Type: ${book.type || ""}`,
+        `Price: ${book.price || 0}`,
+        `Tags: ${Array.isArray(book.tags) ? book.tags.join(", ") : ""}`,
+      ].join("\n"),
+      schema: INITIAL_REVIEW_SCHEMA,
+    });
+
+    const qualityScore = clamp(Number(parsed.qualityScore || fallback.qualityScore), 0, 100);
+    const plagiarismScore = clamp(Number(parsed.plagiarismScore || fallback.plagiarismScore), 0, 100);
+    return {
+      ...fallback,
+      qualityScore,
+      plagiarismScore,
+      aiStatus: ["approved", "pending", "rejected"].includes(parsed.aiStatus) ? parsed.aiStatus : fallback.aiStatus,
+      aiSuggestion: normalizeWhitespace(parsed.aiSuggestion || fallback.aiSuggestion),
+      aiScore: clamp(Math.round((qualityScore * 0.65) + ((100 - plagiarismScore) * 0.35)), 0, 100),
+      provider: "ollama",
+      model: getModerationModel(),
+    };
+  } catch (error) {
+    console.error("Initial Ollama review error:", error.message);
+    return fallback;
+  }
+}
+
 async function buildAIReview(book) {
   const heuristic = buildInitialHeuristicReview(book);
-  return buildOpenAiInitialReview(book, heuristic);
+  heuristic.provider = getConfiguredAiProvider();
+  heuristic.model = heuristic.provider === "local" ? "local-heuristic" : getModerationModel();
+
+  if (hasOpenAI()) {
+    return buildOpenAiInitialReview(book, heuristic);
+  }
+
+  if (hasOllama()) {
+    return buildOllamaInitialReview(book, heuristic);
+  }
+
+  return heuristic;
 }
 
 module.exports = {

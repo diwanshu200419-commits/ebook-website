@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "";
 const token = localStorage.getItem("token");
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -15,6 +15,8 @@ const priceInput = document.getElementById("price");
 const earnPreview = document.getElementById("earnPreview");
 const progressBar = document.getElementById("progressBar");
 const aiScoreEl = document.getElementById("aiScore");
+const uploadAiProviderEl = document.getElementById("uploadAiProvider");
+const uploadAiProviderMetaEl = document.getElementById("uploadAiProviderMeta");
 const statusMessage = document.getElementById("statusMessage");
 const descriptionEl = document.getElementById("description");
 const descCount = document.getElementById("descCount");
@@ -55,6 +57,7 @@ function initializePage() {
   bindAiDescriptionGenerator();
   renderTags();
   updateRoyalty();
+  setUploadAiProvider();
 }
 
 function bindForm() {
@@ -335,6 +338,11 @@ function sendUploadRequest(formData) {
 
       if (xhr.status === 201) {
         animateAIScore(response.moderation?.aiScore || response.aiScore || 0);
+        setUploadAiProvider(
+          response.moderation?.provider || response.aiProvider,
+          response.moderation?.model || response.aiModel,
+          "Upload review"
+        );
         showStatus(
           response.aiProcessingState === "queued"
             ? `${response.message || "Upload completed successfully"} Full PDF AI review is continuing in the background.`
@@ -350,7 +358,7 @@ function sendUploadRequest(formData) {
           response.aiStatus === "rejected" ? "error" : "success"
         );
         localStorage.removeItem(DRAFT_KEY);
-        resetForm();
+        resetForm({ preserveProvider: true });
         resolve(response);
         return;
       }
@@ -421,10 +429,14 @@ async function generateDescription() {
     }
 
     updateDescriptionCounter();
+    setUploadAiProvider(data.provider, data.model, "Description helper");
+    const providerMessage = data.provider === "openai"
+      ? "AI description generated with live model suggestions."
+      : data.provider === "ollama"
+        ? "Description generated with your free local AI model."
+        : "Description generated locally because no AI model server is configured.";
     showStatus(
-      data.provider === "openai"
-        ? "AI description generated with live model suggestions."
-        : "Description generated locally because no AI API key is configured.",
+      providerMessage,
       "success"
     );
     showToast("Description generated", "success");
@@ -450,6 +462,19 @@ function animateAIScore(target) {
       aiScoreEl.textContent = `${limit}%`;
     }
   }, 14);
+}
+
+function setUploadAiProvider(provider = "", model = "", context = "") {
+  if (!uploadAiProviderEl || !uploadAiProviderMetaEl) {
+    return;
+  }
+
+  const normalized = String(provider || "").toLowerCase();
+  const descriptor = describeProvider(normalized, model, context);
+
+  uploadAiProviderEl.dataset.provider = descriptor.state;
+  uploadAiProviderEl.textContent = `AI provider: ${descriptor.label}`;
+  uploadAiProviderMetaEl.textContent = descriptor.meta;
 }
 
 function updateButtonState(isLoading) {
@@ -524,7 +549,7 @@ function restoreDraft() {
   }
 }
 
-function resetForm() {
+function resetForm(options = {}) {
   form.reset();
   tags = [];
   selectedPdfFile = null;
@@ -544,6 +569,9 @@ function resetForm() {
   renderTags();
   updateRoyalty();
   updateDescriptionCounter();
+  if (!options.preserveProvider) {
+    setUploadAiProvider();
+  }
 }
 
 function redirectToLogin() {
@@ -568,6 +596,40 @@ function escapeHTML(value) {
     '"': "&quot;",
     "'": "&#39;"
   })[character]);
+}
+
+function describeProvider(provider, model, context = "") {
+  const prefix = context ? `${context}: ` : "";
+
+  if (provider === "openai") {
+    return {
+      state: "openai",
+      label: "OpenAI",
+      meta: `${prefix}${model ? `model ${model}` : "live hosted model"}`
+    };
+  }
+
+  if (provider === "ollama") {
+    return {
+      state: "ollama",
+      label: "Local AI via Ollama",
+      meta: `${prefix}${model ? `model ${model}` : "running on this machine"}`
+    };
+  }
+
+  if (provider === "local") {
+    return {
+      state: "local",
+      label: "Local rules engine",
+      meta: `${prefix}${model && model !== "local-heuristic" ? model : "fallback mode with no live model server"}`
+    };
+  }
+
+  return {
+    state: "waiting",
+    label: "Waiting",
+    meta: "This updates when the AI helper or review engine responds."
+  };
 }
 
 window.saveDraft = saveDraft;

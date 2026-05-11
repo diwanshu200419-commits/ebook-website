@@ -3,12 +3,19 @@ const BookAI = require("../../models/BookAI");
 const { resolvePublicUploadPath } = require("../../utils/uploads");
 
 const {
+  getConfiguredAiProvider,
   getEmbeddingDimensions,
   getEmbeddingModel,
   getModerationModel,
   getOpenAIClient,
   hasOpenAI,
+  hasOllama,
+  hasOllamaEmbeddings,
 } = require("./client");
+const {
+  createOllamaEmbedding,
+  runStructuredOllamaChat,
+} = require("./ollama");
 const { extractPdfAnalysis } = require("./pdf");
 const {
   buildHash,
@@ -308,84 +315,109 @@ function buildLocalModeration({ book, analysisText, suggestedCategory, generated
 }
 
 async function generateEmbedding(text) {
-  if (!hasOpenAI()) {
-    return [];
-  }
-
-  const client = getOpenAIClient();
   const input = limitText(text, 8000);
-  if (!client || !input) {
+  if (!input) {
     return [];
   }
 
-  try {
-    const response = await client.embeddings.create({
-      model: getEmbeddingModel(),
-      input,
-      dimensions: getEmbeddingDimensions(),
-    });
+  if (hasOpenAI()) {
+    const client = getOpenAIClient();
+    if (!client) {
+      return [];
+    }
 
-    return Array.isArray(response.data?.[0]?.embedding) ? response.data[0].embedding : [];
-  } catch (error) {
-    console.error("Embedding generation error:", error.message);
-    return [];
+    try {
+      const response = await client.embeddings.create({
+        model: getEmbeddingModel(),
+        input,
+        dimensions: getEmbeddingDimensions(),
+      });
+
+      return Array.isArray(response.data?.[0]?.embedding) ? response.data[0].embedding : [];
+    } catch (error) {
+      console.error("Embedding generation error:", error.message);
+      return [];
+    }
   }
+
+  if (hasOllamaEmbeddings()) {
+    try {
+      return await createOllamaEmbedding(input, getEmbeddingDimensions());
+    } catch (error) {
+      console.error("Ollama embedding generation error:", error.message);
+      return [];
+    }
+  }
+
+  return [];
 }
 
 async function runStructuredModeration({ book, analysisText, previewText, matches, localResult, extractionNotice }) {
-  if (!hasOpenAI()) {
-    return null;
-  }
-
-  const client = getOpenAIClient();
-  if (!client) {
-    return null;
-  }
+  const instructions = [
+    "You moderate educational ebook uploads for a production marketplace.",
+    "Return JSON only and be conservative with plagiarism or spam concerns.",
+    "Choose approved only when quality is strong and originality risk is low.",
+  ].join(" ");
+  const prompt = [
+    `Title: ${book.title}`,
+    `Author: ${book.authorName}`,
+    `Type: ${book.type}`,
+    `Creator selected category: ${book.category}`,
+    `Price: ${book.price || 0}`,
+    `Existing description: ${book.description || ""}`,
+    `Existing tags: ${(book.tags || []).join(", ")}`,
+    `PDF extraction notice: ${extractionNotice || "none"}`,
+    `Local provisional quality score: ${localResult.qualityScore}`,
+    `Local provisional plagiarism score: ${localResult.plagiarismScore}`,
+    `Suggested category from heuristics: ${localResult.suggestedCategory}`,
+    `Similarity matches: ${JSON.stringify(matches.slice(0, 3))}`,
+    `PDF preview text:\n${previewText || analysisText.slice(0, 6000)}`,
+  ].join("\n\n");
 
   try {
-    const response = await client.responses.create({
-      model: getModerationModel(),
-      instructions: [
-        "You moderate educational ebook uploads for a production marketplace.",
-        "Return JSON only and be conservative with plagiarism or spam concerns.",
-        "Choose approved only when quality is strong and originality risk is low.",
-      ].join(" "),
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: [
-                `Title: ${book.title}`,
-                `Author: ${book.authorName}`,
-                `Type: ${book.type}`,
-                `Creator selected category: ${book.category}`,
-                `Price: ${book.price || 0}`,
-                `Existing description: ${book.description || ""}`,
-                `Existing tags: ${(book.tags || []).join(", ")}`,
-                `PDF extraction notice: ${extractionNotice || "none"}`,
-                `Local provisional quality score: ${localResult.qualityScore}`,
-                `Local provisional plagiarism score: ${localResult.plagiarismScore}`,
-                `Suggested category from heuristics: ${localResult.suggestedCategory}`,
-                `Similarity matches: ${JSON.stringify(matches.slice(0, 3))}`,
-                `PDF preview text:\n${previewText || analysisText.slice(0, 6000)}`,
-              ].join("\n\n"),
-            },
-          ],
-        },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "ebook_moderation_report",
-          strict: true,
-          schema: MODERATION_SCHEMA,
-        },
-      },
-    });
+    let parsed = null;
 
-    const parsed = JSON.parse(response.output_text || "{}");
+    if (hasOpenAI()) {
+      const client = getOpenAIClient();
+      if (!client) {
+        return null;
+      }
+
+      const response = await client.responses.create({
+        model: getModerationModel(),
+        instructions,
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "ebook_moderation_report",
+            strict: true,
+            schema: MODERATION_SCHEMA,
+          },
+        },
+      });
+
+      parsed = JSON.parse(response.output_text || "{}");
+    } else if (hasOllama()) {
+      parsed = await runStructuredOllamaChat({
+        instructions,
+        prompt,
+        schema: MODERATION_SCHEMA,
+      });
+    } else {
+      return null;
+    }
+
     return {
       qualityScore: clamp(Number(parsed.qualityScore || 0), 0, 100),
       plagiarismScore: clamp(Number(parsed.plagiarismScore || 0), 0, 100),
@@ -604,8 +636,8 @@ async function processBookAI(bookId, options = {}) {
           embedding,
           embeddingModel: embedding.length ? getEmbeddingModel() : "",
           embeddingDimensions: embedding.length ? embedding.length : 0,
-          aiProvider: hasOpenAI() ? "openai" : "local",
-          aiModel: hasOpenAI() ? getModerationModel() : "local-heuristic",
+          aiProvider: getConfiguredAiProvider(),
+          aiModel: getModerationModel(),
           processingState: "completed",
           lastProcessedAt: now,
           lastError: extraction.error ? extraction.notice : "",
@@ -664,53 +696,61 @@ async function generateDescriptionWithAI(input) {
     description: notes,
     text: `${notes}\n\n${excerpt}`,
   });
+  const fallbackResponse = {
+    description: localDescription,
+    suggestedCategory: category || deriveCategory({ category }, `${title}\n${notes}\n${excerpt}`),
+    generatedTags: normalizeTagList(tags, `${title}\n${notes}\n${excerpt}`),
+    provider: "local",
+    model: "local-heuristic",
+  };
+  const instructions = [
+    "You create concise, creator-friendly ebook descriptions for a marketplace.",
+    "Keep the output factual, SEO-friendly, and relevant to the uploaded topic.",
+  ].join(" ");
+  const prompt = `Title: ${title}\nCategory: ${category}\nTags: ${tags.join(", ")}\nCreator notes: ${notes}\nExcerpt: ${excerpt}`;
 
-  if (!hasOpenAI()) {
-    return {
-      description: localDescription,
-      suggestedCategory: category || deriveCategory({ category }, `${title}\n${notes}\n${excerpt}`),
-      generatedTags: normalizeTagList(tags, `${title}\n${notes}\n${excerpt}`),
-      provider: "local",
-      model: "local-heuristic",
-    };
+  if (!hasOpenAI() && !hasOllama()) {
+    return fallbackResponse;
   }
 
   try {
-    const client = getOpenAIClient();
-    const response = await client.responses.create({
-      model: getModerationModel(),
-      instructions: [
-        "You create concise, creator-friendly ebook descriptions for a marketplace.",
-        "Keep the output factual, SEO-friendly, and relevant to the uploaded topic.",
-      ].join(" "),
-      input: `Title: ${title}\nCategory: ${category}\nTags: ${tags.join(", ")}\nCreator notes: ${notes}\nExcerpt: ${excerpt}`,
-      text: {
-        format: {
-          type: "json_schema",
-          name: "ebook_description_suggestion",
-          strict: true,
-          schema: DESCRIPTION_SCHEMA,
-        },
-      },
-    });
+    let parsed = null;
 
-    const parsed = JSON.parse(response.output_text || "{}");
+    if (hasOpenAI()) {
+      const client = getOpenAIClient();
+      const response = await client.responses.create({
+        model: getModerationModel(),
+        instructions,
+        input: prompt,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "ebook_description_suggestion",
+            strict: true,
+            schema: DESCRIPTION_SCHEMA,
+          },
+        },
+      });
+
+      parsed = JSON.parse(response.output_text || "{}");
+    } else {
+      parsed = await runStructuredOllamaChat({
+        instructions,
+        prompt,
+        schema: DESCRIPTION_SCHEMA,
+      });
+    }
+
     return {
       description: normalizeWhitespace(parsed.description || localDescription),
       suggestedCategory: normalizeWhitespace(parsed.suggestedCategory || category || "Book"),
       generatedTags: normalizeTagList(parsed.generatedTags || tags, `${title}\n${notes}\n${excerpt}`),
-      provider: "openai",
+      provider: getConfiguredAiProvider(),
       model: getModerationModel(),
     };
   } catch (error) {
     console.error("AI description generation error:", error.message);
-    return {
-      description: localDescription,
-      suggestedCategory: category || deriveCategory({ category }, `${title}\n${notes}\n${excerpt}`),
-      generatedTags: normalizeTagList(tags, `${title}\n${notes}\n${excerpt}`),
-      provider: "local",
-      model: "local-heuristic",
-    };
+    return fallbackResponse;
   }
 }
 

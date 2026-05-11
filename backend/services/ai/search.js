@@ -16,7 +16,9 @@ const {
   getEmbeddingModel,
   getOpenAIClient,
   hasOpenAI,
+  hasOllamaEmbeddings,
 } = require("./client");
+const { createOllamaEmbedding } = require("./ollama");
 
 function getSortConfig(sort) {
   switch (String(sort || "").toLowerCase()) {
@@ -60,23 +62,37 @@ function applyExplicitSort(entries, sort) {
 }
 
 async function buildQueryEmbedding(query) {
-  if (!hasOpenAI()) {
+  const input = normalizeWhitespace(query).slice(0, 3000);
+  if (!input) {
     return [];
   }
 
-  try {
-    const client = getOpenAIClient();
-    const response = await client.embeddings.create({
-      model: getEmbeddingModel(),
-      input: normalizeWhitespace(query).slice(0, 3000),
-      dimensions: getEmbeddingDimensions(),
-    });
+  if (hasOpenAI()) {
+    try {
+      const client = getOpenAIClient();
+      const response = await client.embeddings.create({
+        model: getEmbeddingModel(),
+        input,
+        dimensions: getEmbeddingDimensions(),
+      });
 
-    return Array.isArray(response.data?.[0]?.embedding) ? response.data[0].embedding : [];
-  } catch (error) {
-    console.error("AI query embedding error:", error.message);
-    return [];
+      return Array.isArray(response.data?.[0]?.embedding) ? response.data[0].embedding : [];
+    } catch (error) {
+      console.error("AI query embedding error:", error.message);
+      return [];
+    }
   }
+
+  if (hasOllamaEmbeddings()) {
+    try {
+      return await createOllamaEmbedding(input, getEmbeddingDimensions());
+    } catch (error) {
+      console.error("Ollama query embedding error:", error.message);
+      return [];
+    }
+  }
+
+  return [];
 }
 
 function buildSearchText(book, aiDoc) {

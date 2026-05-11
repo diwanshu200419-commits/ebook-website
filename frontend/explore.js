@@ -1,4 +1,4 @@
-const API_BASE = window.API_BASE || "https://ebook-website-v2mj.onrender.com";
+const API_BASE = window.API_BASE || "";
 const booksGrid = document.getElementById("booksGrid");
 const searchInput = document.getElementById("searchInput");
 const categorySelect = document.getElementById("categorySelect");

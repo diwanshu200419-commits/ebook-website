@@ -413,6 +413,8 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
         aiScore: aiReview.aiScore,
         plagiarismScore: aiReview.plagiarismScore,
         qualityScore: aiReview.qualityScore,
+        provider: aiReview.provider || "local",
+        model: aiReview.model || "local-heuristic",
         aiSuggestion: book.aiSuggestion,
         processingState: book.aiProcessingState,
       },
@@ -420,6 +422,8 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       aiScore: aiReview.aiScore,
       plagiarismScore: aiReview.plagiarismScore,
       qualityScore: aiReview.qualityScore,
+      aiProvider: aiReview.provider || "local",
+      aiModel: aiReview.model || "local-heuristic",
       aiSuggestion: book.aiSuggestion,
       aiProcessingState: book.aiProcessingState,
     });
