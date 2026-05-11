@@ -16,6 +16,10 @@ function getOllamaEmbeddingModel() {
   return readEnv("OLLAMA_EMBEDDING_MODEL");
 }
 
+function getOllamaAuthToken() {
+  return readEnv("OLLAMA_AUTH_TOKEN");
+}
+
 function hasOllama() {
   return Boolean(getOllamaBaseUrl() && getOllamaModel());
 }
@@ -47,11 +51,19 @@ async function postOllama(pathname, body) {
   const timeout = setTimeout(() => controller.abort(), getOllamaTimeoutMs());
 
   try {
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    const authToken = getOllamaAuthToken();
+    if (authToken) {
+      headers.Authorization = /^bearer\s+/i.test(authToken)
+        ? authToken
+        : `Bearer ${authToken}`;
+    }
+
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -142,6 +154,7 @@ async function createOllamaEmbedding(input, dimensions = 0) {
 module.exports = {
   createOllamaEmbedding,
   getOllamaBaseUrl,
+  getOllamaAuthToken,
   getOllamaEmbeddingModel,
   getOllamaModel,
   hasOllama,

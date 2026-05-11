@@ -8,8 +8,16 @@ const {
 
 let cachedClient = null;
 
+function readEnv(name) {
+  return String(process.env[name] || "").trim();
+}
+
 function hasOpenAI() {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return Boolean(readEnv("OPENAI_API_KEY"));
+}
+
+function getOpenAIBaseUrl() {
+  return readEnv("OPENAI_BASE_URL").replace(/\/+$/, "");
 }
 
 function getOpenAIClient() {
@@ -18,8 +26,10 @@ function getOpenAIClient() {
   }
 
   if (!cachedClient) {
+    const baseURL = getOpenAIBaseUrl();
     cachedClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: readEnv("OPENAI_API_KEY"),
+      ...(baseURL ? { baseURL } : {}),
     });
   }
 
@@ -28,7 +38,7 @@ function getOpenAIClient() {
 
 function getModerationModel() {
   if (hasOpenAI()) {
-    return process.env.OPENAI_MODERATION_MODEL || "gpt-4o-mini";
+    return readEnv("OPENAI_MODERATION_MODEL") || "gpt-4o-mini";
   }
 
   if (hasOllama()) {
@@ -40,7 +50,7 @@ function getModerationModel() {
 
 function getEmbeddingModel() {
   if (hasOpenAI()) {
-    return process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
+    return readEnv("OPENAI_EMBEDDING_MODEL") || "text-embedding-3-small";
   }
 
   if (hasOllamaEmbeddings()) {
@@ -52,8 +62,8 @@ function getEmbeddingModel() {
 
 function getEmbeddingDimensions() {
   const raw = hasOpenAI()
-    ? Number(process.env.OPENAI_EMBEDDING_DIMENSIONS || 512)
-    : Number(process.env.OLLAMA_EMBEDDING_DIMENSIONS || 0);
+    ? Number(readEnv("OPENAI_EMBEDDING_DIMENSIONS") || 512)
+    : Number(readEnv("OLLAMA_EMBEDDING_DIMENSIONS") || 0);
 
   if (!Number.isFinite(raw) || raw <= 0) {
     return hasOpenAI() ? 512 : 0;
@@ -77,6 +87,7 @@ function getConfiguredAiProvider() {
 module.exports = {
   getConfiguredAiProvider,
   getOpenAIClient,
+  getOpenAIBaseUrl,
   getModerationModel,
   getEmbeddingDimensions,
   getEmbeddingModel,

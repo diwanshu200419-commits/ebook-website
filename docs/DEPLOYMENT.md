@@ -53,6 +53,14 @@ OPENAI_EMBEDDING_DIMENSIONS=512
 
 This is the easiest permanent hosted setup.
 
+If you use a hosted provider that is OpenAI-compatible, you can also set:
+
+```env
+OPENAI_BASE_URL=https://your-provider-api-base
+```
+
+This backend expects a provider that supports the OpenAI Responses API for text generation plus embeddings for semantic search.
+
 ### Option B: Permanent hosted AI with remote Ollama
 
 Do not point Render at `http://127.0.0.1:11434`, because that only works on your own laptop.
@@ -63,6 +71,7 @@ Instead, run Ollama on an always-on server or GPU box and set:
 OLLAMA_BASE_URL=https://your-remote-ollama-host
 OLLAMA_MODEL=gemma3:1b
 OLLAMA_EMBEDDING_MODEL=embeddinggemma
+OLLAMA_AUTH_TOKEN=
 OLLAMA_TIMEOUT_MS=90000
 ```
 
@@ -83,6 +92,14 @@ These were only for temporary demos and should not be used as the permanent publ
 After deployment, verify:
 
 1. `https://ebook-website-theta-nine.vercel.app/api/health`
-2. login/register flows
-3. upload flow
-4. AI review page provider label
+2. `https://ebook-website-theta-nine.vercel.app/api/ai/status`
+3. login/register flows
+4. upload flow
+5. AI review page provider label
+
+Expected `mode` values from `/api/ai/status`:
+
+- `fallback`: built-in local heuristic only
+- `openai`: direct OpenAI production setup
+- `hosted-compatible`: another OpenAI-compatible hosted provider
+- `ollama`: remote Ollama server

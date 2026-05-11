@@ -10,6 +10,16 @@ const {
   generateDescriptionWithAI,
   getBookAiReport,
 } = require("../services/ai/pipeline");
+const {
+  getConfiguredAiProvider,
+  getEmbeddingDimensions,
+  getEmbeddingModel,
+  getModerationModel,
+  getOpenAIBaseUrl,
+  hasOpenAI,
+  hasOllama,
+  hasOllamaEmbeddings,
+} = require("../services/ai/client");
 const { enqueueBookAIProcessing } = require("../services/ai/queue");
 const {
   getOptionalUserFromRequest,
@@ -45,6 +55,27 @@ const descriptionSchema = Joi.object({
 });
 
 router.use(aiLimiter);
+
+router.get("/status", (req, res) => {
+  const provider = getConfiguredAiProvider();
+  const embeddingModel = getEmbeddingModel();
+
+  return res.json({
+    success: true,
+    provider,
+    model: getModerationModel(),
+    embeddingModel: embeddingModel || null,
+    embeddingDimensions: embeddingModel ? getEmbeddingDimensions() : 0,
+    embeddingsReady: hasOpenAI() || hasOllamaEmbeddings(),
+    mode:
+      provider === "openai"
+        ? (getOpenAIBaseUrl() ? "hosted-compatible" : "openai")
+        : provider === "ollama"
+          ? "ollama"
+          : "fallback",
+    hosted: hasOpenAI() || hasOllama(),
+  });
+});
 
 async function assertAiReportAccess(req, res, next) {
   try {

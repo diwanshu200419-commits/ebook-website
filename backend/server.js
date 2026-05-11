@@ -21,6 +21,11 @@ const {
   isProduction,
   normalizeUrl
 } = require("./utils/urlConfig");
+const {
+  getConfiguredAiProvider,
+  getEmbeddingModel,
+  getModerationModel,
+} = require("./services/ai/client");
 
 // 🔥 SECURITY
 const helmet = require("helmet");
@@ -180,6 +185,9 @@ mongoose
     }
     await initializeAIQueue();
     console.log("AI processing queue ready");
+    console.log(
+      `AI provider configured: ${getConfiguredAiProvider()} | model: ${getModerationModel()} | embeddings: ${getEmbeddingModel() || "disabled"}`
+    );
   })
   .catch((err) => {
     console.error("❌ MongoDB Error:", err.message);
