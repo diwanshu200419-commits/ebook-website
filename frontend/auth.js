@@ -48,7 +48,7 @@ async function protectPage(allowedRoles = []) {
     if (allowedRoles.length > 0) {
       const userRole = data.user?.role || "";
       if (!allowedRoles.includes(userRole)) {
-        window.location.href = "index.html";
+        redirectToHome();
         return;
       }
     }
@@ -72,6 +72,14 @@ function redirectToLogin() {
     window.location.href = "../login.html";
   } else {
     window.location.href = "login.html";
+  }
+}
+
+function redirectToHome() {
+  if (window.location.pathname.includes("/dashboard/") || window.location.pathname.includes("/admin/")) {
+    window.location.href = "../index.html";
+  } else {
+    window.location.href = "index.html";
   }
 }
 

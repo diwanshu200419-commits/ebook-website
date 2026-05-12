@@ -73,7 +73,7 @@ function initNavbar() {
     fetch(`${API_BASE}/api/auth/logout`, {
       method: "POST",
       credentials: "include",
-      keepalive: true
+      keepalive: true,
     }).catch(() => null);
 
     localStorage.removeItem("token");
@@ -96,8 +96,9 @@ function decorateHeroCards() {
     "Responsive marketplace browsing",
     "Real earnings tracking",
     "Protected downloads",
-    "Upload moderation workflow"
+    "Upload moderation workflow",
   ];
+
   heroFeatures.forEach((item, index) => {
     if (featureCopy[index]) {
       item.textContent = featureCopy[index];
@@ -159,7 +160,7 @@ function renderCategories(categories) {
     Comics: "C",
     "Self Help": "S",
     Competitive: "X",
-    Other: "O"
+    Other: "O",
   };
 
   if (!categories.length) {
@@ -204,17 +205,36 @@ function renderFeaturedBooks(books) {
   container.innerHTML = books.map((book) => {
     const coverSrc = resolveAssetUrl(book.coverUrl || book.cover || "assets/covers/Ebook_AI.png");
     const price = Number(book.price || 0) > 0 ? `Rs. ${Number(book.price || 0).toLocaleString("en-IN")}` : "FREE";
+    const creatorLink = buildCreatorLink(book.authorUsername);
+    const authorMarkup = creatorLink
+      ? `<a href="${creatorLink}">${escapeHTML(book.authorName || "Creator")}</a>`
+      : escapeHTML(book.authorName || "Creator");
+
     return `
       <div class="featured-card">
-        <a href="book_view.html?id=${encodeURIComponent(book._id)}">
-          <img src="${escapeAttribute(coverSrc)}" alt="${escapeAttribute(book.title)}">
-          <h3>${escapeHTML(book.title)}</h3>
-          <p>${escapeHTML(book.category || "Book")} · ${escapeHTML(book.authorName || "Creator")}</p>
-          <span class="price">${escapeHTML(price)}</span>
-        </a>
+        <img src="${escapeAttribute(coverSrc)}" alt="${escapeAttribute(book.title)}">
+        <div style="padding:18px;display:grid;gap:12px;">
+          <div>
+            <h3>${escapeHTML(book.title)}</h3>
+            <p>${escapeHTML(book.category || "Book")} · ${authorMarkup}</p>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span class="price">${escapeHTML(price)}</span>
+            <a href="book_view.html?id=${encodeURIComponent(book._id)}">Open book</a>
+          </div>
+        </div>
       </div>
     `;
   }).join("");
+}
+
+function buildCreatorLink(username) {
+  const safeUsername = String(username || "").trim();
+  if (!safeUsername) {
+    return "";
+  }
+
+  return `creator/creator.html?username=${encodeURIComponent(safeUsername)}`;
 }
 
 function escapeHTML(value) {
@@ -223,7 +243,7 @@ function escapeHTML(value) {
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#39;"
+    "'": "&#39;",
   })[character]);
 }
 

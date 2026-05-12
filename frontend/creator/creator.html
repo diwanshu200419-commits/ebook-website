@@ -1,181 +1,238 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Creator Profile | E-Book Market</title>
-
-<link rel="stylesheet" href="../style.css">
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="creator.css">
-
+<script src="../config.js"></script>
 </head>
-
-
 <body>
 
-<!-- ================= NAVBAR ================= -->
+<div class="page-glow glow-one"></div>
+<div class="page-glow glow-two"></div>
 
-<header class="nav">
+<header class="topbar">
+  <a class="brand" href="../index.html">
+    <span class="brand-mark">EB</span>
+    <span>E-BOOK MARKET</span>
+  </a>
 
-<div class="logo">E-BOOK MARKET</div>
+  <nav class="topnav">
+    <a href="../index.html">Home</a>
+    <a href="../explore.html">Marketplace</a>
+    <a href="../ai/ai-review.html">AI Tools</a>
+    <a href="../dashboard/dashboard.html">Dashboard</a>
+  </nav>
 
-<nav id="mainNav"></nav>
-
+  <div class="topbar-actions" id="topbarActions"></div>
 </header>
 
-
-<!-- ================= CREATOR HERO ================= -->
-
-<section class="creator-hero">
-
-<div class="creator-header">
-
-<img id="creatorAvatar"
-class="creator-avatar"
-src="../assets/avatar.png">
-
-<div class="creator-info">
-
-<h1>
-
-<span id="creatorName">Creator Name</span>
-
-<span id="verifiedBadge" class="verified">
-✔ Verified
-</span>
-
-</h1>
-
-<p id="creatorBio">
-
-Digital creator sharing knowledge,
-ebooks and educational content.
-
-</p>
-
-<div class="creator-actions">
-
-<button id="followBtn" class="btn">
-Follow Creator
-</button>
-
-<a id="creatorWebsite"
-class="btn-outline"
-target="_blank">
-Website
-</a>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- ================= CREATOR STATS ================= -->
-
-<div class="creator-stats">
-
-<div class="stat">
-
-<h2 id="booksCount">0</h2>
-<p>Books</p>
-
-</div>
-
-<div class="stat">
-
-<h2 id="followersCount">0</h2>
-<p>Followers</p>
-
-</div>
-
-<div class="stat">
-
-<h2 id="salesCount">0</h2>
-<p>Sales</p>
-
-</div>
-
-<div class="stat">
-
-<h2 id="earnings">₹0</h2>
-<p>Total Earnings</p>
-
-</div>
-
-</div>
-
-</section>
-
-
-
-<!-- ================= CREATOR BOOKS ================= -->
-
-<section class="creator-books">
-
-<div class="section-header">
-
-<h2>Books by Creator</h2>
-
-<p>Explore content published by this creator</p>
-
-</div>
-
-<div id="booksGrid" class="books-grid">
-
-<!-- books load here -->
-
-</div>
-
-</section>
-
-
-
-<!-- ================= CREATOR ABOUT ================= -->
-
-<section class="creator-about">
-
-<h2>About Creator</h2>
-
-<p id="creatorAbout">
-
-This creator shares ebooks,
-educational notes and premium learning material
-for students and professionals worldwide.
-
-</p>
-
-</section>
-
-
-
-<!-- ================= FOOTER ================= -->
-
-<footer class="footer">
-
-<p>
-
-© 2026 E-Book Market
-
-• Built in India
-
-• Creator Economy Platform
-
-</p>
-
-</footer>
-
-
-<script src="../script.js"></script>
+<main class="page-shell">
+  <div class="status-shell" id="creatorState">
+    <div class="status-card">
+      <p class="status-kicker">Creator network</p>
+      <h1 id="stateTitle">Loading creator profile...</h1>
+      <p id="stateMessage">Connecting real books, follower relationships, and creator analytics from MongoDB.</p>
+    </div>
+  </div>
+
+  <div class="page-content hidden" id="pageContent">
+    <section class="hero-card">
+      <div class="hero-banner" id="creatorBanner">
+        <div class="hero-banner-overlay"></div>
+
+        <div class="hero-toolbar">
+          <a class="back-link" href="../explore.html">Back to marketplace</a>
+          <span class="badge-chip" id="creatorBadgeChip">Creator</span>
+        </div>
+
+        <div class="hero-main">
+          <img id="creatorAvatar" class="creator-avatar" src="../assets/default-avatar.png" alt="Creator avatar">
+
+          <div class="hero-copy">
+            <div class="headline-row">
+              <div>
+                <p class="hero-kicker" id="creatorBadgeLabel">Creator profile</p>
+                <h1 id="creatorName">Creator</h1>
+              </div>
+              <div class="badge-stack">
+                <span class="verified-badge hidden" id="verifiedBadge">Verified</span>
+                <span class="role-badge" id="creatorRoleBadge">Creator</span>
+              </div>
+            </div>
+
+            <div class="meta-row">
+              <span id="creatorUsername">@creator</span>
+              <span id="joinDate">Joined recently</span>
+            </div>
+
+            <p class="hero-bio" id="creatorBio">This creator is building a premium digital catalog for readers on E-Book Market.</p>
+
+            <div class="chip-row" id="creatorCategories"></div>
+
+            <div class="hero-actions">
+              <button class="primary-btn" id="followBtn" type="button">Follow creator</button>
+              <a class="ghost-btn hidden" id="editProfileBtn" href="../dashboard/setting.html">Edit profile</a>
+              <a class="ghost-btn hidden" id="creatorWebsite" href="#" target="_blank" rel="noreferrer">Website</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card">
+          <span>Followers</span>
+          <strong id="followersCount">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Following</span>
+          <strong id="followingCount">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Uploaded books</span>
+          <strong id="booksCount">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Total sales</span>
+          <strong id="salesCount">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Total downloads</span>
+          <strong id="downloadsCount">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Total views</span>
+          <strong id="viewsCount">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Ratings</span>
+          <strong id="ratingsCount">New</strong>
+        </article>
+        <article class="stat-card">
+          <span>Creator revenue</span>
+          <strong id="earningsCount">Rs. 0</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="overview-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Story</p>
+            <h2>About this creator</h2>
+          </div>
+          <a class="inline-link hidden" id="publicWebsiteLink" href="#" target="_blank" rel="noreferrer">Open website</a>
+        </div>
+
+        <p class="about-copy" id="creatorAbout">The creator story will appear here once the profile loads.</p>
+
+        <div class="specialty-row" id="specialtyList"></div>
+
+        <div class="social-grid" id="socialLinks"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Analytics</p>
+            <h2>Creator pulse</h2>
+          </div>
+          <span class="panel-chip" id="creatorScoreChip">Score 0</span>
+        </div>
+
+        <div class="analytics-cards">
+          <article class="mini-metric">
+            <span>Monthly revenue</span>
+            <strong id="monthlyRevenueHeadline">Rs. 0</strong>
+            <small>Latest creator payout momentum</small>
+          </article>
+          <article class="mini-metric">
+            <span>Monthly sales</span>
+            <strong id="monthlySalesHeadline">0</strong>
+            <small>Real approved purchases</small>
+          </article>
+        </div>
+
+        <div class="mini-chart-shell">
+          <div class="chart-block">
+            <div class="chart-label-row">
+              <h3>Revenue timeline</h3>
+              <span>Last 6 months</span>
+            </div>
+            <div class="mini-bars" id="revenueTimeline"></div>
+          </div>
+
+          <div class="chart-block">
+            <div class="chart-label-row">
+              <h3>Popular categories</h3>
+              <span>Live catalog mix</span>
+            </div>
+            <div class="category-metrics" id="popularCategories"></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="showcase-shell">
+      <div class="section-heading">
+        <div>
+          <p class="panel-kicker">Showcase</p>
+          <h2>Books from this creator</h2>
+        </div>
+        <div class="tab-row" id="collectionTabs">
+          <button class="tab-btn active" data-collection="all" type="button">All</button>
+          <button class="tab-btn" data-collection="trending" type="button">Trending</button>
+          <button class="tab-btn" data-collection="free" type="button">Free</button>
+          <button class="tab-btn" data-collection="paid" type="button">Paid</button>
+        </div>
+      </div>
+
+      <div class="books-grid" id="booksGrid"></div>
+    </section>
+
+    <section class="community-grid">
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Community</p>
+            <h2>Followers</h2>
+          </div>
+          <span class="panel-chip" id="followersBadge">0</span>
+        </div>
+        <div class="people-list" id="followersList"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Network</p>
+            <h2>Following</h2>
+          </div>
+          <span class="panel-chip" id="followingBadge">0</span>
+        </div>
+        <div class="people-list" id="followingList"></div>
+      </article>
+    </section>
+
+    <section class="panel trending-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Discover</p>
+          <h2>Trending creators</h2>
+        </div>
+        <a class="inline-link" href="../explore.html">Browse books</a>
+      </div>
+
+      <div class="trending-grid" id="trendingCreators"></div>
+    </section>
+  </div>
+</main>
 
 <script src="creator.js"></script>
-
 </body>
 </html>

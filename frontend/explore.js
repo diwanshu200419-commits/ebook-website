@@ -18,11 +18,13 @@ async function loadBooks() {
 
     const params = new URLSearchParams({
       limit: "60",
-      sort
+      sort,
     });
+
     if (search) {
       params.set("search", search);
     }
+
     if (category) {
       params.set("category", category);
     }
@@ -44,7 +46,7 @@ function renderCategoryOptions(categories) {
   const active = categorySelect.value;
   const options = [
     `<option value="">All Categories</option>`,
-    ...categories.map((category) => `<option value="${escapeAttribute(category.name)}">${escapeHTML(category.name)} (${Number(category.count || 0).toLocaleString("en-IN")})</option>`)
+    ...categories.map((category) => `<option value="${escapeAttribute(category.name)}">${escapeHTML(category.name)} (${Number(category.count || 0).toLocaleString("en-IN")})</option>`),
   ];
 
   categorySelect.innerHTML = options.join("");
@@ -64,6 +66,10 @@ function renderBooks(books) {
     const price = Number(book.price || 0) > 0
       ? `Rs. ${Number(book.price || 0).toLocaleString("en-IN")}`
       : "FREE";
+    const creatorLink = buildCreatorLink(book.authorUsername);
+    const authorMarkup = creatorLink
+      ? `<a href="${creatorLink}" style="color:#bfdbfe;text-decoration:none;">${escapeHTML(book.authorName || "Creator")}</a>`
+      : escapeHTML(book.authorName || "Creator");
 
     const card = document.createElement("article");
     card.style.cssText = "background:#111827;border:1px solid #1f2937;border-radius:18px;padding:14px;display:grid;gap:10px;";
@@ -71,7 +77,7 @@ function renderBooks(books) {
       <img src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title)}" style="width:100%;height:220px;object-fit:cover;border-radius:12px;background:#0f172a;" />
       <div>
         <h3 style="margin:0 0 6px 0;font-size:17px;">${escapeHTML(book.title)}</h3>
-        <p style="margin:0;color:#9ca3af;font-size:13px;">${escapeHTML(book.category || "Book")} · ${escapeHTML(book.authorName || "Creator")}</p>
+        <p style="margin:0;color:#9ca3af;font-size:13px;">${escapeHTML(book.category || "Book")} · ${authorMarkup}</p>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <strong style="font-size:15px;">${escapeHTML(price)}</strong>
@@ -82,13 +88,22 @@ function renderBooks(books) {
   });
 }
 
+function buildCreatorLink(username) {
+  const safeUsername = String(username || "").trim();
+  if (!safeUsername) {
+    return "";
+  }
+
+  return `creator/creator.html?username=${encodeURIComponent(safeUsername)}`;
+}
+
 function escapeHTML(value) {
   return String(value || "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#39;"
+    "'": "&#39;",
   })[character]);
 }
 

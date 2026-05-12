@@ -1,327 +1,330 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
-<title>Account Settings | E-Book Market</title>
+<title>Creator Settings | E-Book Market</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="setting.css">
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="../config.js"></script>
 <script src="../auth.js"></script>
 </head>
-
 <body>
 
 <div class="cursor-glow"></div>
 
 <div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="logo-wrap">
+      <div class="logo-mark">EB</div>
+      <div>
+        <div class="logo">E-BOOK MARKET</div>
+        <p class="sidebar-copy">Creator studio</p>
+      </div>
+    </div>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
+    <nav>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="analytics.html">Analytics</a>
+      <a href="earning.html">Earnings</a>
+      <a href="content.html">Content</a>
+      <a class="active">Settings</a>
+    </nav>
+  </aside>
 
-<div class="logo">E-BOOK MARKET</div>
+  <main class="settings-container">
+    <div class="settings-header">
+      <div>
+        <p class="eyebrow">Creator control</p>
+        <h1>Profile and publishing identity</h1>
+        <p>Customize the public creator page readers see, keep payout details safe, and activate creator mode when you are ready to publish.</p>
+      </div>
 
-<nav>
-<a href="dashboard.html">Dashboard</a>
-<a href="analytics.html">Analytics</a>
-<a href="earning.html">Earnings</a>
-<a href="content.html">Content</a>
-<a class="active">Settings</a>
-</nav>
+      <div class="header-actions">
+        <a class="btn-outline hidden" id="previewProfileLink" href="#" target="_blank" rel="noreferrer">View public profile</a>
+        <button class="btn-primary hidden" id="activateCreatorBtn" type="button">Become creator</button>
+      </div>
+    </div>
 
-</aside>
+    <section class="summary-bar">
+      <article class="summary-item">
+        <h4>Account type</h4>
+        <p id="accountRole">Reader</p>
+      </article>
 
+      <article class="summary-item">
+        <h4>Followers</h4>
+        <p id="followerCount">0</p>
+      </article>
 
+      <article class="summary-item">
+        <h4>Uploaded books</h4>
+        <p id="creatorBookCount">0</p>
+      </article>
 
-<!-- MAIN CONTENT -->
+      <article class="summary-item">
+        <h4>Total earnings</h4>
+        <p id="accountEarnings">Rs. 0</p>
+      </article>
+    </section>
 
-<main class="settings-container">
+    <section class="settings-card highlight-card">
+      <div class="card-header">
+        <div>
+          <h3>Creator preview</h3>
+          <p class="card-subcopy">This is the public identity that powers your real creator profile page.</p>
+        </div>
+        <span class="badge" id="accountBadge">Reader mode</span>
+      </div>
 
+      <div class="identity-shell">
+        <div class="banner-preview" id="bannerPreview">
+          <div class="banner-overlay"></div>
+          <div class="banner-toolbar">
+            <span class="mini-pill">Public banner</span>
+            <button class="btn-outline small-btn" id="bannerSelectBtn" type="button">Upload banner</button>
+          </div>
+        </div>
 
-<!-- HEADER -->
+        <div class="identity-grid">
+          <div class="avatar-column">
+            <img id="profilePreview" src="../assets/default-avatar.png" alt="Profile">
+            <input type="file" id="profileImage" hidden accept="image/*">
+            <input type="file" id="bannerImage" hidden accept="image/*">
+            <button class="btn-outline" id="profileSelectBtn" type="button">Upload avatar</button>
+          </div>
 
-<div class="settings-header">
+          <div class="identity-copy">
+            <p class="eyebrow">Public username</p>
+            <h2 id="displayNamePreview">Creator name</h2>
+            <p id="usernamePreview">@creator</p>
+            <p id="bioPreview">Tell readers why your work matters and what they can expect from your catalog.</p>
+            <div class="preview-stats">
+              <span id="previewFollowers">0 followers</span>
+              <span id="previewDownloads">0 downloads</span>
+              <span id="previewViews">0 views</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<div>
-<h1>Account Settings</h1>
-<p>Manage your creator profile, earnings and payout details</p>
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Profile information</h3>
+          <p class="card-subcopy">Update the identity and story shown on your public creator page.</p>
+        </div>
+        <span class="badge">Public</span>
+      </div>
+
+      <form id="profileForm" class="profile-form">
+        <div class="field-grid two-column">
+          <label>
+            <span>Full name</span>
+            <input type="text" id="fullName" maxlength="80">
+          </label>
+
+          <label>
+            <span>Email</span>
+            <input type="email" id="email" disabled>
+          </label>
+        </div>
+
+        <div class="field-grid two-column">
+          <label>
+            <span>Username</span>
+            <input type="text" id="username" disabled>
+          </label>
+
+          <label>
+            <span>Website</span>
+            <input type="text" id="website" placeholder="yourdomain.com">
+          </label>
+        </div>
+
+        <label>
+          <span>Short bio</span>
+          <textarea id="bio" maxlength="220" placeholder="One sharp sentence readers remember."></textarea>
+        </label>
+
+        <label>
+          <span>About</span>
+          <textarea id="about" class="tall-area" maxlength="900" placeholder="Share your publishing story, expertise, and what makes your catalog worth following."></textarea>
+        </label>
+
+        <div class="field-grid two-column">
+          <label>
+            <span>Categories</span>
+            <input type="text" id="creatorCategories" placeholder="Programming, Business, AI">
+          </label>
+
+          <label>
+            <span>Specialties</span>
+            <input type="text" id="specialties" placeholder="Python, Interview prep, Notes">
+          </label>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div>
+          <p class="subsection-title">Social links</p>
+          <div class="field-grid two-column">
+            <label>
+              <span>Twitter / X</span>
+              <input type="text" id="twitter" placeholder="x.com/username">
+            </label>
+
+            <label>
+              <span>Instagram</span>
+              <input type="text" id="instagram" placeholder="instagram.com/username">
+            </label>
+
+            <label>
+              <span>LinkedIn</span>
+              <input type="text" id="linkedin" placeholder="linkedin.com/in/username">
+            </label>
+
+            <label>
+              <span>YouTube</span>
+              <input type="text" id="youtube" placeholder="youtube.com/@channel">
+            </label>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-primary" id="saveProfileBtn" type="submit">Save creator profile</button>
+          <span id="profileMsg" class="form-message"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Account security</h3>
+          <p class="card-subcopy">Keep your creator account protected.</p>
+        </div>
+        <span class="badge secure">Protected</span>
+      </div>
+
+      <form id="passwordForm" class="profile-form compact-form">
+        <div class="field-grid two-column">
+          <label>
+            <span>Current password</span>
+            <input type="password" id="currentPassword">
+          </label>
+
+          <label>
+            <span>New password</span>
+            <input type="password" id="newPassword">
+          </label>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-secondary" id="updatePasswordBtn" type="submit">Update password</button>
+          <span id="passwordMsg" class="form-message"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Manual payout details</h3>
+          <p class="card-subcopy">Receive creator earnings through UPI or bank transfer.</p>
+        </div>
+        <span class="badge">Primary</span>
+      </div>
+
+      <form id="payoutForm" class="profile-form compact-form">
+        <div class="field-grid two-column">
+          <label>
+            <span>UPI ID</span>
+            <input type="text" id="upiId" placeholder="example@upi">
+          </label>
+
+          <label>
+            <span>Bank account</span>
+            <input type="text" id="bankAccount" placeholder="Account number">
+          </label>
+
+          <label>
+            <span>IFSC code</span>
+            <input type="text" id="ifscCode" placeholder="IFSC0001234">
+          </label>
+
+          <label>
+            <span>Payout status</span>
+            <input type="text" id="payoutStatusText" disabled value="Manual payout not set">
+          </label>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-primary" id="savePayoutBtn" type="submit">Save payout details</button>
+          <span id="payoutMsg" class="form-message"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Creator health</h3>
+          <p class="card-subcopy">Quick view of how your public creator page is performing.</p>
+        </div>
+        <span class="badge">Live</span>
+      </div>
+
+      <div class="health-grid">
+        <article class="health-card">
+          <span>Following</span>
+          <strong id="followingCount">0</strong>
+        </article>
+
+        <article class="health-card">
+          <span>Total sales</span>
+          <strong id="totalSales">0</strong>
+        </article>
+
+        <article class="health-card">
+          <span>Total downloads</span>
+          <strong id="totalDownloads">0</strong>
+        </article>
+
+        <article class="health-card">
+          <span>Total views</span>
+          <strong id="totalViews">0</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="settings-card danger-zone">
+      <div class="card-header">
+        <div>
+          <h3>Danger zone</h3>
+          <p class="card-subcopy">This permanently disables your account.</p>
+        </div>
+      </div>
+
+      <p class="danger-text">
+        Deleting your account blocks sign-in and hides it from the platform. Existing creator uploads and payout history can be affected, so only do this if you are sure.
+      </p>
+
+      <div class="action-row">
+        <button class="btn-danger" id="deleteAccountBtn" type="button">Delete account</button>
+        <span id="deleteMsg" class="form-message"></span>
+      </div>
+    </section>
+  </main>
 </div>
 
-<div class="account-status">
-<span class="status-badge verified">Verified Creator</span>
-</div>
-
-</div>
-
-
-
-<!-- CREATOR SUMMARY -->
-
-<section class="summary-bar">
-
-<div class="summary-item">
-<h4>Account Type</h4>
-<p id="accountRole">Creator</p>
-</div>
-
-<div class="summary-item">
-<h4>Total Earnings</h4>
-<p id="accountEarnings">₹0</p>
-</div>
-
-<div class="summary-item">
-<h4>Total Sales</h4>
-<p id="totalSales">0</p>
-</div>
-
-<div class="summary-item">
-<h4>Payout Method</h4>
-<p id="payoutStatus">Manual (UPI / Bank)</p>
-</div>
-
-</section>
-
-
-
-<!-- PROFILE -->
-
-<section class="settings-card">
-
-<div class="card-header">
-<h3>Profile Information</h3>
-<span class="badge">Public</span>
-</div>
-
-<div class="profile-grid">
-
-<div class="profile-photo">
-
-<img
-id="profilePreview"
-src="../assets/default-avatar.png"
-alt="Profile"
-/>
-
-<input type="file" id="profileImage" hidden accept="image/*">
-
-<button
-class="btn-outline"
-onclick="document.getElementById('profileImage').click()">
-Update Photo
-</button>
-
-</div>
-
-
-
-<div class="profile-fields">
-
-<label>Full Name</label>
-<input type="text" id="fullName">
-
-<label>Email</label>
-<input type="email" id="email" disabled>
-
-<label>Creator Bio</label>
-
-<textarea
-id="bio"
-maxlength="200"
-placeholder="Tell readers about yourself..."></textarea>
-
-<div class="action-row">
-
-<button
-class="btn-primary"
-onclick="updateProfile()">
-Save Profile
-</button>
-
-<span id="profileMsg" class="form-message"></span>
-
-</div>
-
-</div>
-
-</div>
-
-</section>
-
-
-
-<!-- SECURITY -->
-
-<section class="settings-card">
-
-<div class="card-header">
-<h3>Account Security</h3>
-<span class="badge secure">Protected</span>
-</div>
-
-<label>Current Password</label>
-<input type="password" id="currentPassword">
-
-<label>New Password</label>
-<input type="password" id="newPassword">
-
-<div class="action-row">
-
-<button
-class="btn-secondary"
-onclick="changePassword()">
-Update Password
-</button>
-
-<span id="passwordMsg" class="form-message"></span>
-
-</div>
-
-</section>
-
-
-
-<!-- STRIPE (OPTIONAL FEATURE) -->
-
-<section class="settings-card">
-
-<div class="card-header">
-<h3>Stripe Automatic Payout</h3>
-<span class="badge">Optional</span>
-</div>
-
-<p class="payout-info-box">
-
-Stripe payouts are currently limited in India.
-For now, creators receive payments through the manual payout system below.
-
-</p>
-
-<div class="action-row">
-
-<button class="btn-secondary" disabled>
-Stripe Coming Soon
-</button>
-
-<span class="form-message">
-Optional Feature
-</span>
-
-</div>
-
-</section>
-
-
-
-<!-- MANUAL PAYOUT (MAIN SYSTEM) -->
-
-<section class="settings-card">
-
-<div class="card-header">
-<h3>Manual Payout Details</h3>
-<span class="badge">Primary</span>
-</div>
-
-<p class="payout-info-box">
-Add your payout information to receive earnings via bank transfer or UPI.
-</p>
-
-<label>UPI ID</label>
-<input type="text" id="upiId" placeholder="example@upi">
-
-<label>Bank Account Number</label>
-<input type="text" id="bankAccount">
-
-<label>IFSC Code</label>
-<input type="text" id="ifscCode">
-
-<div class="action-row">
-
-<button
-class="btn-primary"
-onclick="savePayout()">
-Save Payout Details
-</button>
-
-<span id="payoutMsg" class="form-message"></span>
-
-</div>
-
-</section>
-
-
-
-<!-- CREATOR ACTIVITY -->
-
-<section class="settings-card">
-
-<div class="card-header">
-<h3>Recent Activity</h3>
-<span class="badge">Logs</span>
-</div>
-
-<ul class="activity-log">
-
-<li>
-<span class="activity-time">2 hours ago</span>
-<span class="activity-text">Password updated</span>
-</li>
-
-<li>
-<span class="activity-time">1 day ago</span>
-<span class="activity-text">New book uploaded</span>
-</li>
-
-<li>
-<span class="activity-time">3 days ago</span>
-<span class="activity-text">Payout details updated</span>
-</li>
-
-</ul>
-
-</section>
-
-
-
-<!-- DANGER ZONE -->
-
-<section class="settings-card danger-zone">
-
-<div class="card-header">
-<h3>Danger Zone</h3>
-</div>
-
-<p class="danger-text">
-Deleting your account will permanently remove your profile, books and earnings data.
-This action cannot be undone.
-</p>
-
-<button
-class="btn-danger"
-onclick="deleteAccount()">
-Delete Account
-</button>
-
-<span id="deleteMsg" class="form-message"></span>
-
-</section>
-
-
-</main>
-
-</div>
-
-
-
-<!-- SCRIPTS -->
-
-<script src="../auth.js"></script>
 <script src="setting.js"></script>
 <script src="motion-system.js"></script>
-
 <script>
-protectPage(["creator","author","reader"]);
+protectPage(["creator", "author", "reader", "admin"]);
 </script>
 
 </body>

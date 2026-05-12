@@ -74,9 +74,9 @@ async function addToCart(bookId) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ bookId })
+      body: JSON.stringify({ bookId }),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -99,6 +99,15 @@ function buildProtectedUrl(relativeUrl) {
   return `${API_BASE}${relativeUrl}${token ? `${separator}token=${encodeURIComponent(token)}` : ""}`;
 }
 
+function buildCreatorLink(username) {
+  const safeUsername = String(username || "").trim();
+  if (!safeUsername) {
+    return "";
+  }
+
+  return `creator/creator.html?username=${encodeURIComponent(safeUsername)}`;
+}
+
 function renderBook(book, access) {
   const title = document.getElementById("bookTitle");
   const meta = document.getElementById("bookMeta");
@@ -115,9 +124,12 @@ function renderBook(book, access) {
   const isPaid = Number(book.price || 0) > 0;
   const canDownload = Boolean(access?.canDownload);
   const canPreview = Boolean(access?.canPreview);
+  const creatorLink = buildCreatorLink(book.authorUsername);
 
   title.textContent = book.title || "Untitled";
-  meta.textContent = `${book.category || "Book"} · by ${book.authorName || "Unknown"}`;
+  meta.innerHTML = creatorLink
+    ? `${escapeHTML(book.category || "Book")} · by <a href="${creatorLink}" style="color:#93c5fd;text-decoration:none;">${escapeHTML(book.authorName || "Unknown")}</a>`
+    : `${escapeHTML(book.category || "Book")} · by ${escapeHTML(book.authorName || "Unknown")}`;
   price.textContent = isPaid ? formatCurrency(book.price) : "FREE";
   description.textContent = book.description || "";
   preview.src = canPreview && book.previewPath ? buildProtectedUrl(book.previewPath) : "";
@@ -175,7 +187,7 @@ async function loadRecommendations(bookId) {
     const token = getToken();
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const response = await fetch(`${API_BASE}/api/ai/recommendations?bookId=${encodeURIComponent(bookId)}&limit=4`, {
-      headers
+      headers,
     });
     const data = await response.json();
     if (!response.ok) {
@@ -210,12 +222,16 @@ function renderRecommendations(books) {
 
   grid.innerHTML = books.map((book) => {
     const cover = resolveAssetUrl(book.coverUrl || book.coverImage || "assets/covers/Ebook_AI.png");
+    const creatorLink = buildCreatorLink(book.authorUsername);
+    const authorMarkup = creatorLink
+      ? `<a href="${creatorLink}" style="color:#93c5fd;text-decoration:none;">${escapeHTML(book.authorName || "Creator")}</a>`
+      : escapeHTML(book.authorName || "Creator");
     return `
       <article class="recommendation-card">
         <img src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title)}">
         <div class="copy">
           <h3>${escapeHTML(book.title)}</h3>
-          <p>${escapeHTML(book.category || "Book")} · ${escapeHTML(book.authorName || "Creator")}</p>
+          <p>${escapeHTML(book.category || "Book")} · ${authorMarkup}</p>
           <a href="book_view.html?id=${encodeURIComponent(book._id)}">View recommendation</a>
         </div>
       </article>
@@ -271,7 +287,7 @@ function escapeHTML(value) {
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#39;"
+    "'": "&#39;",
   })[character]);
 }
 

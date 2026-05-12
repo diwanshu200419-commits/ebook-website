@@ -152,6 +152,7 @@ app.use((req, res, next) => {
 
 // Serve only non-sensitive upload assets publicly.
 app.use("/uploads/covers", express.static(path.join(uploadsRoot, "covers")));
+app.use("/uploads/creators", express.static(path.join(uploadsRoot, "creators")));
 app.use("/uploads/payments", express.static(path.join(uploadsRoot, "payments")));
 
 /* ===================================

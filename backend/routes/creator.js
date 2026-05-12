@@ -1,90 +1,468 @@
 const express = require("express");
+const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const path = require("path");
+
+const { protect } = require("../middleware/auth");
+const User = require("../models/user");
+const {
+  ensureUploadDir,
+  buildPublicUploadPath,
+  safeDeletePublicFile,
+} = require("../utils/uploads");
+const {
+  buildCreatorIdentity,
+  buildFollowPreview,
+  buildPublicCreatorProfile,
+  buildTrendingCreators,
+  followCreator,
+  isCreatorRole,
+  normalizeTextList,
+  normalizeUrlValue,
+  refreshCreatorStats,
+} = require("../services/creatorData");
+
 const router = express.Router();
 
-const User = require("../models/user");
-const Book = require("../models/book");
+const backendBaseUrl = (
+  process.env.BACKEND_URL ||
+  process.env.RENDER_EXTERNAL_URL ||
+  ""
+).replace(/\/$/, "");
 
-/* ===================================
-GET CREATOR PROFILE
-Creator Public Page API
-=================================== */
+const creatorUploadPath = ensureUploadDir("creators");
 
-router.get("/:username", async (req,res)=>{
+function safeFilename(originalname, prefix = "asset") {
+  const extension = path.extname(String(originalname || "")).toLowerCase();
+  const baseName = path
+    .basename(String(originalname || ""), extension)
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .slice(0, 80);
 
-try{
-
-const username = req.params.username;
-
-/* FIND CREATOR */
-
-const creator = await User.findOne({ username });
-
-if(!creator){
-
-return res.status(404).json({
-status:"error",
-message:"Creator not found"
-});
-
+  return `${prefix}-${Date.now()}-${baseName || "file"}${extension}`;
 }
 
-/* FIND CREATOR BOOKS */
-
-const books = await Book.find({
-author:creator._id,
-status:"Approved"
-}).sort({createdAt:-1});
-
-
-/* CALCULATE STATS */
-
-const booksCount = books.length;
-
-const totalSales = books.reduce((sum,b)=> sum + (b.salesCount || 0),0);
-
-const totalViews = books.reduce((sum,b)=> sum + (b.downloads || 0),0);
-
-const totalEarnings = books.reduce((sum,b)=> sum + (b.earnings || 0),0);
-
-
-/* RETURN DATA */
-
-res.json({
-
-status:"success",
-
-creator:{
-id:creator._id,
-name:creator.name,
-username:creator.username,
-bio:creator.bio || "Digital creator on E-Book Market",
-avatar:creator.profileImage || "/assets/default-avatar.png",
-verified:creator.verified || false,
-
-stats:{
-books:booksCount,
-sales:totalSales,
-views:totalViews,
-earnings:totalEarnings
+function isImageFile(file) {
+  const extension = path.extname(String(file?.originalname || "")).toLowerCase();
+  return Boolean(file?.mimetype?.startsWith("image/")) ||
+    [".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(extension);
 }
 
-},
+const assetUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, creatorUploadPath),
+    filename: (req, file, cb) => {
+      const prefix = file.fieldname === "bannerImage" ? "banner" : "avatar";
+      cb(null, safeFilename(file.originalname, prefix));
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!isImageFile(file)) {
+      return cb(new Error("Only image files are allowed for creator profile assets"));
+    }
 
-books
-
+    return cb(null, true);
+  },
 });
 
-}catch(err){
+function runAssetUpload(req, res) {
+  return new Promise((resolve, reject) => {
+    assetUpload.fields([
+      { name: "profileImage", maxCount: 1 },
+      { name: "bannerImage", maxCount: 1 },
+    ])(req, res, (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
 
-console.error("Creator API error:",err);
-
-res.status(500).json({
-status:"error",
-message:"Internal server error"
-});
-
+      resolve();
+    });
+  });
 }
 
+function cleanupUploadedAssets(req) {
+  const files = Object.values(req.files || {}).flat();
+  files.forEach((file) => {
+    if (!file?.filename) {
+      return;
+    }
+
+    safeDeletePublicFile(buildPublicUploadPath("creators", file.filename));
+  });
+}
+
+async function getOptionalViewer(req) {
+  const authHeader = req.headers.authorization || "";
+  let token = "";
+
+  if (authHeader.startsWith("Bearer ")) {
+    token = authHeader.slice(7).trim();
+  } else if (typeof req.query?.token === "string") {
+    token = req.query.token.trim();
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user || user.isDeleted || user.status === "blocked") {
+      return null;
+    }
+
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+function applyTextUpdate(target, source, key, maxLength) {
+  if (!Object.prototype.hasOwnProperty.call(source, key)) {
+    return;
+  }
+
+  const value = String(source[key] || "").trim().slice(0, maxLength);
+  target[key] = value;
+}
+
+router.get("/me/profile", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id || req.user.id)
+      .select("-password")
+      .populate("followers", "name username role verified bio profileImage")
+      .populate("following", "name username role verified bio profileImage");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const stats = await refreshCreatorStats(user);
+
+    return res.json({
+      success: true,
+      creator: {
+        ...buildCreatorIdentity(user, backendBaseUrl),
+        stats,
+        isCreator: isCreatorRole(user.role),
+      },
+      payout: user.payout || {},
+      notifications: user.notifications || {},
+    });
+  } catch (error) {
+    console.error("Creator me profile error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load creator profile",
+    });
+  }
+});
+
+router.put("/me/profile", protect, async (req, res) => {
+  try {
+    await runAssetUpload(req, res);
+
+    const user = await User.findById(req.user._id || req.user.id).select("-password");
+    if (!user) {
+      cleanupUploadedAssets(req);
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    applyTextUpdate(user, req.body, "name", 80);
+    applyTextUpdate(user, req.body, "bio", 220);
+    applyTextUpdate(user, req.body, "about", 900);
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "website")) {
+      user.website = normalizeUrlValue(req.body.website);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "twitter")) {
+      user.socialLinks.twitter = normalizeUrlValue(req.body.twitter);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "instagram")) {
+      user.socialLinks.instagram = normalizeUrlValue(req.body.instagram);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "linkedin")) {
+      user.socialLinks.linkedin = normalizeUrlValue(req.body.linkedin);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "youtube")) {
+      user.socialLinks.youtube = normalizeUrlValue(req.body.youtube);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "specialties")) {
+      user.specialties = normalizeTextList(req.body.specialties, 8);
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(req.body, "creatorCategories") ||
+      Object.prototype.hasOwnProperty.call(req.body, "categories")
+    ) {
+      user.creatorCategories = normalizeTextList(
+        req.body.creatorCategories || req.body.categories,
+        8
+      );
+    }
+
+    const profileImageFile = req.files?.profileImage?.[0];
+    const bannerImageFile = req.files?.bannerImage?.[0];
+
+    if (profileImageFile) {
+      const nextProfileImage = buildPublicUploadPath("creators", profileImageFile.filename);
+      if (user.profileImage && user.profileImage.startsWith("/uploads/creators/")) {
+        safeDeletePublicFile(user.profileImage);
+      }
+      user.profileImage = nextProfileImage;
+    }
+
+    if (bannerImageFile) {
+      const nextBannerImage = buildPublicUploadPath("creators", bannerImageFile.filename);
+      if (user.bannerImage && user.bannerImage.startsWith("/uploads/creators/")) {
+        safeDeletePublicFile(user.bannerImage);
+      }
+      user.bannerImage = nextBannerImage;
+    }
+
+    await user.save();
+    const stats = await refreshCreatorStats(user);
+
+    return res.json({
+      success: true,
+      message: "Creator profile updated successfully",
+      creator: {
+        ...buildCreatorIdentity(user, backendBaseUrl),
+        stats,
+        isCreator: isCreatorRole(user.role),
+      },
+    });
+  } catch (error) {
+    cleanupUploadedAssets(req);
+
+    if (error instanceof multer.MulterError) {
+      return res.status(400).json({
+        success: false,
+        message: error.code === "LIMIT_FILE_SIZE"
+          ? "Creator images can be up to 5MB."
+          : error.message,
+      });
+    }
+
+    console.error("Creator profile update error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to update creator profile",
+    });
+  }
+});
+
+router.post("/activate", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id || req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!isCreatorRole(user.role)) {
+      user.role = "creator";
+      await user.save({ validateBeforeSave: false });
+    }
+
+    return res.json({
+      success: true,
+      message: "Creator mode is now active",
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Creator activate error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to activate creator mode",
+    });
+  }
+});
+
+router.get("/trending", async (req, res) => {
+  try {
+    const creators = await buildTrendingCreators(
+      backendBaseUrl,
+      req.query.limit
+    );
+
+    return res.json({
+      success: true,
+      creators,
+    });
+  } catch (error) {
+    console.error("Trending creators error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load trending creators",
+    });
+  }
+});
+
+router.post("/:username/follow", protect, async (req, res) => {
+  try {
+    const creator = await User.findOne({
+      username: String(req.params.username || "").trim().toLowerCase(),
+      isDeleted: { $ne: true },
+    }).select("_id username");
+
+    if (!creator) {
+      return res.status(404).json({
+        success: false,
+        message: "Creator not found",
+      });
+    }
+
+    const result = await followCreator({
+      viewerId: String(req.user._id || req.user.id),
+      creatorId: String(creator._id),
+    });
+
+    return res.json({
+      success: true,
+      following: result.following,
+      followersCount: result.followersCount,
+      followingCount: result.followingCount,
+    });
+  } catch (error) {
+    console.error("Follow creator error:", error.message);
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Unable to update follow state",
+    });
+  }
+});
+
+router.get("/:username/follow-state", protect, async (req, res) => {
+  try {
+    const creator = await User.findOne({
+      username: String(req.params.username || "").trim().toLowerCase(),
+      isDeleted: { $ne: true },
+    }).select("_id username");
+
+    if (!creator) {
+      return res.status(404).json({
+        success: false,
+        message: "Creator not found",
+      });
+    }
+
+    const viewer = await User.findById(req.user._id || req.user.id).select("following");
+    const following = Array.isArray(viewer?.following)
+      ? viewer.following.some((id) => String(id) === String(creator._id))
+      : false;
+
+    return res.json({
+      success: true,
+      following,
+    });
+  } catch (error) {
+    console.error("Follow state error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load follow state",
+    });
+  }
+});
+
+router.get("/:username/followers", async (req, res) => {
+  try {
+    const creator = await User.findOne({
+      username: String(req.params.username || "").trim().toLowerCase(),
+      isDeleted: { $ne: true },
+    }).populate("followers", "name username role verified bio profileImage");
+
+    if (!creator) {
+      return res.status(404).json({
+        success: false,
+        message: "Creator not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      followers: (Array.isArray(creator.followers) ? creator.followers : []).map((user) =>
+        buildFollowPreview(user, backendBaseUrl)
+      ),
+      count: Array.isArray(creator.followers) ? creator.followers.length : 0,
+    });
+  } catch (error) {
+    console.error("Followers list error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load followers",
+    });
+  }
+});
+
+router.get("/:username/following", async (req, res) => {
+  try {
+    const creator = await User.findOne({
+      username: String(req.params.username || "").trim().toLowerCase(),
+      isDeleted: { $ne: true },
+    }).populate("following", "name username role verified bio profileImage");
+
+    if (!creator) {
+      return res.status(404).json({
+        success: false,
+        message: "Creator not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      following: (Array.isArray(creator.following) ? creator.following : []).map((user) =>
+        buildFollowPreview(user, backendBaseUrl)
+      ),
+      count: Array.isArray(creator.following) ? creator.following.length : 0,
+    });
+  } catch (error) {
+    console.error("Following list error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load following",
+    });
+  }
+});
+
+router.get("/:username", async (req, res) => {
+  try {
+    const viewer = await getOptionalViewer(req);
+    const payload = await buildPublicCreatorProfile({
+      username: req.params.username,
+      viewerId: String(viewer?._id || ""),
+      backendBaseUrl,
+    });
+
+    if (!payload) {
+      return res.status(404).json({
+        success: false,
+        message: "Creator not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      ...payload,
+    });
+  } catch (error) {
+    console.error("Creator public profile error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load creator profile",
+    });
+  }
 });
 
 module.exports = router;

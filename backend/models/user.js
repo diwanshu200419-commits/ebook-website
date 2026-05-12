@@ -40,9 +40,41 @@ const UserSchema = new mongoose.Schema(
     default: ""
   },
 
+  about: {
+    type: String,
+    default: ""
+  },
+
   profileImage: {
     type: String,
     default: ""
+  },
+
+  bannerImage: {
+    type: String,
+    default: ""
+  },
+
+  website: {
+    type: String,
+    default: ""
+  },
+
+  socialLinks: {
+    twitter: { type: String, default: "" },
+    instagram: { type: String, default: "" },
+    linkedin: { type: String, default: "" },
+    youtube: { type: String, default: "" }
+  },
+
+  creatorCategories: {
+    type: [String],
+    default: []
+  },
+
+  specialties: {
+    type: [String],
+    default: []
   },
 
   /* =====================
@@ -127,6 +159,29 @@ const UserSchema = new mongoose.Schema(
     totalBooks: { type: Number, default: 0 },
     totalDownloads: { type: Number, default: 0 },
     rankScore: { type: Number, default: 0 }
+  },
+
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+
+  following: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+
+  creatorStats: {
+    followersCount: { type: Number, default: 0 },
+    followingCount: { type: Number, default: 0 },
+    totalBooks: { type: Number, default: 0 },
+    totalSales: { type: Number, default: 0 },
+    totalDownloads: { type: Number, default: 0 },
+    totalViews: { type: Number, default: 0 },
+    totalEarnings: { type: Number, default: 0 },
+    ratingAverage: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
+    updatedAt: { type: Date, default: null }
   },
 
   /* =====================
