@@ -8,7 +8,25 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initVisualMotion() {
-  document.querySelectorAll(".book-card, .featured-card, .category-card, .testimonial-card").forEach((card) => {
+  refreshInteractiveCards();
+
+  window.addEventListener("scroll", () => {
+    const nav = document.querySelector(".nav");
+    if (!nav) {
+      return;
+    }
+
+    nav.classList.toggle("nav-scrolled", window.scrollY > 40);
+  });
+}
+
+function refreshInteractiveCards(scope = document) {
+  scope.querySelectorAll(".book-card, .featured-card, .category-card, .testimonial-card").forEach((card) => {
+    if (card.dataset.motionBound === "true") {
+      return;
+    }
+
+    card.dataset.motionBound = "true";
     card.addEventListener("mousemove", (event) => {
       const rect = card.getBoundingClientRect();
       const offsetX = event.clientX - rect.left - rect.width / 2;
@@ -19,15 +37,6 @@ function initVisualMotion() {
     card.addEventListener("mouseleave", () => {
       card.style.transform = "";
     });
-  });
-
-  window.addEventListener("scroll", () => {
-    const nav = document.querySelector(".nav");
-    if (!nav) {
-      return;
-    }
-
-    nav.classList.toggle("nav-scrolled", window.scrollY > 40);
   });
 }
 
@@ -174,6 +183,7 @@ function renderCategories(categories) {
         <p>Categories will update automatically after uploads are approved.</p>
       </div>
     `;
+    refreshInteractiveCards(container);
     return;
   }
 
@@ -184,6 +194,8 @@ function renderCategories(categories) {
       <p>${Number(category.count || 0).toLocaleString("en-IN")} live books</p>
     </div>
   `).join("");
+
+  refreshInteractiveCards(container);
 }
 
 function renderFeaturedBooks(books) {
@@ -194,14 +206,15 @@ function renderFeaturedBooks(books) {
 
   if (!books.length) {
     container.innerHTML = `
-      <div class="featured-card">
+      <article class="featured-card">
         <div style="padding:24px;">
           <h3>No approved books yet</h3>
           <p style="color:#94a3b8; line-height:1.6;">The marketplace will fill with real uploads once creators submit books and they pass review.</p>
           <a href="dashboard/upload.html" class="btn" style="display:inline-block; margin-top:12px;">Open Upload Studio</a>
         </div>
-      </div>
+      </article>
     `;
+    refreshInteractiveCards(container);
     return;
   }
 
@@ -214,21 +227,23 @@ function renderFeaturedBooks(books) {
       : escapeHTML(book.authorName || "Creator");
 
     return `
-      <div class="featured-card">
+      <article class="featured-card">
         <img src="${escapeAttribute(coverSrc)}" alt="${escapeAttribute(book.title)}">
-        <div style="padding:18px;display:grid;gap:12px;">
-          <div>
+        <div class="featured-card-body">
+          <div class="featured-card-copy">
             <h3>${escapeHTML(book.title)}</h3>
-            <p>${escapeHTML(book.category || "Book")} · ${authorMarkup}</p>
+            <p>${escapeHTML(book.category || "Book")} &middot; ${authorMarkup}</p>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-            <span class="price">${escapeHTML(price)}</span>
+          <div class="featured-card-actions">
+            <span class="featured-price">${escapeHTML(price)}</span>
             <a href="book_view.html?id=${encodeURIComponent(book._id)}">Open book</a>
           </div>
         </div>
-      </div>
+      </article>
     `;
   }).join("");
+
+  refreshInteractiveCards(container);
 }
 
 function buildCreatorLink(username) {
