@@ -12,6 +12,12 @@ const thumbnailBox = document.getElementById("thumbnailBox");
 const dropZone = document.getElementById("dropZone");
 let fileInput = document.getElementById("file");
 const priceInput = document.getElementById("price");
+const originalPriceInput = document.getElementById("originalPrice");
+const subcategoryInput = document.getElementById("subcategory");
+const previewPagesInput = document.getElementById("previewPages");
+const bookAuthorInput = document.getElementById("bookAuthor");
+const premiumInput = document.getElementById("isPremium");
+const featuredInput = document.getElementById("isFeatured");
 const earnPreview = document.getElementById("earnPreview");
 const progressBar = document.getElementById("progressBar");
 const aiScoreEl = document.getElementById("aiScore");
@@ -22,12 +28,17 @@ const descriptionEl = document.getElementById("description");
 const descCount = document.getElementById("descCount");
 const submitBtn = document.querySelector(".btn.primary");
 const generateDescriptionBtn = document.getElementById("generateDescriptionBtn");
+const loadLibraryCatalogBtn = document.getElementById("loadLibraryCatalogBtn");
+const importLibraryBtn = document.getElementById("importLibraryBtn");
+const libraryCatalogList = document.getElementById("libraryCatalogList");
+const libraryImportStatus = document.getElementById("libraryImportStatus");
 
 let tags = [];
 let isUploading = false;
 let selectedPdfFile = null;
 let selectedCoverFile = null;
 let isInitialized = false;
+let libraryCatalog = [];
 
 protectPage(["creator", "author", "admin"]);
 
@@ -55,9 +66,13 @@ function initializePage() {
   bindDropZone();
   bindRoyaltyCalculator();
   bindAiDescriptionGenerator();
+  bindLibraryImport();
   renderTags();
   updateRoyalty();
   setUploadAiProvider();
+  if (loadLibraryCatalogBtn) {
+    loadLibraryCatalog();
+  }
 }
 
 function bindForm() {
@@ -230,6 +245,11 @@ function bindAiDescriptionGenerator() {
   generateDescriptionBtn?.addEventListener("click", generateDescription);
 }
 
+function bindLibraryImport() {
+  loadLibraryCatalogBtn?.addEventListener("click", loadLibraryCatalog);
+  importLibraryBtn?.addEventListener("click", importLibraryCatalog);
+}
+
 function updateRoyalty() {
   const price = Number(priceInput.value || 0);
   const creatorShare = price > 0 ? 0.82 : 0;
@@ -265,12 +285,20 @@ function validateForm(data) {
 }
 
 function collectPayload() {
+  const price = Number(priceInput.value || 0);
+  const originalPrice = Number(originalPriceInput?.value || 0);
   return {
     title: document.getElementById("title").value.trim(),
     type: document.getElementById("type").value,
     category: document.getElementById("category").value,
+    subcategory: subcategoryInput?.value.trim() || "",
     language: document.getElementById("language").value,
-    price: Number(priceInput.value || 0),
+    price,
+    originalPrice: originalPrice > 0 ? originalPrice : price,
+    previewPages: Number(previewPagesInput?.value || 5),
+    bookAuthor: bookAuthorInput?.value.trim() || "",
+    isPremium: Boolean(premiumInput?.checked),
+    isFeatured: Boolean(featuredInput?.checked),
     description: descriptionEl.value.trim(),
     file: selectedPdfFile || fileInput.files?.[0] || null,
     thumbnail: selectedCoverFile || thumbnailInput.files?.[0] || null,
@@ -298,8 +326,14 @@ async function uploadContent() {
   formData.append("title", payload.title);
   formData.append("type", payload.type);
   formData.append("category", payload.category);
+  formData.append("subcategory", payload.subcategory);
   formData.append("language", payload.language);
   formData.append("price", String(payload.price));
+  formData.append("originalPrice", String(payload.originalPrice));
+  formData.append("previewPages", String(payload.previewPages));
+  formData.append("bookAuthor", payload.bookAuthor);
+  formData.append("isPremium", String(payload.isPremium));
+  formData.append("isFeatured", String(payload.isFeatured));
   formData.append("description", payload.description);
   formData.append("pdf", payload.file);
   formData.append("tags", JSON.stringify(tags));
@@ -378,6 +412,102 @@ function sendUploadRequest(formData) {
 
     xhr.send(formData);
   });
+}
+
+async function loadLibraryCatalog() {
+  if (!loadLibraryCatalogBtn) {
+    return;
+  }
+
+  loadLibraryCatalogBtn.disabled = true;
+  showLibraryStatus("Loading built-in PDF catalog...", "info");
+
+  try {
+    const response = await fetch(`${API_BASE}/api/books/library-import/catalog`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to load the library catalog");
+    }
+
+    libraryCatalog = data.books || [];
+    renderLibraryCatalog(libraryCatalog);
+    showLibraryStatus(
+      `${data.summary?.imported || 0} imported • ${data.summary?.pendingImport || 0} ready to import`,
+      "success"
+    );
+  } catch (error) {
+    showLibraryStatus(error.message || "Unable to load the library catalog", "error");
+  } finally {
+    loadLibraryCatalogBtn.disabled = false;
+  }
+}
+
+function renderLibraryCatalog(books) {
+  if (!libraryCatalogList) {
+    return;
+  }
+
+  if (!books.length) {
+    libraryCatalogList.innerHTML = "<p>No built-in library files detected.</p>";
+    return;
+  }
+
+  libraryCatalogList.innerHTML = books.map((book) => `
+    <article style="border:1px solid rgba(148,163,184,0.16);border-radius:16px;padding:14px;background:rgba(15,23,42,0.42);display:grid;gap:8px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <strong>${escapeHTML(book.title)}</strong>
+          <div style="color:#94a3b8;font-size:13px;">${escapeHTML(book.category || "Book")} • ${escapeHTML(book.subcategory || "General")} • ${escapeHTML(book.bookAuthor || "Unknown author")}</div>
+        </div>
+        <span style="font-size:12px;padding:6px 10px;border-radius:999px;background:${book.imported ? "rgba(34,197,94,0.18)" : "rgba(14,165,233,0.16)"};color:${book.imported ? "#86efac" : "#7dd3fc"};">
+          ${book.imported ? `Imported (${escapeHTML(book.importedStatus || "Approved")})` : "Ready to import"}
+        </span>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;color:#cbd5e1;font-size:13px;">
+        <span>Price: ₹${Number(book.price || 0).toLocaleString("en-IN")}</span>
+        <span>Original: ₹${Number(book.originalPrice || 0).toLocaleString("en-IN")}</span>
+        <span>Preview: ${Number(book.previewPages || 0)} pages</span>
+      </div>
+    </article>
+  `).join("");
+}
+
+async function importLibraryCatalog() {
+  if (!importLibraryBtn) {
+    return;
+  }
+
+  importLibraryBtn.disabled = true;
+  showLibraryStatus("Importing built-in PDF catalog into your creator account...", "info");
+
+  try {
+    const response = await fetch(`${API_BASE}/api/books/library-import`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Library import failed");
+    }
+
+    showLibraryStatus(
+      `${data.created || 0} created • ${data.updated || 0} updated • ${data.skipped || 0} already present`,
+      "success"
+    );
+    showToast(data.message || "Library import completed", "success");
+    await loadLibraryCatalog();
+  } catch (error) {
+    showLibraryStatus(error.message || "Library import failed", "error");
+    showToast(error.message || "Library import failed", "error");
+  } finally {
+    importLibraryBtn.disabled = false;
+  }
 }
 
 async function generateDescription() {
@@ -495,6 +625,15 @@ function showStatus(message, type) {
   statusMessage.className = `status-message ${type}`;
 }
 
+function showLibraryStatus(message, type) {
+  if (!libraryImportStatus) {
+    return;
+  }
+
+  libraryImportStatus.textContent = message;
+  libraryImportStatus.className = `status-message ${type}`;
+}
+
 function showToast(message, type = "success") {
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
@@ -514,8 +653,14 @@ function saveDraft() {
     title: payload.title,
     type: payload.type,
     category: payload.category,
+    subcategory: payload.subcategory,
     language: payload.language,
     price: String(payload.price || ""),
+    originalPrice: String(payload.originalPrice || ""),
+    previewPages: String(payload.previewPages || "5"),
+    bookAuthor: payload.bookAuthor,
+    isPremium: payload.isPremium,
+    isFeatured: payload.isFeatured,
     description: payload.description,
     copyright: payload.copyright,
     tags
@@ -536,8 +681,14 @@ function restoreDraft() {
     document.getElementById("title").value = draft.title || "";
     document.getElementById("type").value = draft.type || "";
     document.getElementById("category").value = draft.category || "";
+    if (subcategoryInput) subcategoryInput.value = draft.subcategory || "";
     document.getElementById("language").value = draft.language || "English";
     document.getElementById("price").value = draft.price || "";
+    if (originalPriceInput) originalPriceInput.value = draft.originalPrice || "";
+    if (previewPagesInput) previewPagesInput.value = draft.previewPages || "5";
+    if (bookAuthorInput) bookAuthorInput.value = draft.bookAuthor || "";
+    if (premiumInput) premiumInput.checked = Boolean(draft.isPremium);
+    if (featuredInput) featuredInput.checked = Boolean(draft.isFeatured);
     descriptionEl.value = draft.description || "";
     document.getElementById("copyright").checked = Boolean(draft.copyright);
     tags = Array.isArray(draft.tags) ? draft.tags : [];
@@ -566,6 +717,7 @@ function resetForm(options = {}) {
     fileInput.value = "";
   }
   thumbnailInput.value = "";
+  if (previewPagesInput) previewPagesInput.value = "5";
   renderTags();
   updateRoyalty();
   updateDescriptionCounter();
@@ -630,6 +782,109 @@ function describeProvider(provider, model, context = "") {
     label: "Waiting",
     meta: "This updates when the AI helper or review engine responds."
   };
+}
+
+function loadLibraryCatalog() {
+  if (!loadLibraryCatalogBtn) {
+    return Promise.resolve();
+  }
+
+  loadLibraryCatalogBtn.disabled = true;
+  showLibraryStatus("Loading project PDF catalog...", "info");
+
+  return fetch(`${API_BASE}/api/books/library-import/catalog`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+    .then(async (response) => {
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Unable to load the library catalog");
+      }
+
+      libraryCatalog = data.books || [];
+      renderLibraryCatalog(libraryCatalog);
+      showLibraryStatus(
+        `${data.summary?.imported || 0} imported • ${data.summary?.pendingImport || 0} ready to import`,
+        "success"
+      );
+    })
+    .catch((error) => {
+      showLibraryStatus(error.message || "Unable to load the library catalog", "error");
+    })
+    .finally(() => {
+      loadLibraryCatalogBtn.disabled = false;
+    });
+}
+
+function renderLibraryCatalog(books) {
+  if (!libraryCatalogList) {
+    return;
+  }
+
+  if (!books.length) {
+    libraryCatalogList.innerHTML = "<p>No project PDF files detected.</p>";
+    return;
+  }
+
+  libraryCatalogList.innerHTML = books.map((book) => `
+    <article style="border:1px solid rgba(148,163,184,0.16);border-radius:16px;padding:14px;background:rgba(15,23,42,0.42);display:grid;gap:8px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+        <div>
+          <strong>${escapeHTML(book.title)}</strong>
+          <div style="color:#94a3b8;font-size:13px;">${escapeHTML(book.category || "Book")} • ${escapeHTML(book.subcategory || "General")} • ${escapeHTML(book.bookAuthor || "Unknown author")}</div>
+        </div>
+        <span style="font-size:12px;padding:6px 10px;border-radius:999px;background:${book.imported ? "rgba(34,197,94,0.18)" : "rgba(14,165,233,0.16)"};color:${book.imported ? "#86efac" : "#7dd3fc"};">
+          ${book.imported ? `Imported (${escapeHTML(book.importedStatus || "Approved")})` : "Ready to import"}
+        </span>
+      </div>
+      <div style="color:#7dd3fc;font-size:12px;">
+        ${escapeHTML(book.sourceLabel || (book.catalogType === "manual" ? "Manual project file" : "Project PDF file"))}
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;color:#cbd5e1;font-size:13px;">
+        <span>Price: ₹${Number(book.price || 0).toLocaleString("en-IN")}</span>
+        <span>Original: ₹${Number(book.originalPrice || 0).toLocaleString("en-IN")}</span>
+        <span>Preview: ${Number(book.previewPages || 0)} pages</span>
+      </div>
+    </article>
+  `).join("");
+}
+
+function importLibraryCatalog() {
+  if (!importLibraryBtn) {
+    return Promise.resolve();
+  }
+
+  importLibraryBtn.disabled = true;
+  showLibraryStatus("Importing project PDFs into your creator account...", "info");
+
+  return fetch(`${API_BASE}/api/books/library-import`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+    .then(async (response) => {
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Library import failed");
+      }
+
+      showLibraryStatus(
+        `${data.created || 0} created • ${data.updated || 0} updated • ${data.skipped || 0} already present`,
+        "success"
+      );
+      showToast(data.message || "Library import completed", "success");
+      return loadLibraryCatalog();
+    })
+    .catch((error) => {
+      showLibraryStatus(error.message || "Library import failed", "error");
+      showToast(error.message || "Library import failed", "error");
+    })
+    .finally(() => {
+      importLibraryBtn.disabled = false;
+    });
 }
 
 window.saveDraft = saveDraft;

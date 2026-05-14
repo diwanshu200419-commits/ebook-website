@@ -13,6 +13,11 @@ const BookSchema = new mongoose.Schema({
     required: true
   },
 
+  bookAuthor: {
+    type: String,
+    default: ""
+  },
+
   author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
@@ -44,9 +49,17 @@ const BookSchema = new mongoose.Schema({
       "Finance",
       "Self Growth",
       "Handwritten",
+      "Horror",
+      "Literature",
+      "Language Learning",
       "Other"
     ],
     default: "Book"
+  },
+
+  subcategory: {
+    type: String,
+    default: ""
   },
 
   language: {
@@ -66,6 +79,36 @@ const BookSchema = new mongoose.Schema({
   price: {
     type: Number,
     default: 0
+  },
+
+  originalPrice: {
+    type: Number,
+    default: 0
+  },
+
+  discountPrice: {
+    type: Number,
+    default: 0
+  },
+
+  previewPages: {
+    type: Number,
+    default: 5
+  },
+
+  pageCount: {
+    type: Number,
+    default: 0
+  },
+
+  isPremium: {
+    type: Boolean,
+    default: false
+  },
+
+  catalogKey: {
+    type: String,
+    default: ""
   },
 
   /* =====================
@@ -206,6 +249,16 @@ const BookSchema = new mongoose.Schema({
   },
 
   platformRevenue: {
+    type: Number,
+    default: 0
+  },
+
+  ratingAverage: {
+    type: Number,
+    default: 0
+  },
+
+  ratingCount: {
     type: Number,
     default: 0
   },

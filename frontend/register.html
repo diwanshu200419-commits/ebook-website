@@ -231,7 +231,7 @@ select:focus{
 Create Account
 </button>
 
-<button class="btn google" onclick="googleLogin()">
+<button class="btn google" type="button" onclick="googleLogin()">
 <i class="fab fa-google"></i> Continue with Google
 </button>
 
@@ -243,10 +243,91 @@ Already have an account? <a href="login.html">Sign in</a>
 
 <script>
 const API_BASE = window.API_BASE || "";
+const message=document.getElementById("messageBox");
 
 /* Strength Logic */
 const pass=document.getElementById("password");
 const strengthFill=document.getElementById("strengthFill");
+
+document.addEventListener("DOMContentLoaded", initRegister);
+
+async function initRegister(){
+const params = new URLSearchParams(window.location.search);
+const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
+const tokenToUse = hashParams.get("token") || params.get("token");
+const authError = params.get("error");
+
+if(authError){
+showMessage(getAuthMessage(authError), "error");
+}
+
+if(tokenToUse){
+localStorage.setItem("token", tokenToUse);
+window.history.replaceState({}, document.title, window.location.pathname);
+await syncSessionToken(tokenToUse);
+await redirectUser(tokenToUse);
+}
+}
+
+function showMessage(text, type){
+message.innerHTML = `<span class='${type}'>${text}</span>`;
+}
+
+function getAuthMessage(code){
+switch(String(code || "").trim()){
+case "google_not_configured":
+return "Google sign-in is not configured on the server yet.";
+case "google_auth_failed":
+return "Google sign-in could not be completed. Please try again.";
+default:
+return "Authentication could not be completed. Please try again.";
+}
+}
+
+async function syncSessionToken(token){
+if(!token) return;
+
+try{
+await fetch(`${API_BASE}/api/auth/session`,{
+method:"POST",
+credentials:"include",
+headers:{
+"Content-Type":"application/json",
+Authorization:`Bearer ${token}`
+},
+body:JSON.stringify({token})
+});
+}catch(err){
+console.log("Session sync skipped:", err);
+}
+}
+
+async function redirectUser(token){
+try{
+const res = await fetch(`${API_BASE}/api/user/profile`,{
+headers:{
+Authorization:`Bearer ${token}`
+}
+});
+
+if(!res.ok) throw new Error();
+
+const data = await res.json();
+const user = data.user;
+localStorage.setItem("user", JSON.stringify(user));
+
+if(user.role === "admin"){
+window.location.href = "admin/admin.html";
+}else{
+window.location.href = "dashboard/dashboard.html";
+}
+}catch{
+if(localStorage.getItem("token") === token){
+localStorage.removeItem("token");
+localStorage.removeItem("user");
+}
+}
+}
 
 pass.addEventListener("input",()=>{
 let val=pass.value;
@@ -273,7 +354,6 @@ const role=document.getElementById("role").value;
 const terms=document.getElementById("terms").checked;
 
 const btn=document.getElementById("registerBtn");
-const message=document.getElementById("messageBox");
 
 message.innerHTML="";
 
@@ -323,7 +403,11 @@ btn.innerText="Create Account";
 }
 
 function googleLogin(){
-window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL("login.html",window.location.href).href)}`;
+const btn=document.querySelector(".google");
+const selectedRole = document.getElementById("role").value.trim();
+btn.disabled=true;
+btn.innerHTML='<i class="fab fa-google"></i> Redirecting...';
+window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL(window.location.pathname,window.location.href).href)}${selectedRole ? `&role=${encodeURIComponent(selectedRole)}` : ""}`;
 }
 </script>
 

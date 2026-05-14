@@ -30,6 +30,12 @@ const paymentSchema = new mongoose.Schema({
     required: true
   },
 
+  paymentMethod: {
+    type: String,
+    enum: ["UPI", "GPay", "PayPal", "Stripe", "Card", "Other"],
+    default: "Other"
+  },
+
   // 💸 Platform earning (auto)
   platformFee: {
     type: Number

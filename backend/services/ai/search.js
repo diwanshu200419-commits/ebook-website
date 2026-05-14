@@ -5,6 +5,7 @@ const BookAI = require("../../models/BookAI");
 const Payment = require("../../models/Payment");
 const User = require("../../models/user");
 const { serializeBook } = require("../bookData");
+const { syncProjectCatalogToMarketplace } = require("../catalogImport");
 const {
   cosineSimilarity,
   lexicalSimilarity,
@@ -101,6 +102,7 @@ function buildSearchText(book, aiDoc) {
     book.authorName,
     book.description,
     book.category,
+    book.subcategory,
     Array.isArray(book.tags) ? book.tags.join(", ") : "",
     aiDoc?.suggestedCategory || "",
     Array.isArray(aiDoc?.generatedTags) ? aiDoc.generatedTags.join(", ") : "",
@@ -130,6 +132,12 @@ async function searchApprovedBooks({
   search = "",
   sort = "",
 }) {
+  try {
+    await syncProjectCatalogToMarketplace();
+  } catch (error) {
+    console.error("Marketplace catalog sync error:", error.message);
+  }
+
   const safePage = Math.max(parseInt(page, 10) || 1, 1);
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 60);
   const safeCategory = String(category || "").trim();

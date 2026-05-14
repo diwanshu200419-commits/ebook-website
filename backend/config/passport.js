@@ -8,6 +8,7 @@ const {
   getGoogleCallbackUrl,
   isProduction
 } = require("../utils/urlConfig");
+const { normalizeGoogleRole, parseGoogleAuthState } = require("../utils/googleAuthState");
 
 const backendBaseUrl = getBackendBaseUrl();
 const callbackUrl = getGoogleCallbackUrl();
@@ -26,12 +27,14 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: callbackUrl,
-      proxy: true
+      proxy: true,
+      passReqToCallback: true,
     },
 
-    async (accessToken, refreshToken, profile, done) => {
+    async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = String(profile.emails?.[0]?.value || "").toLowerCase().trim();
+        const desiredRole = normalizeGoogleRole(parseGoogleAuthState(req.query.state).role) || "reader";
         if (!email) {
           return done(new Error("Google account did not provide an email address"), null);
         }
@@ -39,6 +42,10 @@ passport.use(
         let user = await User.findOne({ email });
 
         if (user) {
+          if (user.isDeleted || user.status !== "active") {
+            return done(null, false, { message: "Account not active" });
+          }
+
           if (!user.googleId) {
             user.googleId = profile.id;
             await user.save();
@@ -52,8 +59,9 @@ passport.use(
           name: profile.displayName,
           email,
           provider: "google",
-          role: "reader",
+          role: desiredRole,
           status: "active",
+          verified: true,
         });
 
         return done(null, user);

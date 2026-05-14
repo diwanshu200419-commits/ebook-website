@@ -16,11 +16,21 @@ const { enqueueBookAIProcessing } = require("../services/ai/queue");
 const { searchApprovedBooks } = require("../services/ai/search");
 const { serializeBook } = require("../services/bookData");
 const {
+  getImportableLibraryCatalog,
+  importBuiltinLibraryForCreator,
+} = require("../services/catalogImport");
+const {
   ensureUploadDir,
   buildPublicUploadPath,
   resolvePublicUploadPath,
   safeDeletePublicFile,
 } = require("../utils/uploads");
+const {
+  normalizeBooleanFlag,
+  normalizePreviewPages,
+  normalizePricing,
+} = require("../utils/bookCatalog");
+const { createBookPreview } = require("../utils/pdfPreview");
 
 const backendBaseUrl = (
   process.env.BACKEND_URL ||
@@ -38,10 +48,17 @@ const uploadSchema = Joi.object({
   title: Joi.string().trim().min(3).max(160).required(),
   description: Joi.string().trim().min(30).max(5000).required(),
   price: Joi.number().min(0).max(100000).default(0),
+  originalPrice: Joi.number().min(0).max(100000).optional(),
+  discountPrice: Joi.number().min(0).max(100000).optional(),
   category: Joi.string().valid(...categoryValues).required(),
+  subcategory: Joi.string().trim().max(80).allow(""),
   type: Joi.string().valid(...typeValues).default("Book"),
   language: Joi.string().trim().max(40).default("English"),
   authorName: Joi.string().trim().max(120).allow(""),
+  bookAuthor: Joi.string().trim().max(120).allow(""),
+  previewPages: Joi.number().integer().min(1).max(25).default(5),
+  isPremium: Joi.boolean().optional(),
+  isFeatured: Joi.boolean().optional(),
   tags: Joi.alternatives().try(
     Joi.array().items(Joi.string().trim().max(24)).max(8),
     Joi.string().allow("")
@@ -52,9 +69,16 @@ const updateSchema = Joi.object({
   title: Joi.string().trim().min(3).max(160),
   description: Joi.string().trim().min(30).max(5000),
   price: Joi.number().min(0).max(100000),
+  originalPrice: Joi.number().min(0).max(100000),
+  discountPrice: Joi.number().min(0).max(100000),
   category: Joi.string().valid(...categoryValues),
+  subcategory: Joi.string().trim().max(80).allow(""),
   type: Joi.string().valid(...typeValues),
   language: Joi.string().trim().max(40),
+  bookAuthor: Joi.string().trim().max(120).allow(""),
+  previewPages: Joi.number().integer().min(1).max(25),
+  isPremium: Joi.boolean(),
+  isFeatured: Joi.boolean(),
   tags: Joi.array().items(Joi.string().trim().max(24)).max(8),
 });
 
@@ -113,6 +137,20 @@ function parseTags(value) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .slice(0, 8);
+}
+
+function buildCatalogFields(payload = {}) {
+  const pricing = normalizePricing(payload);
+
+  return {
+    price: pricing.price,
+    originalPrice: pricing.originalPrice,
+    discountPrice: pricing.discountPrice,
+    isPaid: pricing.isPaid,
+    previewPages: normalizePreviewPages(payload.previewPages),
+    isPremium: normalizeBooleanFlag(payload.isPremium, pricing.price >= 499),
+    isFeatured: normalizeBooleanFlag(payload.isFeatured, false),
+  };
 }
 
 function buildBookPayload(book, access) {
@@ -236,6 +274,7 @@ async function getBookAccess(book, user) {
   const userId = user?._id || user?.id;
   const isOwner = Boolean(userId) && String(book.author) === String(userId);
   const isAdmin = user?.role === "admin";
+  const hasPublicPreview = Boolean(book.previewPath);
 
   if (!book.isPaid) {
     return {
@@ -252,7 +291,7 @@ async function getBookAccess(book, user) {
       isOwner,
       isAdmin,
       isPurchased: false,
-      canPreview: false,
+      canPreview: hasPublicPreview,
       canDownload: false,
     };
   }
@@ -277,7 +316,7 @@ async function getBookAccess(book, user) {
     isOwner,
     isAdmin,
     isPurchased: Boolean(purchaseExists),
-    canPreview: Boolean(purchaseExists),
+    canPreview: Boolean(purchaseExists) || hasPublicPreview,
     canDownload: Boolean(purchaseExists),
   };
 }
@@ -303,6 +342,7 @@ function getSortConfig(sort) {
    Upload Book
 ===================================== */
 router.post("/upload", protect, authorize("creator", "author", "admin"), async (req, res) => {
+  let generatedPreviewPath = "";
   try {
     await runUpload(req, res);
 
@@ -311,6 +351,11 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       {
         ...req.body,
         price: Number(req.body.price || 0),
+        originalPrice: req.body.originalPrice !== undefined ? Number(req.body.originalPrice) : undefined,
+        discountPrice: req.body.discountPrice !== undefined ? Number(req.body.discountPrice) : undefined,
+        previewPages: req.body.previewPages !== undefined ? Number(req.body.previewPages) : undefined,
+        isPremium: req.body.isPremium !== undefined ? normalizeBooleanFlag(req.body.isPremium) : undefined,
+        isFeatured: req.body.isFeatured !== undefined ? normalizeBooleanFlag(req.body.isFeatured) : undefined,
         tags: rawTags,
       },
       {
@@ -350,13 +395,20 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       title: value.title,
       description: value.description,
       category: value.category,
-      price: value.price,
+      price: buildCatalogFields(value).price,
       tags: value.tags,
       type: value.type,
     });
 
-    const isPaid = Number(value.price || 0) > 0;
+    const catalogFields = buildCatalogFields(value);
     const filePath = buildPublicUploadPath("books", pdfFile.filename);
+    const preview = await createBookPreview({
+      sourcePublicPath: filePath,
+      title: value.title,
+      isPaid: catalogFields.isPaid,
+      previewPages: catalogFields.previewPages,
+    });
+    generatedPreviewPath = preview.previewPath;
     const coverImage = coverFile
       ? buildPublicUploadPath("covers", coverFile.filename)
       : "";
@@ -364,18 +416,25 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
     const book = await Book.create({
       title: value.title,
       authorName: value.authorName || req.user.name,
+      bookAuthor: value.bookAuthor || "",
       author: req.user.id,
       type: value.type,
       category: value.category,
+      subcategory: value.subcategory || "",
       language: value.language,
       tags: value.tags,
       description: value.description,
-      price: value.price,
+      price: catalogFields.price,
+      originalPrice: catalogFields.originalPrice,
+      discountPrice: catalogFields.discountPrice,
       filePath,
-      previewPath: isPaid ? "" : filePath,
+      previewPath: preview.previewPath,
+      previewPages: preview.previewPages,
+      pageCount: preview.pageCount,
       coverImage,
       coverAlt: value.title,
-      isPaid,
+      isPaid: catalogFields.isPaid,
+      isPremium: catalogFields.isPremium,
       requiresLogin: true,
       status: aiReview.aiStatus === "rejected" ? "Rejected" : "AI_Review",
       aiStatus: aiReview.aiStatus === "rejected" ? "rejected" : "pending",
@@ -393,6 +452,7 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       aiCategory: value.category,
       aiTags: value.tags,
       aiProcessingState: aiReview.aiStatus === "rejected" ? "completed" : "queued",
+      isFeatured: catalogFields.isFeatured,
     });
 
     if (aiReview.aiStatus !== "rejected") {
@@ -429,6 +489,9 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
     });
   } catch (error) {
     cleanupUploadedFiles(req);
+    if (generatedPreviewPath && generatedPreviewPath.startsWith("/uploads/previews/")) {
+      safeDeletePublicFile(generatedPreviewPath);
+    }
 
     if (error instanceof multer.MulterError) {
       return res.status(400).json({
@@ -444,6 +507,85 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
     return res.status(500).json({
       success: false,
       message: error.message || "Upload failed",
+    });
+  }
+});
+
+router.get("/library-import/catalog", protect, authorize("creator", "author", "admin"), async (req, res) => {
+  try {
+    const catalog = getImportableLibraryCatalog();
+
+    const existing = await Book.find({
+      author: req.user.id,
+      $or: [
+        { catalogKey: { $in: catalog.map((entry) => entry.catalogKey) } },
+        { title: { $in: catalog.map((entry) => entry.title) } },
+      ],
+    }).select("catalogKey title status price isArchived");
+
+    const existingMap = new Map(
+      existing.map((book) => [String(book.catalogKey || ""), book])
+    );
+    const existingTitleMap = new Map(
+      existing.map((book) => [String(book.title || "").trim().toLowerCase(), book])
+    );
+
+    const books = catalog.map((entry) => {
+      const imported =
+        existingMap.get(entry.catalogKey)
+        || existingTitleMap.get(String(entry.title || "").trim().toLowerCase());
+      return {
+        catalogKey: entry.catalogKey,
+        title: entry.title,
+        bookAuthor: entry.bookAuthor,
+        category: entry.category,
+        subcategory: entry.subcategory,
+        price: Number(entry.discountPrice || 0),
+        originalPrice: Number(entry.originalPrice || entry.discountPrice || 0),
+        previewPages: Number(entry.previewPages || 0),
+        filePath: buildPublicUploadPath("books", entry.filename),
+        coverImage: entry.coverImage || "",
+        sourceLabel: entry.sourceLabel || "",
+        catalogType: entry.catalogType || "curated",
+        imported: Boolean(imported),
+        importedBookId: imported?._id || null,
+        importedStatus: imported?.status || "",
+      };
+    });
+
+    return res.json({
+      success: true,
+      books,
+      summary: {
+        total: books.length,
+        imported: books.filter((book) => book.imported).length,
+        pendingImport: books.filter((book) => !book.imported).length,
+      },
+    });
+  } catch (error) {
+    console.error("Library catalog load error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load the project PDF catalog",
+    });
+  }
+});
+
+router.post("/library-import", protect, authorize("creator", "author", "admin"), async (req, res) => {
+  try {
+    const result = await importBuiltinLibraryForCreator(req.user);
+    return res.status(201).json({
+      success: true,
+      message: result.created
+        ? `${result.created} project PDF books imported successfully.`
+        : "Project PDF import completed with no new books created.",
+      ...result,
+    });
+  } catch (error) {
+    console.error("Library import error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to import the project PDF catalog",
     });
   }
 });
@@ -704,6 +846,21 @@ router.put("/:id", protect, async (req, res) => {
     if (payload.price !== undefined) {
       payload.price = Number(payload.price);
     }
+    if (payload.originalPrice !== undefined) {
+      payload.originalPrice = Number(payload.originalPrice);
+    }
+    if (payload.discountPrice !== undefined) {
+      payload.discountPrice = Number(payload.discountPrice);
+    }
+    if (payload.previewPages !== undefined) {
+      payload.previewPages = Number(payload.previewPages);
+    }
+    if (payload.isPremium !== undefined) {
+      payload.isPremium = normalizeBooleanFlag(payload.isPremium);
+    }
+    if (payload.isFeatured !== undefined) {
+      payload.isFeatured = normalizeBooleanFlag(payload.isFeatured);
+    }
 
     const { value, error } = updateSchema.validate(payload, {
       abortEarly: false,
@@ -719,14 +876,41 @@ router.put("/:id", protect, async (req, res) => {
 
     Object.assign(book, value);
 
-    if (value.price !== undefined) {
-      book.isPaid = Number(value.price || 0) > 0;
-      if (!book.isPaid && !book.previewPath) {
-        book.previewPath = book.filePath;
-      }
-      if (book.isPaid) {
-        book.previewPath = "";
-      }
+    const catalogFields = buildCatalogFields({
+      price: value.price !== undefined ? value.price : book.price,
+      originalPrice: value.originalPrice !== undefined ? value.originalPrice : book.originalPrice,
+      discountPrice: value.discountPrice !== undefined ? value.discountPrice : book.discountPrice,
+      previewPages: value.previewPages !== undefined ? value.previewPages : book.previewPages,
+      isPremium: value.isPremium !== undefined ? value.isPremium : book.isPremium,
+      isFeatured: value.isFeatured !== undefined ? value.isFeatured : book.isFeatured,
+    });
+
+    book.price = catalogFields.price;
+    book.originalPrice = catalogFields.originalPrice;
+    book.discountPrice = catalogFields.discountPrice;
+    book.isPaid = catalogFields.isPaid;
+    book.isPremium = catalogFields.isPremium;
+    book.isFeatured = catalogFields.isFeatured;
+
+    const previousPreviewPath = book.previewPath;
+    const regeneratedPreview = await createBookPreview({
+      sourcePublicPath: book.filePath,
+      title: book.title,
+      isPaid: book.isPaid,
+      previewPages: catalogFields.previewPages,
+    });
+
+    book.previewPath = regeneratedPreview.previewPath;
+    book.previewPages = regeneratedPreview.previewPages;
+    book.pageCount = regeneratedPreview.pageCount;
+
+    if (
+      previousPreviewPath
+      && previousPreviewPath !== book.filePath
+      && previousPreviewPath !== book.previewPath
+      && previousPreviewPath.startsWith("/uploads/previews/")
+    ) {
+      safeDeletePublicFile(previousPreviewPath);
     }
 
     book.aiProcessingState = "queued";

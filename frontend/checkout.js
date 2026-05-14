@@ -2,18 +2,17 @@ const API_BASE = window.API_BASE || "";
 const token = localStorage.getItem("token");
 if (!token) window.location.href = "login.html";
 
-// Update these with your real scanner images already prepared.
-const PAYMENT_CONFIG = {
+const DEFAULT_PAYMENT_CONFIG = {
   UPI: {
     label: "UPI Payment",
     details: "Pay using any UPI app. Merchant UPI ID below.",
-    upiId: "your-upi-id@okaxis",
+    upiId: "",
     qrImage: "assets/payment/gpay-qr.PNG"
   },
   GPay: {
     label: "Google Pay",
     details: "Open GPay and scan this QR. Confirm amount before payment.",
-    upiId: "your-upi-id@okaxis",
+    upiId: "",
     qrImage: "assets/payment/gpay-qr.PNG"
   },
   PayPal: {
@@ -23,6 +22,7 @@ const PAYMENT_CONFIG = {
     qrImage: "assets/payment/paypal-qr.PNG"
   }
 };
+let PAYMENT_CONFIG = { ...DEFAULT_PAYMENT_CONFIG };
 
 const bookSelect = document.getElementById("bookSelect");
 const methodSelect = document.getElementById("methodSelect");
@@ -58,7 +58,7 @@ function renderPaymentMethod() {
   const cfg = PAYMENT_CONFIG[method] || PAYMENT_CONFIG.UPI;
   payInfo.textContent = `${cfg.label}: ${cfg.details}`;
   qrImage.src = cfg.qrImage;
-  upiIdLabel.textContent = cfg.upiId ? `UPI ID: ${cfg.upiId}` : "UPI ID: Not required for PayPal";
+  upiIdLabel.textContent = cfg.upiId ? `UPI ID: ${cfg.upiId}` : "UPI ID is included in the QR code";
   copyUpiBtn.disabled = !cfg.upiId;
 }
 
@@ -98,6 +98,23 @@ async function loadBooksForCheckout() {
     .map((item) => `<option value="${item.book._id}">${item.book.title} - ₹${Number(item.priceAtAdd || 0).toLocaleString("en-IN")}</option>`)
     .join("");
   renderAmountInfo();
+}
+
+async function loadPaymentConfig() {
+  try {
+    const response = await fetch(`${API_BASE}/api/payments/config`);
+    const data = await response.json();
+    if (!response.ok || !data.success || !data.methods) {
+      return;
+    }
+
+    PAYMENT_CONFIG = {
+      ...DEFAULT_PAYMENT_CONFIG,
+      ...data.methods,
+    };
+  } catch (error) {
+    console.error("Payment config fallback:", error);
+  }
 }
 
 async function submitManualPayment() {
@@ -161,6 +178,7 @@ copyUpiBtn.addEventListener("click", async () => {
 
 (async function init() {
   try {
+    await loadPaymentConfig();
     await loadBooksForCheckout();
     renderPaymentMethod();
   } catch (err) {

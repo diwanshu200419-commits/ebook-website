@@ -88,7 +88,7 @@ Sign in
 </div>
 
 
-<button class="social-btn google" onclick="googleLogin()">
+<button class="social-btn google" type="button" onclick="googleLogin()">
 <i class="fab fa-google"></i>
 Continue with Google
 </button>
@@ -131,8 +131,8 @@ const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/
 const googleTokenFromHash = hashParams.get("token");
 const tokenToUse = googleTokenFromHash || googleToken;
 
-if(authError === "google_auth_failed"){
-alert("Google sign-in could not be completed. Please try again.");
+if(authError){
+alert(getAuthMessage(authError));
 }
 
 if(tokenToUse){
@@ -147,6 +147,17 @@ await redirectUser(tokenToUse);
 
 return;
 
+}
+
+function getAuthMessage(code){
+switch(String(code || "").trim()){
+case "google_not_configured":
+return "Google sign-in is not configured on the server yet.";
+case "google_auth_failed":
+return "Google sign-in could not be completed. Please try again.";
+default:
+return "Authentication could not be completed. Please try again.";
+}
 }
 
 const existingToken = localStorage.getItem("token");
@@ -337,7 +348,7 @@ btn.innerHTML="Redirecting...";
 
 
 window.location.href=
-`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL("login.html",window.location.href).href)}`;
+`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL(window.location.pathname,window.location.href).href)}`;
 
 }
 

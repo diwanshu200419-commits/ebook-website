@@ -11,6 +11,7 @@ const pageTitle = document.getElementById("pageTitle");
 const pageSub = document.getElementById("pageSub");
 const contentList = document.getElementById("contentList");
 const approvedList = document.getElementById("approvedList");
+const paymentReviewList = document.getElementById("paymentReviewList");
 const aiOverview = document.getElementById("aiOverview");
 const aiFlaggedList = document.getElementById("aiFlaggedList");
 
@@ -29,7 +30,7 @@ const HEADERS = {
   },
   payouts: {
     title: "Payouts",
-    sub: "Pending, processed & failed payouts",
+    sub: "Manual QR payment approvals and payment proof review",
   },
   ai: {
     title: "AI Signals",
@@ -61,6 +62,7 @@ navLinks.forEach((link) => {
 
     if (target === "review") loadPendingBooks();
     if (target === "approved") loadApprovedBooks();
+    if (target === "payouts") loadPendingPayments();
     if (target === "ai") loadAIOverview();
   });
 });
@@ -93,6 +95,20 @@ async function loadApprovedBooks() {
   }
 }
 
+async function loadPendingPayments() {
+  try {
+    const res = await fetch(`${API_BASE}/api/payments/pending`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to load payments");
+    renderPendingPayments(data.payments || []);
+  } catch (err) {
+    console.error(err);
+    paymentReviewList.innerHTML = "<p>Failed to load pending payments</p>";
+  }
+}
+
 function renderPending(books) {
   contentList.innerHTML = "";
   if (!books.length) {
@@ -103,7 +119,7 @@ function renderPending(books) {
   books.forEach((book) => {
     const card = document.createElement("div");
     card.className = "content-card";
-    const cover = book.coverImage ? `${API_BASE}${book.coverImage}` : "../assets/covers/Ebook_AI.png";
+    const cover = resolveAssetUrl(book.coverImage, "../assets/covers/Ebook_AI.png");
     card.innerHTML = `
       <div class="content-info">
         <img src="${cover}" style="width:80px;height:100px;object-fit:cover;border-radius:4px;" />
@@ -145,7 +161,7 @@ function renderApproved(books) {
   books.forEach((book) => {
     const card = document.createElement("div");
     card.className = "content-card";
-    const cover = book.coverImage ? `${API_BASE}${book.coverImage}` : "../assets/covers/Ebook_AI.png";
+    const cover = resolveAssetUrl(book.coverImage, "../assets/covers/Ebook_AI.png");
     card.innerHTML = `
       <div class="content-info">
         <img src="${cover}" style="width:80px;height:100px;object-fit:cover;border-radius:4px;" />
@@ -160,6 +176,43 @@ function renderApproved(books) {
       </div>
     `;
     approvedList.appendChild(card);
+  });
+}
+
+function renderPendingPayments(payments) {
+  paymentReviewList.innerHTML = "";
+  if (!payments.length) {
+    paymentReviewList.innerHTML = "<p style='opacity:.7'>No pending manual payments</p>";
+    return;
+  }
+
+  payments.forEach((payment) => {
+    const card = document.createElement("div");
+    card.className = "content-card";
+    const screenshot = resolveAssetUrl(payment.screenshot, "");
+    card.innerHTML = `
+      <div class="content-info">
+        ${screenshot ? `<img src="${escapeAttribute(screenshot)}" style="width:80px;height:100px;object-fit:cover;border-radius:4px;" alt="Payment screenshot" />` : ""}
+        <div>
+          <h3>${escapeHTML(payment.book?.title || "Book")}</h3>
+          <p>
+            ${escapeHTML(payment.book?.category || "Book")} • ₹${Number(payment.amount || payment.book?.price || 0).toLocaleString("en-IN")}<br/>
+            Buyer: <strong>${escapeHTML(payment.user?.name || payment.user?.email || "Buyer")}</strong><br/>
+            Creator: <strong>${escapeHTML(payment.creator?.name || payment.creator?.email || "Creator")}</strong><br/>
+            Method: ${escapeHTML(payment.paymentMethod || "Other")} • Txn: ${escapeHTML(payment.transactionId || "Pending")}
+          </p>
+        </div>
+      </div>
+      <div class="actions">
+        ${screenshot ? `<a class="changes" href="${escapeAttribute(screenshot)}" target="_blank" rel="noreferrer">Open Proof</a>` : ""}
+        <button class="approve" data-payment-approve="${payment._id}">Approve</button>
+        <button class="reject" data-payment-reject="${payment._id}">Reject</button>
+      </div>
+    `;
+
+    card.querySelector("[data-payment-approve]")?.addEventListener("click", () => approvePayment(payment._id));
+    card.querySelector("[data-payment-reject]")?.addEventListener("click", () => rejectPayment(payment._id));
+    paymentReviewList.appendChild(card);
   });
 }
 
@@ -188,6 +241,36 @@ async function rejectBook(bookId) {
     if (!res.ok) throw new Error(data.message);
     alert("Book rejected!");
     loadPendingBooks();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function approvePayment(paymentId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/payments/${paymentId}/approve`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Payment approval failed");
+    alert("Payment approved!");
+    loadPendingPayments();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function rejectPayment(paymentId) {
+  try {
+    const res = await fetch(`${API_BASE}/api/payments/${paymentId}/reject`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Payment rejection failed");
+    alert("Payment rejected!");
+    loadPendingPayments();
   } catch (err) {
     alert(err.message);
   }
@@ -280,6 +363,40 @@ function escapeHTML(str) {
       "'":"&#039;"
     }[m];
   });
+}
+
+function escapeAttribute(value) {
+  return escapeHTML(String(value || "")).replace(/"/g, "&quot;");
+}
+
+function resolveAssetUrl(value, fallback = "") {
+  const source = String(value || "").trim();
+  if (!source) {
+    return fallback;
+  }
+
+  const repaired = source.replace(
+    /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
+    "$1/$2"
+  );
+
+  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+    return repaired;
+  }
+
+  if (/^assets\//i.test(repaired)) {
+    return `/${repaired}`;
+  }
+
+  if (repaired.startsWith("/uploads")) {
+    return `${API_BASE}${repaired}`;
+  }
+
+  if (/^uploads\//i.test(repaired)) {
+    return `${API_BASE}/${repaired}`;
+  }
+
+  return repaired;
 }
 
 function buildCompactMap(map) {

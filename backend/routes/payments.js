@@ -22,6 +22,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_dummy", {
 });
 
 const uploadPath = ensureUploadDir("payments");
+const PAYMENT_METHODS = ["UPI", "GPay", "PayPal"];
 
 function safeFilename(originalname) {
   const extension = path.extname(String(originalname || "")).toLowerCase();
@@ -115,6 +116,51 @@ async function removeBookFromCart(userId, bookIds) {
     }
   );
 }
+
+function normalizePaymentMethod(value) {
+  const normalized = String(value || "").trim();
+  if (PAYMENT_METHODS.includes(normalized)) {
+    return normalized;
+  }
+
+  if (/stripe|card/i.test(normalized)) {
+    return "Stripe";
+  }
+
+  return "Other";
+}
+
+function getPaymentConfig() {
+  return {
+    methods: {
+      UPI: {
+        label: "UPI Payment",
+        details: "Pay using any UPI app and upload the payment screenshot for admin verification.",
+        upiId: process.env.STORE_UPI_ID || "",
+        qrImage: process.env.STORE_UPI_QR || "assets/payment/gpay-qr.PNG",
+      },
+      GPay: {
+        label: "Google Pay",
+        details: "Scan the Google Pay QR and upload the payment screenshot after paying.",
+        upiId: process.env.STORE_GPAY_UPI_ID || process.env.STORE_UPI_ID || "",
+        qrImage: process.env.STORE_GPAY_QR || "assets/payment/gpay-qr.PNG",
+      },
+      PayPal: {
+        label: "PayPal",
+        details: "Scan the PayPal QR and upload the payment screenshot after paying.",
+        upiId: "",
+        qrImage: process.env.STORE_PAYPAL_QR || "assets/payment/paypal-qr.PNG",
+      },
+    },
+  };
+}
+
+router.get("/config", (req, res) => {
+  return res.json({
+    success: true,
+    ...getPaymentConfig(),
+  });
+});
 
 /* =====================================
    Create Stripe Checkout
@@ -291,6 +337,7 @@ router.get("/verify-session", protect, async (req, res) => {
           book: book._id,
           creator: book.author,
           amount: Number(book.price || 0),
+          paymentMethod: "Stripe",
           transactionId: `${session.id}:${book._id}`,
           screenshot: "stripe_auto",
           status: "approved"
@@ -329,6 +376,7 @@ router.get("/verify-session", protect, async (req, res) => {
       book: bookId,
       creator: creatorId,
       amount: Number(session.amount_total || 0) / 100,
+      paymentMethod: "Stripe",
       transactionId: session.id,
       screenshot: "stripe_auto",
       status: "approved"
@@ -382,6 +430,7 @@ router.post("/manual", protect, (req, res) => {
         book: bookId,
         creator: book.author,
         amount: Number(book.price || 0),
+        paymentMethod: normalizePaymentMethod(paymentMethod),
         transactionId: transactionId.trim(),
         screenshot: buildPublicUploadPath("payments", req.file.filename),
         status: "pending"
@@ -406,7 +455,7 @@ router.get("/pending", protect, authorize("admin"), async (req, res) => {
   try {
     const payments = await Payment.find({ status: "pending" })
       .populate("user", "name email")
-      .populate("book", "title price")
+      .populate("book", "title price category coverImage")
       .populate("creator", "name email");
 
     res.json({ success: true, payments });
@@ -467,7 +516,7 @@ router.put("/:paymentId/reject", protect, authorize("admin"), async (req, res) =
 router.get("/my-purchases", protect, async (req, res) => {
   try {
     const payments = await Payment.find({ user: req.user.id, status: "approved" })
-      .populate("book", "title authorName category price filePath coverImage isPaid status isArchived");
+      .populate("book", "title authorName bookAuthor category subcategory price originalPrice discountPrice filePath coverImage isPaid status isArchived");
 
     res.json({ success: true, purchases: payments });
   } catch (error) {

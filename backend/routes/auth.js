@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const { clearAuthCookie, setAuthCookie } = require("../utils/authCookies");
 const { resolveFrontendRedirectUrl } = require("../utils/urlConfig");
+const { buildGoogleAuthState, parseGoogleAuthState } = require("../utils/googleAuthState");
 
 const registerSchema = Joi.object({
   name: Joi.string().trim().min(2).max(80).required(),
@@ -251,14 +252,13 @@ router.post("/login", async (req, res) => {
 ========================================= */
 
 router.get("/google", (req, res, next) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.status(503).json({
-      success: false,
-      message: "Google login is not configured on the server",
-    });
-  }
   const requestedReturnTo = req.query.returnTo || req.query.clientOrigin || req.query.frontend;
   const returnTo = resolveFrontendRedirectUrl(requestedReturnTo, "/login.html");
+  const state = buildGoogleAuthState(returnTo, req.query.role);
+
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect(buildFailureRedirect(returnTo, "google_not_configured"));
+  }
 
   if (!returnTo) {
     return res.status(500).json({
@@ -267,7 +267,6 @@ router.get("/google", (req, res, next) => {
     });
   }
 
-  const state = encodeURIComponent(returnTo);
   return passport.authenticate("google", {
     scope: ["profile", "email"],
     state
@@ -281,7 +280,8 @@ router.get("/google", (req, res, next) => {
 router.get(
   "/google/callback",
   (req, res, next) => {
-    const frontendRedirect = resolveFrontendRedirectUrl(req.query.state, "/login.html");
+    const googleState = parseGoogleAuthState(req.query.state);
+    const frontendRedirect = resolveFrontendRedirectUrl(googleState.returnTo, "/login.html");
     return passport.authenticate("google", {
       session: false,
       failureRedirect: buildFailureRedirect(frontendRedirect, "google_auth_failed"),
@@ -289,7 +289,8 @@ router.get(
   },
   async (req, res) => {
     try {
-      const frontendRedirect = resolveFrontendRedirectUrl(req.query.state, "/login.html");
+      const googleState = parseGoogleAuthState(req.query.state);
+      const frontendRedirect = resolveFrontendRedirectUrl(googleState.returnTo, "/login.html");
 
       await touchLastLogin(req.user);
 
@@ -302,7 +303,8 @@ router.get(
 
       console.error("Google Callback Error:", error);
 
-      const frontendRedirect = resolveFrontendRedirectUrl(req.query.state, "/login.html");
+      const googleState = parseGoogleAuthState(req.query.state);
+      const frontendRedirect = resolveFrontendRedirectUrl(googleState.returnTo, "/login.html");
       res.redirect(buildFailureRedirect(frontendRedirect, "google_auth_failed"));
 
     }

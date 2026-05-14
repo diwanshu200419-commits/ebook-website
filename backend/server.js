@@ -37,6 +37,7 @@ const creatorRoutes = require("./routes/creator");
 const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
 const { initializeAIQueue } = require("./services/ai/queue");
+const { syncProjectCatalogToMarketplace } = require("./services/catalogImport");
 
 const app = express();
 
@@ -151,9 +152,11 @@ app.use((req, res, next) => {
 =================================== */
 
 // Serve only non-sensitive upload assets publicly.
+app.use("/uploads/books", express.static(path.join(uploadsRoot, "books")));
 app.use("/uploads/covers", express.static(path.join(uploadsRoot, "covers")));
 app.use("/uploads/creators", express.static(path.join(uploadsRoot, "creators")));
 app.use("/uploads/payments", express.static(path.join(uploadsRoot, "payments")));
+app.use("/uploads/previews", express.static(path.join(uploadsRoot, "previews")));
 
 /* ===================================
    ✅ DATABASE
@@ -184,6 +187,15 @@ mongoose
     } else {
       console.log("ℹ️ ADMIN_EMAIL and ADMIN_PASSWORD not set - skipping admin seeding");
     }
+    try {
+      const syncResult = await syncProjectCatalogToMarketplace({ force: true });
+      console.log(
+        `Project PDF catalog sync ready: ${syncResult.created || 0} created, ${syncResult.updated || 0} updated, ${syncResult.skipped || 0} skipped`
+      );
+    } catch (syncError) {
+      console.error("Project PDF catalog sync failed:", syncError.message);
+    }
+
     await initializeAIQueue();
     console.log("AI processing queue ready");
     console.log(

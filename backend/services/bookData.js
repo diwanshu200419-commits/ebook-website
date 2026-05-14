@@ -1,10 +1,36 @@
 const DEFAULT_COVER = "/assets/covers/Ebook_AI.png";
 
+function normalizeClientPath(value = "") {
+  const source = String(value || "").trim();
+  if (!source) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(source) || /^data:/i.test(source)) {
+    return source;
+  }
+
+  if (/^(assets|uploads)\//i.test(source)) {
+    return `/${source.replace(/^\/+/, "")}`;
+  }
+
+  return source;
+}
+
 function buildAbsoluteUrl(baseUrl, relativePath) {
   const normalizedBase = String(baseUrl || "").replace(/\/$/, "");
-  const normalizedPath = String(relativePath || "");
+  const normalizedPath = normalizeClientPath(relativePath);
 
-  if (!normalizedBase || !normalizedPath || /^https?:\/\//i.test(normalizedPath)) {
+  if (
+    !normalizedPath
+    || /^https?:\/\//i.test(normalizedPath)
+    || /^data:/i.test(normalizedPath)
+  ) {
+    return normalizedPath;
+  }
+
+  // Frontend-bundled assets should stay on the frontend origin.
+  if (normalizedPath.startsWith("/assets/")) {
     return normalizedPath;
   }
 
@@ -26,30 +52,40 @@ function serializeBook(book, options = {}) {
 
   const author =
     raw && raw.author && typeof raw.author === "object" ? raw.author : null;
+  const normalizedCoverImage = normalizeClientPath(raw?.coverImage || DEFAULT_COVER);
+  const normalizedPreviewPath = normalizeClientPath(previewUrl || raw?.previewPath || "");
+  const normalizedFilePath = normalizeClientPath(raw?.filePath || "");
 
   return {
     id: raw?._id,
     _id: raw?._id,
     title: raw?.title || "Untitled Book",
     authorName: raw?.authorName || author?.name || "Unknown Creator",
+    bookAuthor: raw?.bookAuthor || "",
     authorId: author?._id || raw?.author || null,
     authorUsername: author?.username || "",
     type: raw?.type || "Book",
     category: raw?.category || "General",
+    subcategory: raw?.subcategory || "",
     language: raw?.language || "English",
     tags: raw?.tags || [],
     description: raw?.description || "",
     price: Number(raw?.price || 0),
-    coverImage: raw?.coverImage || DEFAULT_COVER,
-    cover: raw?.coverImage || DEFAULT_COVER,
+    originalPrice: Number(raw?.originalPrice || raw?.price || 0),
+    discountPrice: Number(raw?.discountPrice || raw?.price || 0),
+    coverImage: normalizedCoverImage || DEFAULT_COVER,
+    cover: normalizedCoverImage || DEFAULT_COVER,
     coverUrl: raw?.coverImage
       ? buildAbsoluteUrl(backendBaseUrl, raw.coverImage)
       : DEFAULT_COVER,
-    previewPath: previewUrl || raw?.previewPath || "",
-    previewPdf: previewUrl || raw?.previewPath || "",
-    filePath: includeFilePath ? raw?.filePath || "" : "",
+    previewPath: normalizedPreviewPath,
+    previewPdf: normalizedPreviewPath,
+    previewPages: Number(raw?.previewPages || 0),
+    pageCount: Number(raw?.pageCount || 0),
+    filePath: includeFilePath ? normalizedFilePath : "",
     pdfUrl: downloadUrl || "",
     isPaid: Boolean(raw?.isPaid),
+    isPremium: Boolean(raw?.isPremium),
     requiresLogin: Boolean(raw?.requiresLogin),
     status: statusLabel || (raw?.isArchived ? "Archived" : raw?.status || "Draft"),
     rawStatus: raw?.status || "Draft",
@@ -73,6 +109,9 @@ function serializeBook(book, options = {}) {
     revenue: Number(raw?.earnings || 0),
     platformRevenue: Number(raw?.platformRevenue || 0),
     isFeatured: Boolean(raw?.isFeatured),
+    ratingAverage: Number(raw?.ratingAverage || 0),
+    ratingCount: Number(raw?.ratingCount || 0),
+    catalogKey: raw?.catalogKey || "",
     createdAt: raw?.createdAt,
     updatedAt: raw?.updatedAt,
     publishedAt: raw?.publishedAt || null,

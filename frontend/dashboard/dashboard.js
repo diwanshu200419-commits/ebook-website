@@ -539,20 +539,33 @@ function buildCompactStatus(map) {
 }
 
 function resolveAssetUrl(value) {
-  const source = String(value || "");
+  const source = String(value || "").trim();
   if (!source) {
     return "../assets/covers/Ebook_AI.png";
   }
 
-  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(source)) {
-    return source;
+  const repaired = source.replace(
+    /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
+    "$1/$2"
+  );
+
+  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+    return repaired;
   }
 
-  if (source.startsWith("/uploads")) {
-    return `${API_BASE}${source}`;
+  if (/^assets\//i.test(repaired)) {
+    return `/${repaired}`;
   }
 
-  return source;
+  if (repaired.startsWith("/uploads")) {
+    return `${API_BASE}${repaired}`;
+  }
+
+  if (/^uploads\//i.test(repaired)) {
+    return `${API_BASE}/${repaired}`;
+  }
+
+  return repaired;
 }
 
 function statusClass(status) {

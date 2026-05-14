@@ -136,9 +136,15 @@ function openEditModal(bookId) {
   document.getElementById("editTitle").value = book.title || "";
   document.getElementById("editCategory").value = book.category || "Book";
   document.getElementById("editType").value = book.type || "Book";
+  document.getElementById("editSubcategory").value = book.subcategory || "";
   document.getElementById("editLanguage").value = book.language || "English";
   document.getElementById("editPrice").value = Number(book.price || 0);
+  document.getElementById("editOriginalPrice").value = Number(book.originalPrice || book.price || 0);
+  document.getElementById("editPreviewPages").value = Number(book.previewPages || 5);
+  document.getElementById("editBookAuthor").value = book.bookAuthor || "";
   document.getElementById("editTags").value = (book.tags || []).join(", ");
+  document.getElementById("editIsPremium").checked = Boolean(book.isPremium);
+  document.getElementById("editIsFeatured").checked = Boolean(book.isFeatured);
   document.getElementById("editDescription").value = book.description || "";
 
   document.getElementById("editModal").classList.remove("hidden");
@@ -156,8 +162,14 @@ async function submitEdit(event) {
     title: document.getElementById("editTitle").value.trim(),
     category: document.getElementById("editCategory").value,
     type: document.getElementById("editType").value,
+    subcategory: document.getElementById("editSubcategory").value.trim(),
     language: document.getElementById("editLanguage").value.trim() || "English",
     price: Number(document.getElementById("editPrice").value || 0),
+    originalPrice: Number(document.getElementById("editOriginalPrice").value || 0),
+    previewPages: Number(document.getElementById("editPreviewPages").value || 5),
+    bookAuthor: document.getElementById("editBookAuthor").value.trim(),
+    isPremium: document.getElementById("editIsPremium").checked,
+    isFeatured: document.getElementById("editIsFeatured").checked,
     tags: document.getElementById("editTags").value
       .split(",")
       .map((tag) => tag.trim())
@@ -318,20 +330,33 @@ function formatCurrency(value) {
 }
 
 function resolveAssetUrl(value) {
-  const source = String(value || "");
+  const source = String(value || "").trim();
   if (!source) {
     return "../assets/covers/Ebook_AI.png";
   }
 
-  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(source)) {
-    return source;
+  const repaired = source.replace(
+    /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
+    "$1/$2"
+  );
+
+  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+    return repaired;
   }
 
-  if (source.startsWith("/uploads")) {
-    return `${API_BASE}${source}`;
+  if (/^assets\//i.test(repaired)) {
+    return `/${repaired}`;
   }
 
-  return source;
+  if (repaired.startsWith("/uploads")) {
+    return `${API_BASE}${repaired}`;
+  }
+
+  if (/^uploads\//i.test(repaired)) {
+    return `${API_BASE}/${repaired}`;
+  }
+
+  return repaired;
 }
 
 function numberText(value) {

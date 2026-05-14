@@ -255,6 +255,18 @@ Design
 Finance
 </option>
 
+<option value="Horror">
+Horror
+</option>
+
+<option value="Literature">
+Literature
+</option>
+
+<option value="Language Learning">
+Language Learning
+</option>
+
 <option value="Self Help">
 Self Help
 </option>
@@ -276,6 +288,22 @@ Other
 </option>
 
 </select>
+
+</div>
+
+<!-- SUBCATEGORY -->
+
+<div class="form-group">
+
+<label for="subcategory">
+Subcategory
+</label>
+
+<input
+  type="text"
+  id="subcategory"
+  placeholder="Networking, Gothic Horror, Spanish"
+/>
 
 </div>
 
@@ -318,6 +346,51 @@ Price (₹)
   id="price"
   min="0"
   placeholder="0 = Free"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label for="originalPrice">
+Original Price (₹)
+</label>
+
+<input
+  type="number"
+  id="originalPrice"
+  min="0"
+  placeholder="Optional list price"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label for="previewPages">
+Preview Pages
+</label>
+
+<input
+  type="number"
+  id="previewPages"
+  min="1"
+  max="25"
+  value="5"
+/>
+
+</div>
+
+<div class="form-group">
+
+<label for="bookAuthor">
+Book Author
+</label>
+
+<input
+  type="text"
+  id="bookAuthor"
+  placeholder="Original author or publisher"
 />
 
 </div>
@@ -380,6 +453,36 @@ Estimated Creator Earnings
 <small>
 82% creator share
 </small>
+
+</div>
+
+<div class="form-section">
+
+<div class="section-title">
+
+<h3>
+Storefront Flags
+</h3>
+
+<p>
+Control premium and featured placement
+</p>
+
+</div>
+
+<div class="form-grid">
+
+<label class="checkbox">
+<input type="checkbox" id="isPremium" />
+<span>Mark as premium</span>
+</label>
+
+<label class="checkbox">
+<input type="checkbox" id="isFeatured" />
+<span>Feature on storefront</span>
+</label>
+
+</div>
 
 </div>
 
@@ -478,6 +581,56 @@ or click to browse
 </div>
 
 </div>
+
+</div>
+
+<div class="form-section">
+
+<div class="section-title">
+
+<h3>
+Import Project PDFs
+</h3>
+
+<p>
+Import the real PDFs already stored in this project into your creator account
+</p>
+
+</div>
+
+<div class="description-tools">
+
+<button
+  type="button"
+  class="btn secondary"
+  id="loadLibraryCatalogBtn"
+>
+Load Project PDF Catalog
+</button>
+
+<button
+  type="button"
+  class="btn secondary"
+  id="importLibraryBtn"
+>
+Import Project PDFs
+</button>
+
+<small>
+This creates real marketplace book entries from your detected project PDFs without re-uploading the files. The official free preview PDF is skipped automatically.
+</small>
+
+</div>
+
+<div
+  class="status-message"
+  id="libraryImportStatus"
+></div>
+
+<div
+  id="libraryCatalogList"
+  style="display:grid;gap:10px;margin-top:14px;"
+></div>
 
 </div>
 

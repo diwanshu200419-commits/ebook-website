@@ -591,20 +591,33 @@ function easeOut(value) {
 }
 
 function resolveAssetUrl(value, fallback = "") {
-  const source = String(value || "");
+  const source = String(value || "").trim();
   if (!source) {
     return fallback;
   }
 
-  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(source)) {
-    return source;
+  const repaired = source.replace(
+    /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
+    "$1/$2"
+  );
+
+  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+    return repaired;
   }
 
-  if (source.startsWith("/uploads")) {
-    return `${API_BASE}${source}`;
+  if (/^assets\//i.test(repaired)) {
+    return `/${repaired}`;
   }
 
-  return source;
+  if (repaired.startsWith("/uploads")) {
+    return `${API_BASE}${repaired}`;
+  }
+
+  if (/^uploads\//i.test(repaired)) {
+    return `${API_BASE}/${repaired}`;
+  }
+
+  return repaired;
 }
 
 function formatCompactNumber(value) {

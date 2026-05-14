@@ -155,6 +155,9 @@ function renderCategories(categories) {
     Education: "E",
     Technology: "T",
     Programming: "P",
+    Horror: "H",
+    Literature: "L",
+    "Language Learning": "LL",
     AI: "AI",
     Notes: "N",
     Comics: "C",
@@ -252,18 +255,31 @@ function escapeAttribute(value) {
 }
 
 function resolveAssetUrl(value) {
-  const source = String(value || "");
+  const source = String(value || "").trim();
   if (!source) {
     return "assets/covers/Ebook_AI.png";
   }
 
-  if (/^(https?:|data:|assets\/|\.\.\/|\.\/)/i.test(source)) {
-    return source;
+  const repaired = source.replace(
+    /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
+    "$1/$2"
+  );
+
+  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+    return repaired;
   }
 
-  if (source.startsWith("/uploads")) {
-    return `${API_BASE}${source}`;
+  if (/^assets\//i.test(repaired)) {
+    return `/${repaired}`;
   }
 
-  return source;
+  if (repaired.startsWith("/uploads")) {
+    return `${API_BASE}${repaired}`;
+  }
+
+  if (/^uploads\//i.test(repaired)) {
+    return `${API_BASE}/${repaired}`;
+  }
+
+  return repaired;
 }
