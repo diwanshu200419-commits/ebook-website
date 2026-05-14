@@ -3,12 +3,16 @@ const path = require("path");
 const crypto = require("crypto");
 
 const Book = require("../models/book");
+const BookAI = require("../models/BookAI");
+const Cart = require("../models/Cart");
+const Payment = require("../models/Payment");
 const User = require("../models/user");
 const { BUILTIN_LIBRARY } = require("../data/builtinLibrary");
 const {
   ensureUploadDir,
   buildPublicUploadPath,
   resolvePublicUploadPath,
+  safeDeletePublicFile,
 } = require("../utils/uploads");
 const {
   normalizePreviewPages,
@@ -39,6 +43,11 @@ const SOURCE_PRIORITY = {
 const OFFICIAL_PREVIEW_FILENAMES = new Set([
   "i-tried-8-different-ai-side-hustles-for-students-heres-which-ones-actually-pay.pdf",
 ]);
+const EXCLUDED_LIBRARY_FILENAMES = new Set([
+  "1.-introduction-to-computer-networking-author-teodora-bakardjieva.pdf",
+  "computer-networking.-principles-protocols-and-practice-olivier-bonaventure.pdf",
+  "full-networking.pdf.pdf",
+]);
 const MARKETPLACE_SYNC_INTERVAL_MS = 15000;
 const MARKETPLACE_OWNER_EMAIL = "marketplace-library@ebook.local";
 
@@ -47,6 +56,14 @@ let marketplaceSyncCompletedAt = 0;
 
 function normalizeFilenameKey(filename = "") {
   return path.basename(String(filename || "")).toLowerCase();
+}
+
+function escapeRegex(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isExcludedLibraryFilename(filename = "") {
+  return EXCLUDED_LIBRARY_FILENAMES.has(normalizeFilenameKey(filename));
 }
 
 function normalizeAssetPath(value = "") {
@@ -421,6 +438,10 @@ function getImportableLibraryCatalog() {
   const registerSourceFile = (sourceAbsolutePath, sourceKind) => {
     const filename = path.basename(sourceAbsolutePath);
     const key = normalizeFilenameKey(filename);
+    if (isExcludedLibraryFilename(key)) {
+      return;
+    }
+
     const builtin = builtinByFilename.get(key);
     const metadata = builtin
       ? { ...builtin, catalogType: "curated" }
@@ -463,6 +484,80 @@ function getImportableLibraryCatalog() {
   return Array.from(entriesByFilename.values()).sort((left, right) =>
     String(left.title || "").localeCompare(String(right.title || ""))
   ).filter((entry) => !entry.excludeFromImport);
+}
+
+function buildExcludedBookFilter() {
+  return {
+    $or: Array.from(EXCLUDED_LIBRARY_FILENAMES).map((filename) => ({
+      filePath: {
+        $regex: new RegExp(`${escapeRegex(filename)}$`, "i"),
+      },
+    })),
+  };
+}
+
+async function purgeExcludedCatalogBooks() {
+  const books = await Book.find(buildExcludedBookFilter())
+    .select("_id title filePath previewPath coverImage")
+    .lean();
+
+  if (!books.length) {
+    return {
+      removed: 0,
+      archived: 0,
+    };
+  }
+
+  const bookIds = books.map((book) => book._id);
+  const paymentRows = await Payment.find({ book: { $in: bookIds } })
+    .select("book")
+    .lean();
+  const purchasedIds = new Set(paymentRows.map((entry) => String(entry.book)));
+  const removableBooks = books.filter((book) => !purchasedIds.has(String(book._id)));
+  const archivedIds = books
+    .filter((book) => purchasedIds.has(String(book._id)))
+    .map((book) => book._id);
+
+  await Cart.updateMany(
+    { "items.book": { $in: bookIds } },
+    { $pull: { items: { book: { $in: bookIds } } } }
+  );
+
+  if (archivedIds.length) {
+    await Book.updateMany(
+      { _id: { $in: archivedIds } },
+      {
+        $set: {
+          isArchived: true,
+          archivedAt: new Date(),
+          isFeatured: false,
+          status: "Rejected",
+          aiStatus: "rejected",
+          aiSuggestion: "Removed from storefront catalog.",
+          moderationReason: "Removed from storefront catalog.",
+        },
+      }
+    );
+  }
+
+  const removableIds = removableBooks.map((book) => book._id);
+  if (removableIds.length) {
+    await BookAI.deleteMany({ book: { $in: removableIds } });
+    await Book.deleteMany({ _id: { $in: removableIds } });
+
+    removableBooks.forEach((book) => {
+      [book.filePath, book.previewPath, book.coverImage]
+        .filter(Boolean)
+        .forEach((publicPath) => {
+          safeDeletePublicFile(publicPath);
+        });
+    });
+  }
+
+  return {
+    removed: removableIds.length,
+    archived: archivedIds.length,
+  };
 }
 
 function ensureCatalogBookIsStored(entry) {
@@ -781,6 +876,7 @@ async function syncProjectCatalogToMarketplace(options = {}) {
 
   marketplaceSyncPromise = (async () => {
     try {
+      const purgeResult = await purgeExcludedCatalogBooks();
       const owner = await ensureMarketplaceCatalogOwner();
       const result = await importBuiltinLibraryForCreator(owner);
       marketplaceSyncCompletedAt = Date.now();
@@ -788,6 +884,7 @@ async function syncProjectCatalogToMarketplace(options = {}) {
       return {
         ownerId: owner._id,
         ownerEmail: owner.email,
+        ...purgeResult,
         ...result,
       };
     } finally {
