@@ -208,13 +208,54 @@ function buildCoverAssetPath(absolutePath = "") {
 }
 
 function normalizeCoverStem(value = "") {
+  const baseName = path.basename(String(value || ""));
+  const stem = baseName.replace(/\.(pdf|png|jpe?g|webp|gif)$/i, "");
+
   return slugify(
-    path.basename(String(value || ""), path.extname(String(value || "")))
+    stem
       .replace(/(?:[-_\s]+)?(cover|thumbnail|thumb)$/i, "")
   );
 }
 
-function findCustomCoverMatch(filename = "") {
+function getCoverStemTokens(value = "") {
+  const genericTokens = new Set([
+    "a",
+    "an",
+    "and",
+    "author",
+    "book",
+    "edition",
+    "for",
+    "of",
+    "official",
+    "pdf",
+    "preview",
+    "the",
+    "thumbnail",
+  ]);
+
+  return normalizeCoverStem(value)
+    .split("-")
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !genericTokens.has(token));
+}
+
+function hasStrongCoverTokenMatch(pdfStem = "", coverStem = "") {
+  const pdfTokens = getCoverStemTokens(pdfStem);
+  const coverTokens = getCoverStemTokens(coverStem);
+
+  if (!pdfTokens.length || !coverTokens.length) {
+    return false;
+  }
+
+  const coverTokenSet = new Set(coverTokens);
+  const sharedTokenCount = pdfTokens.filter((token) => coverTokenSet.has(token)).length;
+  const smallerTokenCount = Math.min(pdfTokens.length, coverTokens.length);
+
+  return sharedTokenCount >= 3 && sharedTokenCount / smallerTokenCount >= 0.6;
+}
+
+function findCustomCoverMatch(filename = "", title = "") {
   const pdfBaseName = path.basename(filename, path.extname(filename));
   const normalizedPdfStem = normalizeCoverStem(pdfBaseName);
   const sidecarNames = new Set([
@@ -222,7 +263,13 @@ function findCustomCoverMatch(filename = "") {
     `${pdfBaseName}-cover`,
     `${pdfBaseName}-thumbnail`,
     `${pdfBaseName}-thumb`,
-  ].map((value) => normalizeCoverStem(value)));
+    title,
+    `${title}-cover`,
+    `${title}-thumbnail`,
+    `${title}-thumb`,
+  ]
+    .map((value) => normalizeCoverStem(value))
+    .filter(Boolean));
 
   const searchDirectories = [frontendCoversDir, frontendBooksDir];
 
@@ -245,8 +292,14 @@ function findCustomCoverMatch(filename = "") {
 
     const fuzzyMatch = files.find((absolutePath) => {
       const coverStem = normalizeCoverStem(absolutePath);
-      return coverStem && normalizedPdfStem && (
-        coverStem.includes(normalizedPdfStem) || normalizedPdfStem.includes(coverStem)
+      if (!coverStem || !normalizedPdfStem) {
+        return false;
+      }
+
+      return (
+        coverStem.includes(normalizedPdfStem)
+        || normalizedPdfStem.includes(coverStem)
+        || hasStrongCoverTokenMatch(normalizedPdfStem, coverStem)
       );
     });
 
@@ -258,8 +311,8 @@ function findCustomCoverMatch(filename = "") {
   return "";
 }
 
-function findMatchingCover(filename = "", category = "", type = "Book") {
-  const customCover = findCustomCoverMatch(filename);
+function findMatchingCover(filename = "", category = "", type = "Book", title = "") {
+  const customCover = findCustomCoverMatch(filename, title);
   if (customCover) {
     return {
       coverImage: customCover,
@@ -321,7 +374,7 @@ function buildManualCatalogEntry(filename = "") {
     previewPages: 5,
     isPremium: false,
     isFeatured: false,
-    ...findMatchingCover(filename, category, "Book"),
+    ...findMatchingCover(filename, category, "Book", title),
     catalogType: "manual",
   };
 }
@@ -343,7 +396,7 @@ function buildCatalogEntryFromSource({
   sourceKind,
   metadata,
 }) {
-  const detectedCover = findMatchingCover(filename, metadata.category, metadata.type);
+  const detectedCover = findMatchingCover(filename, metadata.category, metadata.type, metadata.title);
   const coverImage = detectedCover.hasCustomCover
     ? detectedCover.coverImage
     : (metadata.coverImage || detectedCover.coverImage);
