@@ -17,23 +17,30 @@
     }
   ],
 
-  "routes": [
-    { "handle": "filesystem" },
+  "rewrites": [
     {
-      "src": "/",
-      "dest": "/frontend/index.html"
+      "source": "/api/:path*",
+      "destination": "https://ebook-website-v2mj.onrender.com/api/:path*"
     },
     {
-      "src": "/(.*)/login\\.html",
-      "dest": "/frontend/login.html"
+      "source": "/uploads/:path*",
+      "destination": "https://ebook-website-v2mj.onrender.com/uploads/:path*"
     },
     {
-      "src": "/(.*)/register\\.html",
-      "dest": "/frontend/register.html"
+      "source": "/",
+      "destination": "/frontend/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
+      "source": "/:path*/login.html",
+      "destination": "/frontend/login.html"
+    },
+    {
+      "source": "/:path*/register.html",
+      "destination": "/frontend/register.html"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/frontend/:path*"
     }
   ]
 }
