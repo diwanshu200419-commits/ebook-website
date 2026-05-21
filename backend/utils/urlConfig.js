@@ -68,9 +68,24 @@ const buildFrontendUrl = (baseUrl, fallbackPath = "/login.html") => {
 const normalizeFrontendPath = (pathname, fallbackPath = "/login.html") => {
   const fallback = normalizePath(fallbackPath);
   const currentPath = pathname || "/";
+  const trimmedPath = String(currentPath || "").replace(/\/+$/, "") || "/";
+  const pathSegments = trimmedPath.split("/").filter(Boolean);
+  const lastSegment = pathSegments[pathSegments.length - 1] || "";
 
   if (currentPath === "/" || currentPath === "") {
     return fallback;
+  }
+
+  if (lastSegment === "login.html" || trimmedPath.endsWith("/login")) {
+    return "/login.html";
+  }
+
+  if (lastSegment === "register.html" || trimmedPath.endsWith("/register")) {
+    return "/register.html";
+  }
+
+  if (lastSegment === "index.html" || trimmedPath === "/index") {
+    return "/index.html";
   }
 
   if (currentPath === "/frontend" || currentPath === "/frontend/") {

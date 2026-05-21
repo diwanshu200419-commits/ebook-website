@@ -5,6 +5,14 @@ E-BOOK MARKET STARTUP
 
 const API_BASE = window.API_BASE || "";
 
+function buildFrontendPath(pathname, fallbackRelative) {
+  if (typeof window.getFrontendReturnUrl === "function") {
+    return window.getFrontendReturnUrl(pathname);
+  }
+
+  return fallbackRelative;
+}
+
 function notifyServerLogout() {
   return fetch(`${API_BASE}/api/auth/logout`, {
     method: "POST",
@@ -70,20 +78,11 @@ REDIRECT LOGIN
 ========================= */
 
 function redirectToLogin() {
-  /* detect correct path */
-  if (window.location.pathname.includes("/dashboard/") || window.location.pathname.includes("/admin/")) {
-    window.location.href = "../login.html";
-  } else {
-    window.location.href = "login.html";
-  }
+  window.location.href = buildFrontendPath("/login.html", "login.html");
 }
 
 function redirectToHome() {
-  if (window.location.pathname.includes("/dashboard/") || window.location.pathname.includes("/admin/")) {
-    window.location.href = "../index.html";
-  } else {
-    window.location.href = "index.html";
-  }
+  window.location.href = buildFrontendPath("/index.html", "index.html");
 }
 
 function redirectLogin() {

@@ -24,6 +24,14 @@
       "dest": "/frontend/index.html"
     },
     {
+      "src": "/(.*)/login\\.html",
+      "dest": "/frontend/login.html"
+    },
+    {
+      "src": "/(.*)/register\\.html",
+      "dest": "/frontend/register.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }
