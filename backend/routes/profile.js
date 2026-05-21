@@ -48,6 +48,7 @@ router.get("/me", protect, async (req, res) => {
     }
 
     res.status(200).json({
+      success: true,
       status: "success",
       user
     });

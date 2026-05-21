@@ -84,10 +84,12 @@ function renderDashboard(data, token) {
   closeUnlockModal();
 
   localStorage.setItem("user", JSON.stringify({
+    id: data.profile?.id,
     name: data.profile?.name,
     username: data.profile?.username,
     email: data.profile?.email,
-    role: data.role
+    role: data.profile?.role || data.role,
+    profileImage: data.profile?.avatar || ""
   }));
 
   const viewer = data.viewer === "creator" ? "creator" : "reader";

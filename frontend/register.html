@@ -401,8 +401,13 @@ message.innerHTML=`<span class='error'>${data.message||data.msg||"Registration f
 return;
 }
 
-message.innerHTML="<span class='success'>Account created! Redirecting to login...</span>";
-setTimeout(()=>window.location.href="login.html",1500);
+localStorage.setItem("token", data.token);
+localStorage.setItem("user", JSON.stringify(data.user || {}));
+await syncSessionToken(data.token);
+message.innerHTML="<span class='success'>Account created! Opening your dashboard...</span>";
+setTimeout(() => {
+redirectUser(data.token);
+}, 500);
 
 }catch(err){
 message.innerHTML="<span class='error'>Server error</span>";
@@ -419,7 +424,10 @@ const selectedRole = document.getElementById("role").value.trim();
 const referralCode = document.getElementById("referralCode").value.trim().toUpperCase();
 btn.disabled=true;
 btn.innerHTML='<i class="fab fa-google"></i> Redirecting...';
-window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL(window.location.pathname,window.location.href).href)}${selectedRole ? `&role=${encodeURIComponent(selectedRole)}` : ""}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
+const returnTo = typeof window.getFrontendReturnUrl === "function"
+  ? window.getFrontendReturnUrl("/register.html")
+  : new URL(window.location.pathname,window.location.href).href;
+window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(returnTo)}${selectedRole ? `&role=${encodeURIComponent(selectedRole)}` : ""}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
 }
 </script>
 

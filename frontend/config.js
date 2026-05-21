@@ -12,6 +12,7 @@
   var globalOverride = "";
   var storedOverride = "";
   var localDefaultBackend = "http://localhost:5000";
+  var localDefaultFrontend = "http://127.0.0.1:5501/frontend";
 
   try {
     var metaTag = document.querySelector('meta[name="ebook-backend-origin"]');
@@ -54,6 +55,30 @@
   var localBackend = normalizeOrigin(localDefaultBackend);
   var backendOrigin = overrideBackend || (isLocalHost || isFilePreview ? localBackend : "");
 
+  function normalizePath(value) {
+    var source = String(value || "/login.html").trim();
+    if (!source) {
+      return "/login.html";
+    }
+
+    return source.charAt(0) === "/" ? source : "/" + source;
+  }
+
+  function buildPreferredFrontendReturnUrl(pathname) {
+    var safePath = normalizePath(pathname);
+
+    if (protocol === "http:" || protocol === "https:") {
+      return new URL(safePath, window.location.href).href;
+    }
+
+    if (isFilePreview) {
+      return normalizeOrigin(localDefaultFrontend) + safePath;
+    }
+
+    return safePath;
+  }
+
   window.BACKEND_ORIGIN = backendOrigin;
   window.API_BASE = isLocalHost || isFilePreview ? backendOrigin : "";
+  window.getFrontendReturnUrl = buildPreferredFrontendReturnUrl;
 })();

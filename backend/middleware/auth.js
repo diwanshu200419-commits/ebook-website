@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const { ensureUserUsername } = require("../services/userIdentity");
 const { readCookieValue } = require("../utils/authCookies");
 
 /* =====================================
@@ -52,6 +53,7 @@ const protect = async (req, res, next) => {
     }
 
     // 6️⃣ Attach user
+    await ensureUserUsername(user);
     req.user = user;
 
     next();

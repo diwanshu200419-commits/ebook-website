@@ -17,7 +17,7 @@ router.get("/profile", protect, async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "User not found" });
 
-    res.json({ user });
+    res.json({ success: true, user });
 
   } catch (err) {
     console.error(err);
@@ -43,6 +43,7 @@ router.put("/profile", protect, async (req, res) => {
     await user.save();
 
     res.json({
+      success: true,
       message: "Profile updated successfully",
       user
     });
@@ -76,7 +77,7 @@ router.put("/password", protect, async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    res.json({ message: "Password updated successfully" });
+    res.json({ success: true, message: "Password updated successfully" });
 
   } catch (err) {
     console.error(err);
@@ -103,6 +104,7 @@ router.put("/payout", protect, async (req, res) => {
     await user.save();
 
     res.json({
+      success: true,
       message: "Payout info saved successfully",
       payout: user.payout
     });
@@ -130,7 +132,7 @@ router.delete("/", protect, async (req, res) => {
 
     await user.save();
 
-    res.json({ message: "Account deleted successfully" });
+    res.json({ success: true, message: "Account deleted successfully" });
 
   } catch (err) {
     console.error(err);

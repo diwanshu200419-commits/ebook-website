@@ -13,7 +13,10 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const passport = require("passport");
 const User = require("./models/user");
-const { describeUploadStorage } = require("./utils/uploads");
+const {
+  describeUploadStorage,
+  publicUploadFolders,
+} = require("./utils/uploads");
 const {
   getAllowedFrontendOrigins,
   getFrontendBaseUrl,
@@ -37,7 +40,7 @@ const creatorRoutes = require("./routes/creator");
 const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
 const paymentRoutes = require("./routes/payments");
-const { initializeAIQueue } = require("./services/ai/queue");
+const { getAIQueueStatus, initializeAIQueue } = require("./services/ai/queue");
 const { syncProjectCatalogToMarketplace } = require("./services/catalogImport");
 
 const app = express();
@@ -161,10 +164,9 @@ app.use((req, res, next) => {
 
 // Serve only non-sensitive upload assets publicly.
 if (uploadStorage.servesLocally) {
-  app.use("/uploads/books", express.static(path.join(uploadStorage.uploadsRoot, "books")));
-  app.use("/uploads/covers", express.static(path.join(uploadStorage.uploadsRoot, "covers")));
-  app.use("/uploads/creators", express.static(path.join(uploadStorage.uploadsRoot, "creators")));
-  app.use("/uploads/previews", express.static(path.join(uploadStorage.uploadsRoot, "previews")));
+  publicUploadFolders.forEach((folder) => {
+    app.use(`/uploads/${folder}`, express.static(path.join(uploadStorage.uploadsRoot, folder)));
+  });
 }
 
 /* ===================================
@@ -213,6 +215,9 @@ mongoose
     console.log(
       `Upload storage: ${uploadStorage.provider} | root: ${uploadStorage.uploadsRoot}${uploadStorage.publicBaseUrl ? ` | public base: ${uploadStorage.publicBaseUrl}` : ""}`
     );
+    console.log(
+      `Public upload folders: ${uploadStorage.publiclyServedFolders.join(", ")} | protected folders: ${uploadStorage.protectedFolders.join(", ")}`
+    );
   })
   .catch((err) => {
     console.error("❌ MongoDB Error:", err.message);
@@ -253,6 +258,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
+  const aiQueue = getAIQueueStatus();
   res.json({
     status: "success",
     message: "API healthy",
@@ -261,7 +267,11 @@ app.get("/api/health", (req, res) => {
       provider: uploadStorage.provider,
       servesLocally: uploadStorage.servesLocally,
       publicBaseUrl: uploadStorage.publicBaseUrl || "",
+      publiclyServedFolders: uploadStorage.publiclyServedFolders,
+      protectedFolders: uploadStorage.protectedFolders,
+      privateProductAssetsEnabled: uploadStorage.privateProductAssetsEnabled,
     },
+    aiQueue,
     time: new Date()
   });
 });

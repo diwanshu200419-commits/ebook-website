@@ -7,6 +7,7 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const { clearAuthCookie, setAuthCookie } = require("../utils/authCookies");
+const { ensureUserUsername, generateUniqueUsername } = require("../services/userIdentity");
 const { resolveFrontendRedirectUrl } = require("../utils/urlConfig");
 const { buildGoogleAuthState, parseGoogleAuthState } = require("../utils/googleAuthState");
 const {
@@ -28,26 +29,6 @@ const loginSchema = Joi.object({
   email: Joi.string().email({ tlds: { allow: false } }).required(),
   password: Joi.string().min(1).required()
 });
-
-/* =========================================
-   USERNAME GENERATOR (AUTO)
-========================================= */
-
-const generateUsername = async (name) => {
-
-  let base = name.toLowerCase().replace(/\s+/g,"");
-
-  let username = base;
-  let count = 1;
-
-  while(await User.findOne({ username })){
-    username = base + count;
-    count++;
-  }
-
-  return username;
-
-};
 
 /* =========================================
    JWT GENERATOR
@@ -75,6 +56,8 @@ const buildUserPayload = (user) => ({
   role: user.role,
   verified: Boolean(user.verified),
   referralCode: user.referralCode || "",
+  provider: user.provider || "local",
+  profileImage: user.profileImage || "",
 });
 
 const buildFailureRedirect = (redirectUrl, code) => {
@@ -151,7 +134,7 @@ router.post("/register", async (req, res) => {
        AUTO USERNAME GENERATION
     ============================== */
 
-    const username = await generateUsername(name);
+    const username = await generateUniqueUsername(name);
 
     const user = await User.create({
       name: name.trim(),
@@ -247,6 +230,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    await ensureUserUsername(user);
     await touchLastLogin(user);
 
     const token = generateToken(user);
@@ -355,6 +339,7 @@ router.post("/session", async (req, res) => {
       });
     }
 
+    await ensureUserUsername(user);
     setAuthCookie(res, token);
 
     return res.json({

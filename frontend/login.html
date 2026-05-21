@@ -347,8 +347,11 @@ btn.disabled=true;
 btn.innerHTML="Redirecting...";
 
 
+const returnTo = typeof window.getFrontendReturnUrl === "function"
+? window.getFrontendReturnUrl("/login.html")
+: new URL(window.location.pathname,window.location.href).href;
 window.location.href=
-`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL(window.location.pathname,window.location.href).href)}`;
+`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
 
 }
 

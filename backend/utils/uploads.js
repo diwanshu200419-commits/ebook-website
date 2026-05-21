@@ -4,6 +4,8 @@ const path = require("path");
 const uploadsRoot = path.resolve(
   process.env.UPLOAD_ROOT || path.join(__dirname, "..", "uploads")
 );
+const publicUploadFolders = Object.freeze(["covers", "creators"]);
+const privateUploadFolders = Object.freeze(["books", "previews", "payments"]);
 
 function normalizeSegment(segment) {
   return String(segment || "")
@@ -29,10 +31,28 @@ function getUploadsPublicBaseUrl() {
   return normalizeUrl(process.env.UPLOAD_PUBLIC_BASE_URL || "");
 }
 
+function getUploadBucket(source) {
+  const pathname = extractUploadPathname(source);
+  const match = pathname.match(/^\/uploads\/([^/]+)/i);
+  return match ? normalizeSegment(match[1]).toLowerCase() : "";
+}
+
+function isPublicUploadPath(source) {
+  const bucket = getUploadBucket(source);
+  return Boolean(bucket) && publicUploadFolders.includes(bucket);
+}
+
+function isPrivateUploadPath(source) {
+  const bucket = getUploadBucket(source);
+  return Boolean(bucket) && privateUploadFolders.includes(bucket);
+}
+
 function describeUploadStorage() {
   const provider = getUploadStorageProvider();
   const publicBaseUrl = getUploadsPublicBaseUrl();
   const servesLocally = provider === "local" || provider === "hybrid" || !publicBaseUrl;
+  const publiclyServedFolders = [...publicUploadFolders];
+  const protectedFolders = [...privateUploadFolders];
 
   return {
     provider,
@@ -40,6 +60,10 @@ function describeUploadStorage() {
     publicBaseUrl,
     servesLocally,
     usesExternalPublicBase: Boolean(publicBaseUrl),
+    publiclyServedFolders,
+    protectedFolders,
+    privateProductAssetsEnabled: !publiclyServedFolders.includes("books")
+      && !publiclyServedFolders.includes("previews"),
   };
 }
 
@@ -103,6 +127,10 @@ function buildPublicAssetUrl(source, fallbackBaseUrl = "") {
     return normalizedBase ? `${normalizedBase}${pathname}` : pathname;
   }
 
+  if (!isPublicUploadPath(pathname)) {
+    return "";
+  }
+
   const publicBaseUrl = getUploadsPublicBaseUrl();
   if (publicBaseUrl) {
     return `${publicBaseUrl}${pathname}`;
@@ -148,8 +176,13 @@ module.exports = {
   describeUploadStorage,
   ensureUploadDir,
   getUploadStorageProvider,
+  getUploadBucket,
   getUploadsPublicBaseUrl,
   isUploadPath,
+  isPrivateUploadPath,
+  isPublicUploadPath,
+  privateUploadFolders,
+  publicUploadFolders,
   resolvePublicUploadPath,
   safeDeletePublicFile,
 };

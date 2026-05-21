@@ -159,15 +159,23 @@ const PRODUCT_TYPE_UI = {
   },
 };
 
-protectPage(["creator", "author", "admin"]);
-
-if (!token || token === "null" || token === "undefined") {
-  redirectToLogin();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootstrapUploadPage);
+} else {
+  bootstrapUploadPage();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializePage);
-} else {
+async function bootstrapUploadPage() {
+  if (!token || token === "null" || token === "undefined") {
+    redirectToLogin();
+    return;
+  }
+
+  const allowed = await protectPage(["creator", "author", "admin"]);
+  if (!allowed) {
+    return;
+  }
+
   initializePage();
 }
 

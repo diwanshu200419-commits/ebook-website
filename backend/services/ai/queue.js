@@ -68,7 +68,17 @@ async function initializeAIQueue() {
   );
 }
 
+function getAIQueueStatus() {
+  return {
+    pendingJobs: pendingQueue.length,
+    queuedIds: queuedIds.size,
+    workerActive,
+    mode: "in-process",
+  };
+}
+
 module.exports = {
+  getAIQueueStatus,
   enqueueBookAIProcessing,
   initializeAIQueue,
 };

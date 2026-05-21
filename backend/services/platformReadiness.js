@@ -1,6 +1,7 @@
 const { getBackendBaseUrl, getFrontendBaseUrl, normalizeUrl } = require("../utils/urlConfig");
 const { describeUploadStorage } = require("../utils/uploads");
 const { getConfiguredAiProvider, hasOpenAI, hasOllama } = require("./ai/client");
+const { getAIQueueStatus } = require("./ai/queue");
 const { getSupportedMarkets, hasAutomaticTaxEnabled, hasStripeEnabled } = require("./globalMarkets");
 
 function createCheck(key, label, status, summary, details = []) {
@@ -31,6 +32,7 @@ function getLaunchReadinessSummary() {
   const databaseConfigured = Boolean(String(process.env.MONGO_URI || "").trim());
   const jwtConfigured = Boolean(String(process.env.JWT_SECRET || "").trim());
   const storage = describeUploadStorage();
+  const aiQueue = getAIQueueStatus();
   const aiProvider = getConfiguredAiProvider();
   const aiReady = hasOpenAI() || hasOllama();
 
@@ -105,17 +107,19 @@ function getLaunchReadinessSummary() {
     createCheck(
       "storage",
       "File Storage",
-      storage.provider !== "local" || storage.usesExternalPublicBase ? "ready" : "warning",
-      storage.provider !== "local" || storage.usesExternalPublicBase
-        ? `Upload storage is configured for ${storage.provider}${storage.publicBaseUrl ? " with an external public asset base" : ""}.`
-        : "Uploads still use backend-local disk paths.",
+      storage.privateProductAssetsEnabled ? "ready" : "warning",
+      storage.privateProductAssetsEnabled
+        ? `Catalog binaries are protected while public media stays available from ${storage.provider} storage.`
+        : "Catalog product files still appear to be publicly served.",
       [
         storage.servesLocally
-          ? "Backend can still serve upload assets directly."
+          ? "Backend serves only whitelisted public upload folders locally."
           : "Public upload delivery is expected to happen from the external asset base.",
         storage.publicBaseUrl
           ? `Public asset base: ${storage.publicBaseUrl}`
           : "Set UPLOAD_PUBLIC_BASE_URL when moving public assets to a CDN or object storage domain.",
+        `Public folders: ${storage.publiclyServedFolders.join(", ") || "none"}`,
+        `Protected folders: ${storage.protectedFolders.join(", ") || "none"}`,
         `Current upload root: ${storage.uploadsRoot}`,
       ]
     ),
@@ -140,6 +144,16 @@ function getLaunchReadinessSummary() {
         : "Lifecycle automation can run manually, but the cron secret is missing.",
       [
         cronConfigured ? "Scheduled lifecycle jobs can be protected." : "Set LIFECYCLE_CRON_SECRET before enabling scheduled jobs.",
+      ]
+    ),
+    createCheck(
+      "background-jobs",
+      "Background Jobs",
+      aiQueue.workerActive || aiQueue.pendingJobs >= 0 ? "warning" : "warning",
+      `AI processing currently runs through an ${aiQueue.mode} worker with ${aiQueue.pendingJobs} queued job${aiQueue.pendingJobs === 1 ? "" : "s"}.`,
+      [
+        aiQueue.workerActive ? "The in-process AI worker is active right now." : "The in-process AI worker is idle right now.",
+        "For multi-instance production scale, move AI and heavy file processing to a durable external queue.",
       ]
     ),
   ];

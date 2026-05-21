@@ -24,7 +24,7 @@ async function protectPage(allowedRoles = []) {
   /* If no token → login */
   if (!token) {
     redirectToLogin();
-    return;
+    return false;
   }
 
   try {
@@ -49,15 +49,18 @@ async function protectPage(allowedRoles = []) {
       const userRole = data.user?.role || "";
       if (!allowedRoles.includes(userRole)) {
         redirectToHome();
-        return;
+        return false;
       }
     }
+
+    return true;
 
   } catch (err) {
     console.log("Auth error:", err);
 
     /* Logout if token invalid */
     logoutUser();
+    return false;
   }
 }
 

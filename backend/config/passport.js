@@ -3,6 +3,7 @@
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/user");
+const { ensureUserUsername, generateUniqueUsername } = require("../services/userIdentity");
 const {
   getBackendBaseUrl,
   getGoogleCallbackUrl,
@@ -54,8 +55,10 @@ passport.use(
 
           if (!user.googleId) {
             user.googleId = profile.id;
-            await user.save();
+            await user.save({ validateBeforeSave: false });
           }
+
+          await ensureUserUsername(user);
 
           return done(null, user);
         }
@@ -65,6 +68,7 @@ passport.use(
         user = await User.create({
           googleId: profile.id,
           name: profile.displayName,
+          username: await generateUniqueUsername(profile.displayName || email),
           email,
           provider: "google",
           role: desiredRole,
@@ -78,6 +82,8 @@ passport.use(
             countCreator: isCreatorRoleValue(desiredRole),
           });
         }
+
+        await ensureUserUsername(user);
 
         return done(null, user);
 

@@ -8,6 +8,8 @@ This project is designed for a split production setup:
 
 The frontend now uses same-origin `/api/...` and `/uploads/...` calls in production. Vercel proxy functions forward those requests to the backend origin you configure with env vars, so the deploy no longer depends on a hardcoded Render URL inside `vercel.json`.
 
+Only public media should travel through `/uploads/...`. Product binaries and preview PDFs are now expected to unlock through signed `/api/books/...` routes instead of raw public upload URLs.
+
 ## Frontend on Vercel
 
 Deploy the repo to Vercel with the existing [`vercel.json`](/vercel.json).
@@ -86,6 +88,12 @@ UPLOAD_PUBLIC_BASE_URL=https://cdn.yourdomain.com
 ```
 
 Use this when files still exist on backend disk for processing, but public asset URLs should resolve from a CDN or object-storage domain.
+
+Important:
+
+- Keep creator avatars, banners, and product covers public.
+- Keep product files, preview PDFs, and payment proofs private behind API delivery routes.
+- Do not expose `/uploads/books`, `/uploads/previews`, or `/uploads/payments` through a public CDN path.
 
 ## AI Options
 
