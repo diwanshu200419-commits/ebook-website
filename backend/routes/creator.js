@@ -21,6 +21,7 @@ const {
   normalizeUrlValue,
   refreshCreatorStats,
 } = require("../services/creatorData");
+const { applyReferralCreatorActivation } = require("../services/referrals");
 
 const router = express.Router();
 
@@ -134,6 +135,7 @@ router.get("/me/profile", protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id || req.user.id)
       .select("-password")
+      .populate("referredBy", "name username referralCode")
       .populate("followers", "name username role verified bio profileImage")
       .populate("following", "name username role verified bio profileImage");
 
@@ -149,9 +151,22 @@ router.get("/me/profile", protect, async (req, res) => {
     return res.json({
       success: true,
       creator: {
-        ...buildCreatorIdentity(user, backendBaseUrl),
+        ...buildCreatorIdentity(user, backendBaseUrl, stats),
         stats,
         isCreator: isCreatorRole(user.role),
+      },
+      verification: user.creatorVerification || { status: user.verified ? "approved" : "unverified" },
+      growth: {
+        referralCode: user.referralCode || "",
+        referredBy: user.referredBy
+          ? {
+              id: user.referredBy._id,
+              name: user.referredBy.name || "Member",
+              username: user.referredBy.username || "",
+              referralCode: user.referredBy.referralCode || "",
+            }
+          : null,
+        referralStats: user.referralStats || {},
       },
       payout: user.payout || {},
       notifications: user.notifications || {},
@@ -239,7 +254,7 @@ router.put("/me/profile", protect, async (req, res) => {
       success: true,
       message: "Creator profile updated successfully",
       creator: {
-        ...buildCreatorIdentity(user, backendBaseUrl),
+        ...buildCreatorIdentity(user, backendBaseUrl, stats),
         stats,
         isCreator: isCreatorRole(user.role),
       },
@@ -271,9 +286,12 @@ router.post("/activate", protect, async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (!isCreatorRole(user.role)) {
+    const wasCreator = isCreatorRole(user.role);
+
+    if (!wasCreator) {
       user.role = "creator";
       await user.save({ validateBeforeSave: false });
+      await applyReferralCreatorActivation(user);
     }
 
     return res.json({
@@ -286,6 +304,65 @@ router.post("/activate", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Unable to activate creator mode",
+    });
+  }
+});
+
+router.post("/me/verification", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id || req.user.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!isCreatorRole(user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Activate creator mode before requesting verification",
+      });
+    }
+
+    if (user.verified && user.creatorVerification?.status === "approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Creator verification is already approved",
+      });
+    }
+
+    const note = String(req.body?.note || "").trim().slice(0, 600);
+    const portfolioUrl = normalizeUrlValue(req.body?.portfolioUrl);
+    const proofUrl = normalizeUrlValue(req.body?.proofUrl);
+
+    if (!note && !portfolioUrl && !proofUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Add a note, portfolio link, or proof link before submitting verification",
+      });
+    }
+
+    user.creatorVerification = {
+      ...(user.creatorVerification || {}),
+      status: "pending",
+      note,
+      portfolioUrl,
+      proofUrl,
+      submittedAt: new Date(),
+      reviewedAt: null,
+      adminNote: "",
+    };
+
+    await user.save({ validateBeforeSave: false });
+
+    return res.json({
+      success: true,
+      message: "Verification request submitted for admin review",
+      verification: user.creatorVerification,
+    });
+  } catch (error) {
+    console.error("Creator verification request error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to submit verification request",
     });
   }
 });

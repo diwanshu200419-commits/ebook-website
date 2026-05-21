@@ -216,6 +216,11 @@ select:focus{
 <input type="password" id="confirmPassword" placeholder="Confirm password">
 </div>
 
+<div class="input">
+<i class="fa fa-link"></i>
+<input type="text" id="referralCode" placeholder="Referral code (optional)">
+</div>
+
 <select id="role">
 <option value="">Choose your role</option>
 <option value="reader">📘 Reader</option>
@@ -256,9 +261,14 @@ const params = new URLSearchParams(window.location.search);
 const hashParams = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
 const tokenToUse = hashParams.get("token") || params.get("token");
 const authError = params.get("error");
+const referralCode = params.get("ref") || params.get("referralCode") || "";
 
 if(authError){
 showMessage(getAuthMessage(authError), "error");
+}
+
+if(referralCode){
+document.getElementById("referralCode").value = referralCode.trim().toUpperCase();
 }
 
 if(tokenToUse){
@@ -350,6 +360,7 @@ const name=document.getElementById("name").value.trim();
 const email=document.getElementById("email").value.trim();
 const password=pass.value.trim();
 const confirm=document.getElementById("confirmPassword").value.trim();
+const referralCode=document.getElementById("referralCode").value.trim().toUpperCase();
 const role=document.getElementById("role").value;
 const terms=document.getElementById("terms").checked;
 
@@ -380,7 +391,7 @@ const res=await fetch(`${API_BASE}/api/auth/register`,{
 method:"POST",
 credentials:"include",
 headers:{"Content-Type":"application/json"},
-body:JSON.stringify({name,email,password,role})
+body:JSON.stringify({name,email,password,role,referralCode})
 });
 
 const data=await res.json();
@@ -405,9 +416,10 @@ btn.innerText="Create Account";
 function googleLogin(){
 const btn=document.querySelector(".google");
 const selectedRole = document.getElementById("role").value.trim();
+const referralCode = document.getElementById("referralCode").value.trim().toUpperCase();
 btn.disabled=true;
 btn.innerHTML='<i class="fab fa-google"></i> Redirecting...';
-window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL(window.location.pathname,window.location.href).href)}${selectedRole ? `&role=${encodeURIComponent(selectedRole)}` : ""}`;
+window.location.href=`${API_BASE}/api/auth/google?returnTo=${encodeURIComponent(new URL(window.location.pathname,window.location.href).href)}${selectedRole ? `&role=${encodeURIComponent(selectedRole)}` : ""}${referralCode ? `&ref=${encodeURIComponent(referralCode)}` : ""}`;
 }
 </script>
 

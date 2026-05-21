@@ -32,7 +32,7 @@ router.get("/trending", async (req, res) => {
       serializeBook(book, {
         backendBaseUrl,
         includeFilePath: false,
-        previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
+        previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
       })
     );
 

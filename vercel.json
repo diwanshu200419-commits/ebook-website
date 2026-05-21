@@ -17,22 +17,15 @@
     }
   ],
 
-  "rewrites": [
+  "routes": [
+    { "handle": "filesystem" },
     {
-      "source": "/api/(.*)",
-      "destination": "https://ebook-website-v2mj.onrender.com/api/$1"
+      "src": "/",
+      "dest": "/frontend/index.html"
     },
     {
-      "source": "/uploads/(.*)",
-      "destination": "https://ebook-website-v2mj.onrender.com/uploads/$1"
-    },
-    {
-      "source": "/",
-      "destination": "/frontend/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/frontend/$1"
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
     }
   ]
 }

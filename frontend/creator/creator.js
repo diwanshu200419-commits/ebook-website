@@ -206,7 +206,8 @@ function renderProfile(payload) {
     : "";
 
   elements.creatorBadgeChip.textContent = creator.badge || "Creator";
-  elements.creatorBadgeLabel.textContent = creator.badge ? `${creator.badge} profile` : "Creator profile";
+  elements.creatorBadgeChip.title = creator.trustReason || "";
+  elements.creatorBadgeLabel.textContent = creator.trustReason || "Creator profile";
   elements.creatorRoleBadge.textContent = String(creator.role || "creator").toUpperCase();
   elements.verifiedBadge.classList.toggle("hidden", !creator.verified);
   elements.joinDate.textContent = creator.joinedAt
@@ -413,7 +414,7 @@ function renderTrendingCreators(creators) {
       <img class="trending-avatar" src="${escapeAttribute(resolveAssetUrl(creator.avatarUrl || creator.avatar || "", FALLBACK_AVATAR))}" alt="${escapeAttribute(creator.name || "Creator")}">
       <div class="trending-meta">
         <h3>${escapeHTML(creator.name || "Creator")}</h3>
-        <p>@${escapeHTML(creator.username || "creator")}</p>
+        <p>${escapeHTML(creator.badge || "Creator")} Â· @${escapeHTML(creator.username || "creator")}</p>
         <strong>${formatCompactNumber(creator.stats?.followersCount || 0)} followers · ${formatCompactNumber(creator.stats?.totalBooks || 0)} books</strong>
       </div>
       <a class="trending-link" href="creator.html?username=${encodeURIComponent(creator.username || "")}">Open</a>

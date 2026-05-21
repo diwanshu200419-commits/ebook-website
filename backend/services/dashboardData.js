@@ -1,4 +1,5 @@
 const { serializeBook } = require("./bookData");
+const { buildSignedBookAccessUrls } = require("./bookAccess");
 const { getRevenueSplit, roundMoney } = require("../utils/revenue");
 
 const MONTH_NAMES = [
@@ -143,7 +144,7 @@ function buildRecentSales(payments) {
         grossAmount: roundMoney(payment.amount || 0),
         status: payment.status,
         paymentMethod: payment.paymentMethod || "Other",
-        transactionId: payment.transactionId,
+        transactionId: payment.paymentReference || payment.transactionId,
         createdAt: payment.createdAt,
         buyer: payment.user?.name || payment.user?.email || "Buyer",
         book: payment.book?.title || "Untitled Book",
@@ -152,21 +153,34 @@ function buildRecentSales(payments) {
 }
 
 function buildPurchasePayload(payment, backendBaseUrl = "") {
+  const purchaseAccess = {
+    canPreview: !payment.book?.isPaid || Boolean(payment.book?.previewPath) || payment.status === "approved",
+    canDownload: payment.status === "approved" && Boolean(payment.book?._id),
+    isPurchased: payment.status === "approved",
+    isOwner: false,
+    isAdmin: false,
+  };
+  const accessUrls = payment.book
+    ? buildSignedBookAccessUrls(payment.book, purchaseAccess)
+    : { previewAccessUrl: "", downloadAccessUrl: "" };
   const book = payment.book
     ? serializeBook(payment.book, {
         backendBaseUrl,
         includeFilePath: false,
-        previewUrl: !payment.book.isPaid
+        previewUrl: payment.book.previewPath
           ? `/api/books/${payment.book._id}/preview`
           : "",
         downloadUrl: `/api/books/${payment.book._id}/download`,
+        previewAccessUrl: accessUrls.previewAccessUrl,
+        downloadAccessUrl: accessUrls.downloadAccessUrl,
+        access: purchaseAccess,
       })
     : null;
 
   return {
     id: payment._id,
     paymentId: payment._id,
-    transactionId: payment.transactionId,
+    transactionId: payment.paymentReference || payment.transactionId,
     amount: roundMoney(payment.amount || 0),
     creatorAmount: roundMoney(
       payment.creatorAmount || getRevenueSplit(payment.amount || 0).creatorAmount
@@ -179,15 +193,33 @@ function buildPurchasePayload(payment, backendBaseUrl = "") {
     purchaseDate: payment.createdAt,
     bookId: payment.book?._id || null,
     title: payment.book?.title || "Book removed",
+    type: payment.book?.type || "Book",
     bookAuthor: payment.book?.bookAuthor || "",
     category: payment.book?.category || "Book",
+    subcategory: payment.book?.subcategory || "",
     coverImage: book?.coverImage || "",
     coverUrl: book?.coverUrl || "",
     authorName: payment.book?.authorName || payment.creator?.name || "Creator",
+    delivery: book?.delivery || {
+      mode: "file",
+      label: "Digital delivery",
+      includedItems: [],
+      previewText: "",
+      unlockedText: "",
+      instructions: "",
+      externalUrl: "",
+      hasFile: Boolean(payment.book?.filePath),
+      hasText: false,
+      hasExternalUrl: false,
+    },
     canDownload: payment.status === "approved" && Boolean(payment.book?._id),
     downloadUrl:
       payment.status === "approved" && payment.book?._id
         ? `/api/books/${payment.book._id}/download`
+        : "",
+    downloadAccessUrl:
+      payment.status === "approved" && payment.book?._id
+        ? (book?.downloadAccessUrl || "")
         : "",
   };
 }
@@ -255,14 +287,31 @@ function buildCreatorDashboard(user, books, approvedPayments, backendBaseUrl = "
   const uploadedBooks = books
     .slice()
     .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
-    .map((book) =>
-      serializeBook(book, {
+    .map((book) => {
+      const accessUrls = buildSignedBookAccessUrls(book, {
+        canPreview: true,
+        canDownload: true,
+        isOwner: true,
+        isAdmin: false,
+        isPurchased: false,
+      });
+
+      return serializeBook(book, {
         backendBaseUrl,
         includeFilePath: false,
-        previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
+        previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
         downloadUrl: `/api/books/${book._id}/download`,
+        previewAccessUrl: accessUrls.previewAccessUrl,
+        downloadAccessUrl: accessUrls.downloadAccessUrl,
+        access: {
+          canPreview: true,
+          canDownload: true,
+          isOwner: true,
+          isAdmin: false,
+          isPurchased: false,
+        },
       })
-    );
+    });
 
   const creatorScore = Math.min(
     100,
@@ -303,6 +352,7 @@ function buildCreatorDashboard(user, books, approvedPayments, backendBaseUrl = "
 module.exports = {
   buildCategoryCounts,
   buildMonthlySeries,
+  buildPurchasePayload,
   buildProfilePayload,
   buildReaderDashboard,
   buildCreatorDashboard,

@@ -3,6 +3,14 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+function buildReferralCodeBase(user) {
+  const seed = String(user?.username || user?.name || "creator")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+
+  return (seed || "CREATOR").slice(0, 8);
+}
+
 const UserSchema = new mongoose.Schema(
 {
   /* =====================
@@ -121,6 +129,61 @@ const UserSchema = new mongoose.Schema(
     default: false
   },
 
+  referralCode: {
+    type: String,
+    unique: true,
+    uppercase: true,
+    trim: true,
+    sparse: true
+  },
+
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+  },
+
+  referralStats: {
+    signupsCount: { type: Number, default: 0 },
+    creatorsCount: { type: Number, default: 0 },
+    rewardedPurchasesCount: { type: Number, default: 0 },
+    totalRewardAmount: { type: Number, default: 0 },
+    lastRewardAt: { type: Date, default: null },
+    lastSignupAt: { type: Date, default: null }
+  },
+
+  creatorVerification: {
+    status: {
+      type: String,
+      enum: ["unverified", "pending", "approved", "rejected"],
+      default: "unverified"
+    },
+    note: {
+      type: String,
+      default: ""
+    },
+    portfolioUrl: {
+      type: String,
+      default: ""
+    },
+    proofUrl: {
+      type: String,
+      default: ""
+    },
+    submittedAt: {
+      type: Date,
+      default: null
+    },
+    reviewedAt: {
+      type: Date,
+      default: null
+    },
+    adminNote: {
+      type: String,
+      default: ""
+    }
+  },
+
   /* =====================
      WALLET SYSTEM
   ===================== */
@@ -129,7 +192,8 @@ const UserSchema = new mongoose.Schema(
     totalEarnings: { type: Number, default: 0 },
     availableBalance: { type: Number, default: 0 },
     pendingBalance: { type: Number, default: 0 },
-    withdrawnTotal: { type: Number, default: 0 }
+    withdrawnTotal: { type: Number, default: 0 },
+    referralEarnings: { type: Number, default: 0 }
   },
 
   /* =====================
@@ -148,7 +212,40 @@ const UserSchema = new mongoose.Schema(
 
   notifications: {
     email: { type: Boolean, default: true },
-    sales: { type: Boolean, default: true }
+    sales: { type: Boolean, default: true },
+    follows: { type: Boolean, default: true },
+    releases: { type: Boolean, default: true }
+  },
+
+  preferences: {
+    interfaceLanguage: {
+      type: String,
+      enum: ["English", "Hindi"],
+      default: "English"
+    },
+    marketplaceLanguage: {
+      type: String,
+      enum: ["All", "English", "Hindi"],
+      default: "All"
+    }
+  },
+
+  engagement: {
+    streakCount: { type: Number, default: 0 },
+    bestStreakCount: { type: Number, default: 0 },
+    rewardPoints: { type: Number, default: 0 },
+    lifetimeRewardPoints: { type: Number, default: 0 },
+    lastRewardMilestone: { type: Number, default: 0 },
+    lastActiveAt: { type: Date, default: null },
+    lastStreakNotificationAt: { type: Date, default: null },
+    lastReaderNudgeAt: { type: Date, default: null },
+    lastCreatorNudgeAt: { type: Date, default: null },
+    lastDigestEmailAt: { type: Date, default: null },
+    lastComebackEmailAt: { type: Date, default: null },
+    lastCartRecoveryAt: { type: Date, default: null },
+    lastUpsellEmailAt: { type: Date, default: null },
+    lastCreatorLaunchEmailAt: { type: Date, default: null },
+    lastReferralPromptAt: { type: Date, default: null }
   },
 
   /* =====================
@@ -237,6 +334,36 @@ UserSchema.pre("save", async function (next) {
     next(err);
   }
 
+});
+
+/* =========================
+   AUTO REFERRAL CODE
+========================= */
+
+UserSchema.pre("save", async function (next) {
+  if (this.referralCode) return next();
+
+  try {
+    const User = mongoose.model("User");
+    const base = buildReferralCodeBase(this);
+    let attempt = 0;
+    let referralCode = "";
+
+    do {
+      const suffix = String(Math.floor(1000 + Math.random() * 9000));
+      referralCode = `${base}${suffix}`.slice(0, 12);
+      const existing = await User.findOne({ referralCode });
+      if (!existing || String(existing._id) === String(this._id)) {
+        this.referralCode = referralCode;
+        return next();
+      }
+      attempt += 1;
+    } while (attempt < 20);
+
+    return next(new Error("Unable to generate a unique referral code."));
+  } catch (err) {
+    return next(err);
+  }
 });
 
 /* =========================

@@ -52,8 +52,12 @@
           <option>All Types</option>
           <option>E-Books</option>
           <option>Notes</option>
-          <option>Comics</option>
-          <option>AI Content</option>
+          <option>Study Packs</option>
+          <option>Prompts</option>
+          <option>Templates</option>
+          <option>Courses</option>
+          <option>AI Assets</option>
+          <option>Bundles</option>
         </select>
 
         <select>
@@ -74,6 +78,13 @@
       <div id="contentList" class="content-list">
         <!-- injected by admin.js -->
       </div>
+
+      <div class="section-stack">
+        <div class="section-block">
+          <h3>Reported Reviews</h3>
+          <div id="reviewReportList" class="content-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- .aprroved section -->
@@ -89,14 +100,30 @@
     <!-- 👤 CREATORS -->
     <section id="creators" class="admin-section">
       <h2>Creators</h2>
-      <p>Creator profiles, uploads & performance.</p>
+      <p>Verification queue, referral momentum, and creator trust operations.</p>
+      <div id="creatorOverview" class="admin-stats"></div>
+
+      <div class="section-stack">
+        <div class="section-block">
+          <h3>Verification requests</h3>
+          <div id="verificationRequestList" class="content-list"></div>
+        </div>
+
+        <div class="section-block">
+          <h3>Top referral partners</h3>
+          <div id="referralLeaderboardList" class="content-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- 💰 PAYOUTS -->
     <section id="payouts" class="admin-section">
       <h2>Payouts</h2>
-      <p>Pending manual QR payments waiting for approval or rejection.</p>
+      <p>Approve buyer payment proofs and process creator withdrawal requests.</p>
+      <h3>Pending Buyer Payments</h3>
       <div id="paymentReviewList" class="content-list"></div>
+      <h3>Creator Withdrawal Requests</h3>
+      <div id="withdrawRequestList" class="content-list"></div>
     </section>
 
     <!-- 🤖 AI SIGNALS -->
@@ -111,6 +138,122 @@
     <section id="reports" class="admin-section">
       <h2>Reports</h2>
       <p>Revenue, growth & platform analytics.</p>
+      <div id="reportsOverview" class="admin-stats"></div>
+      <div class="section-stack">
+        <div class="section-block">
+          <h3>Global Launch Readiness</h3>
+          <div id="reportsLaunchOverview" class="admin-stats"></div>
+          <div id="reportsLaunchChecks" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Top Product Types</h3>
+          <div id="reportsTypeBreakdown" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Delivery Modes</h3>
+          <div id="reportsDeliveryBreakdown" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Top Performing Products</h3>
+          <div id="reportsTopProducts" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Lifecycle CRM Overview</h3>
+          <div id="reportsCampaignOverview" class="admin-stats"></div>
+        </div>
+        <div class="section-block">
+          <h3>Experiment Winners</h3>
+          <div id="reportsExperimentWinners" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Experiment Intelligence</h3>
+          <div id="reportsExperimentRecommendations" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Lifecycle Strategy Controls</h3>
+          <div id="reportsLifecycleStrategies" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Winner Snapshots</h3>
+          <div class="crm-lab-actions">
+            <button id="captureLifecycleSnapshotBtn" class="changes" type="button">Capture Snapshot</button>
+            <span class="crm-lab-status">Save a point-in-time record of active variants, strategy mode, and current winners.</span>
+          </div>
+          <div id="reportsLifecycleSnapshots" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>CRM Experiment Lab</h3>
+          <div class="crm-lab-card">
+            <div class="crm-lab-grid">
+              <label class="crm-lab-field">
+                <span>Campaign</span>
+                <select id="crmLabMode">
+                  <option value="cart">Abandoned Cart</option>
+                  <option value="upsell">Post-Purchase Upsell</option>
+                  <option value="creator">Creator Launch Sequence</option>
+                  <option value="referral">Referral Prompt</option>
+                </select>
+              </label>
+              <label class="crm-lab-field">
+                <span>Variant</span>
+                <select id="crmLabVariant">
+                  <option value="default">Default</option>
+                  <option value="urgency">Urgency</option>
+                  <option value="social_proof">Social Proof</option>
+                  <option value="value">Value</option>
+                </select>
+              </label>
+              <label class="crm-lab-field">
+                <span>Cohort Role</span>
+                <select id="crmLabRole">
+                  <option value="all">All</option>
+                  <option value="reader">Readers</option>
+                  <option value="creator">Creators</option>
+                </select>
+              </label>
+              <label class="crm-lab-field">
+                <span>Language</span>
+                <select id="crmLabLanguage">
+                  <option value="all">All</option>
+                  <option value="english">English</option>
+                  <option value="hindi">Hindi</option>
+                </select>
+              </label>
+              <label class="crm-lab-field">
+                <span>Limit</span>
+                <input id="crmLabLimit" type="number" min="1" max="100" value="20" />
+              </label>
+              <label class="crm-lab-check">
+                <input id="crmLabForce" type="checkbox" />
+                <span>Bypass cooldowns</span>
+              </label>
+            </div>
+            <div class="crm-lab-actions">
+              <button id="crmLabPreviewBtn" class="changes" type="button">Preview Cohort</button>
+              <button id="crmLabRunBtn" class="approve" type="button">Run Experiment</button>
+              <span id="crmLabStatus" class="crm-lab-status">Ready to preview a lifecycle test.</span>
+            </div>
+            <div id="crmLabPreview" class="crm-lab-output">
+              <p class="crm-lab-empty">Preview results will appear here before anything is sent.</p>
+            </div>
+            <div id="crmLabRunResult" class="crm-lab-output">
+              <p class="crm-lab-empty">Run results will appear here after a manual experiment trigger.</p>
+            </div>
+          </div>
+        </div>
+        <div class="section-block">
+          <h3>Campaign Breakdown</h3>
+          <div id="reportsCampaignBreakdown" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Variant Performance</h3>
+          <div id="reportsCampaignVariants" class="content-list"></div>
+        </div>
+        <div class="section-block">
+          <h3>Recent Campaign Deliveries</h3>
+          <div id="reportsCampaignHistory" class="content-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ⚙ SETTINGS -->

@@ -209,7 +209,7 @@ Select Type
 💬 Comics
 </option>
 
-<option value="AI">
+<option value="Prompt">
 🤖 AI-Assisted Content
 </option>
 
@@ -293,7 +293,7 @@ Other
 
 <!-- SUBCATEGORY -->
 
-<div class="form-group">
+<div class="form-group" id="previewPagesGroup">
 
 <label for="subcategory">
 Subcategory
@@ -451,7 +451,7 @@ Estimated Creator Earnings
 </div>
 
 <small>
-82% creator share
+80% creator share
 </small>
 
 </div>
@@ -537,12 +537,12 @@ PNG / JPG
 
 <div class="upload-box">
 
-<h3>
-PDF Upload
+<h3 id="primaryFileHeading">
+Product File Upload
 </h3>
 
-<p>
-Max Size: 50MB
+<p id="primaryFileMeta">
+Upload the main file buyers will unlock after purchase.
 </p>
 
 <div
@@ -554,18 +554,18 @@ Max Size: 50MB
 📄
 </div>
 
-<p>
-Drag & Drop PDF here
+<p id="fileDropLabel">
+Drag & Drop product file here
 </p>
 
-<small>
-or click to browse
+<small id="fileHelperText">
+PDF, ZIP, TXT, JSON, DOCX, PPTX, XLSX, PNG, JPG, WEBP - Max 50MB
 </small>
 
 <input
   type="file"
   id="file"
-  accept=".pdf"
+  accept=".pdf,.zip,.txt,.md,.json,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
   hidden
 />
 
@@ -585,6 +585,82 @@ or click to browse
 </div>
 
 <div class="form-section">
+
+<div class="section-title">
+
+<h3>
+Delivery Setup
+</h3>
+
+<p>
+Define what the buyer receives after checkout, especially for prompts, templates, bundles, and mini-courses.
+</p>
+
+</div>
+
+<div class="form-grid">
+
+<div class="form-group full">
+
+<label for="promptText">
+Prompt Text / Unlockable Content
+</label>
+
+<textarea
+  id="promptText"
+  maxlength="20000"
+  placeholder="Paste the full AI prompt, lesson script, resource text, or digital content buyers should unlock instantly."
+></textarea>
+
+</div>
+
+<div class="form-group full">
+
+<label for="deliveryIncludes">
+What Is Included
+</label>
+
+<textarea
+  id="deliveryIncludes"
+  maxlength="1200"
+  placeholder="One item per line&#10;Prompt library&#10;Notion template&#10;Worksheet PDF&#10;Bonus checklist"
+></textarea>
+
+</div>
+
+<div class="form-group full">
+
+<label for="externalUrl">
+External Delivery Link
+</label>
+
+<input
+  type="url"
+  id="externalUrl"
+  placeholder="https://your-template-or-course-link.com"
+/>
+
+</div>
+
+<div class="form-group full">
+
+<label for="deliveryInstructions">
+Buyer Instructions
+</label>
+
+<textarea
+  id="deliveryInstructions"
+  maxlength="2000"
+  placeholder="Explain how buyers should use the product after checkout."
+></textarea>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="form-section" id="importProjectSection">
 
 <div class="section-title">
 
@@ -675,6 +751,120 @@ Generate with AI
 <small>
 Use title, category, tags and your draft notes to generate a smarter marketplace description.
 </small>
+
+</div>
+
+</div>
+
+<div class="form-section">
+
+<div class="section-title">
+
+<h3>
+AI Creator Studio
+</h3>
+
+<p>
+Generate title angles, tag ideas, pricing direction and thumbnail concepts before you publish.
+</p>
+
+</div>
+
+<div class="creator-ai-studio">
+
+<div class="creator-ai-toolbar">
+
+<button
+  type="button"
+  class="btn secondary"
+  id="runCreatorAssistBtn"
+>
+Run Full AI Assist
+</button>
+
+<small>
+Best for students, teachers and AI creators who want a stronger storefront listing before submission.
+</small>
+
+</div>
+
+<div class="creator-ai-grid">
+
+<article class="creator-ai-card">
+<span class="creator-ai-label">
+Title Suggestions
+</span>
+<div class="creator-ai-stack" id="titleSuggestionList">
+<p class="creator-ai-empty">
+Run AI assist to get sharper marketplace titles.
+</p>
+</div>
+</article>
+
+<article class="creator-ai-card">
+<span class="creator-ai-label">
+Category + Tags
+</span>
+<div class="creator-ai-stack">
+<div class="creator-ai-category-row">
+<strong id="suggestedCategoryText">
+No AI category yet
+</strong>
+<button
+  type="button"
+  class="mini-action-btn"
+  id="applySuggestedCategoryBtn"
+  disabled
+>
+Apply
+</button>
+</div>
+<div class="creator-ai-tags" id="suggestedTagList">
+<p class="creator-ai-empty">
+Suggested search tags will appear here.
+</p>
+</div>
+</div>
+</article>
+
+<article class="creator-ai-card">
+<span class="creator-ai-label">
+Thumbnail Concepts
+</span>
+<div class="creator-ai-stack" id="thumbnailIdeaList">
+<p class="creator-ai-empty">
+AI cover directions will appear here.
+</p>
+</div>
+</article>
+
+<article class="creator-ai-card">
+<span class="creator-ai-label">
+Pricing + Readiness
+</span>
+<div class="creator-ai-stack">
+<div class="creator-ai-pricing" id="pricingInsightBox">
+<p class="creator-ai-empty">
+Pricing guidance appears after AI assist runs.
+</p>
+</div>
+<div class="creator-ai-readiness" id="readinessBox">
+<div class="creator-ai-score-row">
+<strong id="readinessScoreText">
+--
+</strong>
+<span id="readinessStatusText">
+Waiting for AI preflight
+</span>
+</div>
+<ul class="creator-ai-list" id="readinessList">
+<li>Add your draft details, then run AI assist.</li>
+</ul>
+</div>
+</div>
+</article>
+
+</div>
 
 </div>
 

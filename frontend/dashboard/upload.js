@@ -5,6 +5,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const DRAFT_KEY = "ebook-market-upload-draft";
 
 const form = document.getElementById("uploadForm");
+const typeSelect = document.getElementById("type");
 const tagInput = document.getElementById("tagInput");
 const tagContainer = document.getElementById("tagContainer");
 const thumbnailInput = document.getElementById("thumbnail");
@@ -15,7 +16,12 @@ const priceInput = document.getElementById("price");
 const originalPriceInput = document.getElementById("originalPrice");
 const subcategoryInput = document.getElementById("subcategory");
 const previewPagesInput = document.getElementById("previewPages");
+const previewPagesGroup = document.getElementById("previewPagesGroup");
 const bookAuthorInput = document.getElementById("bookAuthor");
+const promptTextInput = document.getElementById("promptText");
+const deliveryIncludesInput = document.getElementById("deliveryIncludes");
+const externalUrlInput = document.getElementById("externalUrl");
+const deliveryInstructionsInput = document.getElementById("deliveryInstructions");
 const premiumInput = document.getElementById("isPremium");
 const featuredInput = document.getElementById("isFeatured");
 const earnPreview = document.getElementById("earnPreview");
@@ -28,17 +34,130 @@ const descriptionEl = document.getElementById("description");
 const descCount = document.getElementById("descCount");
 const submitBtn = document.querySelector(".btn.primary");
 const generateDescriptionBtn = document.getElementById("generateDescriptionBtn");
+const runCreatorAssistBtn = document.getElementById("runCreatorAssistBtn");
+const applySuggestedCategoryBtn = document.getElementById("applySuggestedCategoryBtn");
 const loadLibraryCatalogBtn = document.getElementById("loadLibraryCatalogBtn");
 const importLibraryBtn = document.getElementById("importLibraryBtn");
 const libraryCatalogList = document.getElementById("libraryCatalogList");
 const libraryImportStatus = document.getElementById("libraryImportStatus");
+const titleSuggestionList = document.getElementById("titleSuggestionList");
+const suggestedCategoryText = document.getElementById("suggestedCategoryText");
+const suggestedTagList = document.getElementById("suggestedTagList");
+const thumbnailIdeaList = document.getElementById("thumbnailIdeaList");
+const pricingInsightBox = document.getElementById("pricingInsightBox");
+const readinessScoreText = document.getElementById("readinessScoreText");
+const readinessStatusText = document.getElementById("readinessStatusText");
+const readinessList = document.getElementById("readinessList");
+const primaryFileHeading = document.getElementById("primaryFileHeading");
+const primaryFileMeta = document.getElementById("primaryFileMeta");
+const fileDropLabel = document.getElementById("fileDropLabel");
+const fileHelperText = document.getElementById("fileHelperText");
+const importProjectSection = document.getElementById("importProjectSection");
 
 let tags = [];
 let isUploading = false;
-let selectedPdfFile = null;
+let selectedProductFile = null;
 let selectedCoverFile = null;
 let isInitialized = false;
 let libraryCatalog = [];
+let latestCreatorAssist = null;
+
+const TYPE_OPTIONS = [
+  { value: "Book", label: "E-Book" },
+  { value: "Notes", label: "Handwritten Notes" },
+  { value: "Study", label: "Study Pack" },
+  { value: "Comics", label: "Comics" },
+  { value: "Prompt", label: "AI Prompt Pack" },
+  { value: "Template", label: "Template" },
+  { value: "Course", label: "Mini Course" },
+  { value: "AI Asset", label: "AI Asset Pack" },
+  { value: "Bundle", label: "Bundle" },
+  { value: "Other", label: "Other Digital Product" },
+];
+
+const PDF_REQUIRED_TYPES = new Set(["Book", "Notes", "Study", "Comics"]);
+const PROJECT_IMPORT_TYPES = new Set(["Book", "Notes", "Study", "Comics"]);
+const SUPPORTED_FILE_EXTENSIONS = new Set([
+  ".pdf",
+  ".zip",
+  ".txt",
+  ".md",
+  ".json",
+  ".csv",
+  ".doc",
+  ".docx",
+  ".ppt",
+  ".pptx",
+  ".xls",
+  ".xlsx",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+]);
+
+const PRODUCT_TYPE_UI = {
+  Book: {
+    fileHeading: "PDF Upload",
+    fileMeta: "Upload the full ebook PDF buyers will unlock after purchase.",
+    dropLabel: "Drag & Drop PDF here",
+    helper: "PDF only - Max 50MB",
+  },
+  Notes: {
+    fileHeading: "Notes PDF Upload",
+    fileMeta: "Upload the notes PDF students should unlock.",
+    dropLabel: "Drag & Drop notes PDF here",
+    helper: "PDF only - Max 50MB",
+  },
+  Study: {
+    fileHeading: "Study Pack Upload",
+    fileMeta: "Upload the study pack PDF or workbook buyers will receive.",
+    dropLabel: "Drag & Drop study PDF here",
+    helper: "PDF only - Max 50MB",
+  },
+  Comics: {
+    fileHeading: "Comic PDF Upload",
+    fileMeta: "Upload the comic PDF readers will unlock.",
+    dropLabel: "Drag & Drop comic PDF here",
+    helper: "PDF only - Max 50MB",
+  },
+  Prompt: {
+    fileHeading: "Prompt Pack File",
+    fileMeta: "Prompt products can ship as text, TXT/MD files, or a bundle.",
+    dropLabel: "Drag & Drop prompt file here",
+    helper: "TXT, MD, PDF, ZIP, JSON - optional if you paste prompt text below",
+  },
+  Template: {
+    fileHeading: "Template File Upload",
+    fileMeta: "Upload the template file or bundle buyers should download.",
+    dropLabel: "Drag & Drop template file here",
+    helper: "ZIP, PDF, DOCX, PPTX, XLSX, PNG, JPG, WEBP - Max 50MB",
+  },
+  Course: {
+    fileHeading: "Course Pack Upload",
+    fileMeta: "Upload a workbook, course PDF, or downloadable lesson bundle.",
+    dropLabel: "Drag & Drop course file here",
+    helper: "PDF, ZIP, DOCX, PPTX, XLSX - Max 50MB",
+  },
+  "AI Asset": {
+    fileHeading: "AI Asset Upload",
+    fileMeta: "Upload the asset pack buyers should unlock after payment.",
+    dropLabel: "Drag & Drop asset file here",
+    helper: "ZIP, PNG, JPG, WEBP, PDF, JSON - Max 50MB",
+  },
+  Bundle: {
+    fileHeading: "Bundle Upload",
+    fileMeta: "Upload the main bundle file or delivery pack.",
+    dropLabel: "Drag & Drop bundle file here",
+    helper: "ZIP, PDF, TXT, DOCX, PPTX, XLSX, PNG, JPG, WEBP - Max 50MB",
+  },
+  Other: {
+    fileHeading: "Digital Product Upload",
+    fileMeta: "Upload the main file for this product or use text/link delivery below.",
+    dropLabel: "Drag & Drop product file here",
+    helper: "PDF, ZIP, TXT, JSON, DOCX, PPTX, XLSX, PNG, JPG, WEBP - Max 50MB",
+  },
+};
 
 protectPage(["creator", "author", "admin"]);
 
@@ -58,17 +177,21 @@ function initializePage() {
   }
 
   isInitialized = true;
+  hydrateTypeSelect();
   restoreDraft();
   bindForm();
   bindDescriptionCounter();
   bindTags();
   bindThumbnail();
   bindDropZone();
+  bindProductType();
   bindRoyaltyCalculator();
   bindAiDescriptionGenerator();
+  bindCreatorAssist();
   bindLibraryImport();
   renderTags();
   updateRoyalty();
+  updateProductTypeUI();
   setUploadAiProvider();
   if (loadLibraryCatalogBtn) {
     loadLibraryCatalog();
@@ -89,6 +212,72 @@ function bindDescriptionCounter() {
 
 function updateDescriptionCounter() {
   descCount.textContent = `${descriptionEl.value.length} / 300`;
+}
+
+function hydrateTypeSelect() {
+  if (!typeSelect) {
+    return;
+  }
+
+  const selected = typeSelect.value;
+  typeSelect.innerHTML = `
+    <option value="">Select Type</option>
+    ${TYPE_OPTIONS.map((option) => `<option value="${escapeAttribute(option.value)}">${escapeHTML(option.label)}</option>`).join("")}
+  `;
+
+  if (selected && TYPE_OPTIONS.some((option) => option.value === selected)) {
+    typeSelect.value = selected;
+  }
+}
+
+function getSelectedType() {
+  return typeSelect?.value || "Book";
+}
+
+function getTypeUiConfig() {
+  return PRODUCT_TYPE_UI[getSelectedType()] || PRODUCT_TYPE_UI.Other;
+}
+
+function getFileAcceptValue() {
+  return PDF_REQUIRED_TYPES.has(getSelectedType())
+    ? ".pdf"
+    : ".pdf,.zip,.txt,.md,.json,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp";
+}
+
+function getFileExtension(fileName = "") {
+  const match = String(fileName || "").toLowerCase().match(/\.[a-z0-9]+$/);
+  return match ? match[0] : "";
+}
+
+function updateProductTypeUI() {
+  const type = getSelectedType();
+  const config = getTypeUiConfig();
+  const isPdfType = PDF_REQUIRED_TYPES.has(type);
+
+  if (primaryFileHeading) {
+    primaryFileHeading.textContent = config.fileHeading;
+  }
+  if (primaryFileMeta) {
+    primaryFileMeta.textContent = config.fileMeta;
+  }
+  if (fileDropLabel) {
+    fileDropLabel.textContent = config.dropLabel;
+  }
+  if (fileHelperText) {
+    fileHelperText.textContent = config.helper;
+  }
+  if (previewPagesGroup) {
+    previewPagesGroup.style.display = isPdfType ? "" : "none";
+  }
+  if (importProjectSection) {
+    importProjectSection.style.display = PROJECT_IMPORT_TYPES.has(type) ? "" : "none";
+  }
+  if (promptTextInput && type === "Prompt" && !promptTextInput.placeholder.includes("prompt")) {
+    promptTextInput.placeholder = "Paste the full AI prompt, prompt pack instructions, or instant-access content buyers should unlock.";
+  }
+  if (fileInput) {
+    fileInput.setAttribute("accept", getFileAcceptValue());
+  }
 }
 
 function bindTags() {
@@ -178,61 +367,77 @@ function bindDropZone() {
     event.preventDefault();
     dropZone.classList.remove("dragging");
     const file = event.dataTransfer.files?.[0];
-    validateAndSetPdf(file);
+    validateAndSetProductFile(file);
   });
 }
 
 function syncFileInput() {
   fileInput = document.getElementById("file");
-  fileInput?.addEventListener("change", handlePdfInputChange);
+  if (fileInput) {
+    fileInput.setAttribute("accept", getFileAcceptValue());
+  }
+  fileInput?.addEventListener("change", handleProductFileInputChange);
 }
 
-function handlePdfInputChange() {
+function handleProductFileInputChange() {
   const file = fileInput.files?.[0];
-  validateAndSetPdf(file);
+  validateAndSetProductFile(file);
 }
 
 function renderDropZonePlaceholder() {
+  const config = getTypeUiConfig();
+  const iconLabel = PDF_REQUIRED_TYPES.has(getSelectedType()) ? "PDF" : "FILE";
   dropZone.innerHTML = `
-    <div class="upload-icon">PDF</div>
-    <p>Drag and drop your PDF here</p>
-    <small>or click to browse</small>
-    <input type="file" id="file" accept=".pdf" hidden>
+    <div class="upload-icon">${escapeHTML(iconLabel)}</div>
+    <p>${escapeHTML(config.dropLabel)}</p>
+    <small>${escapeHTML(config.helper)}</small>
+    <input type="file" id="file" accept="${escapeAttribute(getFileAcceptValue())}" hidden>
   `;
   syncFileInput();
 }
 
-function validateAndSetPdf(file) {
+function validateAndSetProductFile(file) {
   if (!file) {
     return false;
   }
 
-  if (!file.name.toLowerCase().endsWith(".pdf")) {
-    showToast("Only PDF files allowed", "error");
+  const type = getSelectedType();
+  const extension = getFileExtension(file.name);
+
+  if (PDF_REQUIRED_TYPES.has(type) && extension !== ".pdf") {
+    showToast("This product type requires a PDF file", "error");
     fileInput.value = "";
-    selectedPdfFile = null;
+    selectedProductFile = null;
+    return false;
+  }
+
+  if (!PDF_REQUIRED_TYPES.has(type) && !SUPPORTED_FILE_EXTENSIONS.has(extension)) {
+    showToast("That file type is not supported for marketplace delivery", "error");
+    fileInput.value = "";
+    selectedProductFile = null;
     return false;
   }
 
   if (file.size > MAX_FILE_SIZE) {
     showToast("Max file size is 50MB", "error");
     fileInput.value = "";
-    selectedPdfFile = null;
+    selectedProductFile = null;
     return false;
   }
 
-  selectedPdfFile = file;
-  renderSelectedPdfState(file);
+  selectedProductFile = file;
+  renderSelectedProductState(file);
   return true;
 }
 
-function renderSelectedPdfState(file) {
+function renderSelectedProductState(file) {
+  const label = PDF_REQUIRED_TYPES.has(getSelectedType()) ? "PDF ready" : "Product file ready";
   dropZone.innerHTML = `
     <div class="uploaded-file">
-      <h4>PDF ready: ${escapeHTML(file.name)}</h4>
+      <h4>${escapeHTML(label)}: ${escapeHTML(file.name)}</h4>
       <small>${(file.size / 1024 / 1024).toFixed(2)} MB - click to replace</small>
     </div>
-    <input type="file" id="file" accept=".pdf" hidden>
+    <input type="file" id="file" accept="${escapeAttribute(getFileAcceptValue())}" hidden>
   `;
   syncFileInput();
 }
@@ -245,6 +450,20 @@ function bindAiDescriptionGenerator() {
   generateDescriptionBtn?.addEventListener("click", generateDescription);
 }
 
+function bindProductType() {
+  typeSelect?.addEventListener("change", () => {
+    updateProductTypeUI();
+    if (!selectedProductFile) {
+      renderDropZonePlaceholder();
+    }
+  });
+}
+
+function bindCreatorAssist() {
+  runCreatorAssistBtn?.addEventListener("click", runCreatorAssist);
+  applySuggestedCategoryBtn?.addEventListener("click", applySuggestedCategory);
+}
+
 function bindLibraryImport() {
   loadLibraryCatalogBtn?.addEventListener("click", loadLibraryCatalog);
   importLibraryBtn?.addEventListener("click", importLibraryCatalog);
@@ -252,11 +471,15 @@ function bindLibraryImport() {
 
 function updateRoyalty() {
   const price = Number(priceInput.value || 0);
-  const creatorShare = price > 0 ? 0.82 : 0;
+  const creatorShare = price > 0 ? 0.8 : 0;
   earnPreview.textContent = Math.floor(price * creatorShare).toLocaleString("en-IN");
 }
 
 function validateForm(data) {
+  const isPdfType = PDF_REQUIRED_TYPES.has(data.type);
+  const hasPromptText = Boolean(String(data.promptText || "").trim());
+  const hasExternalUrl = Boolean(String(data.externalUrl || "").trim());
+
   if (!data.title || data.title.length < 5) {
     return "Title must be at least 5 characters";
   }
@@ -269,8 +492,16 @@ function validateForm(data) {
     return "Select a category";
   }
 
-  if (!data.file) {
-    return "Upload a PDF file";
+  if (isPdfType && !data.file) {
+    return "Upload a PDF file for this product type";
+  }
+
+  if (data.type === "Prompt" && !data.file && !hasPromptText) {
+    return "Prompt products need prompt text or a prompt file";
+  }
+
+  if (!isPdfType && !data.file && !hasPromptText && !hasExternalUrl) {
+    return "Add a file, prompt text, or external delivery link";
   }
 
   if (!data.description || data.description.length < 30) {
@@ -297,10 +528,14 @@ function collectPayload() {
     originalPrice: originalPrice > 0 ? originalPrice : price,
     previewPages: Number(previewPagesInput?.value || 5),
     bookAuthor: bookAuthorInput?.value.trim() || "",
+    promptText: promptTextInput?.value.trim() || "",
+    deliveryIncludes: deliveryIncludesInput?.value.trim() || "",
+    externalUrl: externalUrlInput?.value.trim() || "",
+    deliveryInstructions: deliveryInstructionsInput?.value.trim() || "",
     isPremium: Boolean(premiumInput?.checked),
     isFeatured: Boolean(featuredInput?.checked),
     description: descriptionEl.value.trim(),
-    file: selectedPdfFile || fileInput.files?.[0] || null,
+    file: selectedProductFile || fileInput.files?.[0] || null,
     thumbnail: selectedCoverFile || thumbnailInput.files?.[0] || null,
     copyright: document.getElementById("copyright").checked
   };
@@ -332,10 +567,16 @@ async function uploadContent() {
   formData.append("originalPrice", String(payload.originalPrice));
   formData.append("previewPages", String(payload.previewPages));
   formData.append("bookAuthor", payload.bookAuthor);
+  formData.append("promptText", payload.promptText);
+  formData.append("deliveryIncludes", payload.deliveryIncludes);
+  formData.append("externalUrl", payload.externalUrl);
+  formData.append("deliveryInstructions", payload.deliveryInstructions);
   formData.append("isPremium", String(payload.isPremium));
   formData.append("isFeatured", String(payload.isFeatured));
   formData.append("description", payload.description);
-  formData.append("pdf", payload.file);
+  if (payload.file) {
+    formData.append("productFile", payload.file);
+  }
   formData.append("tags", JSON.stringify(tags));
   if (payload.thumbnail) {
     formData.append("cover", payload.thumbnail);
@@ -579,6 +820,224 @@ async function generateDescription() {
   }
 }
 
+function buildCreatorAssistPayload() {
+  const promptText = promptTextInput?.value.trim() || "";
+  const description = descriptionEl.value.trim();
+  return {
+    title: document.getElementById("title").value.trim(),
+    type: document.getElementById("type").value,
+    category: document.getElementById("category").value,
+    language: document.getElementById("language").value,
+    price: Number(priceInput?.value || 0),
+    tags,
+    notes: [description, deliveryIncludesInput?.value.trim() || ""].filter(Boolean).join("\n"),
+    excerpt: [promptText, description].filter(Boolean).join("\n\n"),
+  };
+}
+
+async function runCreatorAssist() {
+  const payload = buildCreatorAssistPayload();
+  if (payload.title.length < 3) {
+    showToast("Add a title before running full AI assist", "error");
+    return;
+  }
+
+  runCreatorAssistBtn.disabled = true;
+  runCreatorAssistBtn.textContent = "Running AI Assist...";
+  showStatus("Building title, thumbnail, pricing and launch guidance...", "info");
+
+  try {
+    const response = await fetch(`${API_BASE}/api/ai/creator-assist`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to generate creator assist suggestions");
+    }
+
+    latestCreatorAssist = data;
+    if (data.description) {
+      descriptionEl.value = data.description;
+      updateDescriptionCounter();
+    }
+
+    if (!payload.category && data.suggestedCategory) {
+      document.getElementById("category").value = data.suggestedCategory;
+    }
+
+    renderCreatorAssist(data);
+    setUploadAiProvider(data.provider, data.model, "Creator studio");
+    showStatus("AI creator assist refreshed your listing strategy.", "success");
+    showToast("AI creator assist ready", "success");
+  } catch (error) {
+    showStatus(error.message || "Unable to run creator assist", "error");
+    showToast(error.message || "Unable to run creator assist", "error");
+  } finally {
+    runCreatorAssistBtn.disabled = false;
+    runCreatorAssistBtn.textContent = "Run Full AI Assist";
+  }
+}
+
+function renderCreatorAssist(data) {
+  renderTitleSuggestions(data.titleSuggestions || []);
+  renderSuggestedCategory(data.suggestedCategory || "");
+  renderSuggestedTags(data.generatedTags || []);
+  renderThumbnailIdeas(data.thumbnailIdeas || []);
+  renderPricingInsight(data.pricing || null);
+  renderReadiness(data.readiness || null);
+}
+
+function renderTitleSuggestions(suggestions) {
+  if (!titleSuggestionList) {
+    return;
+  }
+
+  if (!Array.isArray(suggestions) || !suggestions.length) {
+    titleSuggestionList.innerHTML = "<p class=\"creator-ai-empty\">No title suggestions yet.</p>";
+    return;
+  }
+
+  titleSuggestionList.innerHTML = `<div class="suggestion-pills">${suggestions.map((title) => `
+    <div class="suggestion-pill">
+      <span>${escapeHTML(title)}</span>
+      <button type="button" data-apply-title="${escapeHTML(title)}">Use</button>
+    </div>
+  `).join("")}</div>`;
+
+  titleSuggestionList.querySelectorAll("[data-apply-title]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.getElementById("title").value = button.getAttribute("data-apply-title") || "";
+      showToast("Title updated from AI suggestion", "success");
+    });
+  });
+}
+
+function renderSuggestedCategory(category) {
+  if (!suggestedCategoryText) {
+    return;
+  }
+
+  suggestedCategoryText.textContent = category || "No AI category yet";
+  if (applySuggestedCategoryBtn) {
+    applySuggestedCategoryBtn.disabled = !category;
+  }
+}
+
+function renderSuggestedTags(tagSuggestions) {
+  if (!suggestedTagList) {
+    return;
+  }
+
+  if (!Array.isArray(tagSuggestions) || !tagSuggestions.length) {
+    suggestedTagList.innerHTML = "<p class=\"creator-ai-empty\">Suggested search tags will appear here.</p>";
+    return;
+  }
+
+  suggestedTagList.innerHTML = tagSuggestions.map((tag) => `
+    <div class="tag-suggestion-chip">
+      <span>${escapeHTML(String(tag || "").toLowerCase())}</span>
+      <button type="button" data-add-tag="${escapeHTML(String(tag || "").toLowerCase())}">Add</button>
+    </div>
+  `).join("");
+
+  suggestedTagList.querySelectorAll("[data-add-tag]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = (button.getAttribute("data-add-tag") || "").trim().toLowerCase();
+      if (!value) {
+        return;
+      }
+
+      if (tags.includes(value)) {
+        showToast("Tag already added", "error");
+        return;
+      }
+
+      if (tags.length >= 5) {
+        showToast("Maximum 5 tags allowed", "error");
+        return;
+      }
+
+      tags = [...tags, value];
+      renderTags();
+      showToast("Tag added to listing", "success");
+    });
+  });
+}
+
+function renderThumbnailIdeas(ideas) {
+  if (!thumbnailIdeaList) {
+    return;
+  }
+
+  if (!Array.isArray(ideas) || !ideas.length) {
+    thumbnailIdeaList.innerHTML = "<p class=\"creator-ai-empty\">AI cover directions will appear here.</p>";
+    return;
+  }
+
+  thumbnailIdeaList.innerHTML = ideas.map((idea) => `
+    <article class="thumbnail-idea-card">
+      <strong>${escapeHTML(idea.name || "Thumbnail direction")}</strong>
+      <p>${escapeHTML(idea.prompt || "")}</p>
+    </article>
+  `).join("");
+}
+
+function renderPricingInsight(pricing) {
+  if (!pricingInsightBox) {
+    return;
+  }
+
+  if (!pricing) {
+    pricingInsightBox.innerHTML = "<p class=\"creator-ai-empty\">Pricing guidance appears after AI assist runs.</p>";
+    return;
+  }
+
+  pricingInsightBox.innerHTML = `
+    <strong>${escapeHTML(pricing.positioning || "Digital product positioning")}</strong>
+    <p>${escapeHTML(pricing.message || "")}</p>
+    <p>Suggested band: Rs. ${Number(pricing.suggestedMin || 0).toLocaleString("en-IN")} to Rs. ${Number(pricing.suggestedMax || 0).toLocaleString("en-IN")}</p>
+  `;
+}
+
+function renderReadiness(readiness) {
+  if (!readinessScoreText || !readinessStatusText || !readinessList) {
+    return;
+  }
+
+  if (!readiness) {
+    readinessScoreText.textContent = "--";
+    readinessStatusText.textContent = "Waiting for AI preflight";
+    readinessList.innerHTML = "<li>Add your draft details, then run AI assist.</li>";
+    return;
+  }
+
+  readinessScoreText.textContent = `${Number(readiness.score || 0)} / 100`;
+  readinessStatusText.textContent = readiness.status || "Ready";
+  const points = [
+    ...(Array.isArray(readiness.strengths) ? readiness.strengths : []),
+    ...(Array.isArray(readiness.warnings) ? readiness.warnings : []),
+  ];
+  readinessList.innerHTML = (points.length ? points : ["No readiness notes yet."])
+    .map((item) => `<li>${escapeHTML(item)}</li>`)
+    .join("");
+}
+
+function applySuggestedCategory() {
+  if (!latestCreatorAssist?.suggestedCategory) {
+    showToast("Run AI assist first to get a category suggestion", "error");
+    return;
+  }
+
+  document.getElementById("category").value = latestCreatorAssist.suggestedCategory;
+  showToast("AI category applied to the listing", "success");
+}
+
 function animateAIScore(target) {
   let current = 0;
   const limit = Math.max(0, Math.min(100, Number(target || 0)));
@@ -659,6 +1118,10 @@ function saveDraft() {
     originalPrice: String(payload.originalPrice || ""),
     previewPages: String(payload.previewPages || "5"),
     bookAuthor: payload.bookAuthor,
+    promptText: payload.promptText,
+    deliveryIncludes: payload.deliveryIncludes,
+    externalUrl: payload.externalUrl,
+    deliveryInstructions: payload.deliveryInstructions,
     isPremium: payload.isPremium,
     isFeatured: payload.isFeatured,
     description: payload.description,
@@ -680,6 +1143,7 @@ function restoreDraft() {
     const draft = JSON.parse(raw);
     document.getElementById("title").value = draft.title || "";
     document.getElementById("type").value = draft.type || "";
+    updateProductTypeUI();
     document.getElementById("category").value = draft.category || "";
     if (subcategoryInput) subcategoryInput.value = draft.subcategory || "";
     document.getElementById("language").value = draft.language || "English";
@@ -687,13 +1151,17 @@ function restoreDraft() {
     if (originalPriceInput) originalPriceInput.value = draft.originalPrice || "";
     if (previewPagesInput) previewPagesInput.value = draft.previewPages || "5";
     if (bookAuthorInput) bookAuthorInput.value = draft.bookAuthor || "";
+    if (promptTextInput) promptTextInput.value = draft.promptText || "";
+    if (deliveryIncludesInput) deliveryIncludesInput.value = draft.deliveryIncludes || "";
+    if (externalUrlInput) externalUrlInput.value = draft.externalUrl || "";
+    if (deliveryInstructionsInput) deliveryInstructionsInput.value = draft.deliveryInstructions || "";
     if (premiumInput) premiumInput.checked = Boolean(draft.isPremium);
     if (featuredInput) featuredInput.checked = Boolean(draft.isFeatured);
     descriptionEl.value = draft.description || "";
     document.getElementById("copyright").checked = Boolean(draft.copyright);
     tags = Array.isArray(draft.tags) ? draft.tags : [];
     renderTags();
-    showStatus("Draft restored. Add your PDF and cover again before submitting.", "info");
+    showStatus("Draft restored. Add your product file and cover again before publishing.", "info");
   } catch (error) {
     console.error("Draft restore failed:", error);
     localStorage.removeItem(DRAFT_KEY);
@@ -703,10 +1171,13 @@ function restoreDraft() {
 function resetForm(options = {}) {
   form.reset();
   tags = [];
-  selectedPdfFile = null;
+  selectedProductFile = null;
   selectedCoverFile = null;
+  latestCreatorAssist = null;
   progressBar.style.width = "0%";
   aiScoreEl.textContent = "--";
+  hydrateTypeSelect();
+  updateProductTypeUI();
   renderDropZonePlaceholder();
   thumbnailBox.innerHTML = `
     <div class="upload-icon">IMG</div>
@@ -721,6 +1192,14 @@ function resetForm(options = {}) {
   renderTags();
   updateRoyalty();
   updateDescriptionCounter();
+  renderCreatorAssist({
+    titleSuggestions: [],
+    suggestedCategory: "",
+    generatedTags: [],
+    thumbnailIdeas: [],
+    pricing: null,
+    readiness: null,
+  });
   if (!options.preserveProvider) {
     setUploadAiProvider();
   }

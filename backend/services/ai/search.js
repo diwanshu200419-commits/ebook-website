@@ -124,6 +124,70 @@ async function getCategoryCounts() {
   }));
 }
 
+function normalizeMarketplaceLanguage(value, fallback = "All") {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return fallback;
+  }
+
+  const lower = normalized.toLowerCase();
+  if (lower === "all") {
+    return "All";
+  }
+  if (lower === "english") {
+    return "English";
+  }
+  if (lower === "hindi") {
+    return "Hindi";
+  }
+
+  return fallback;
+}
+
+function buildApprovedBookFilter({ category = "", language = "All" }) {
+  const filter = {
+    status: "Approved",
+    isArchived: { $ne: true },
+  };
+
+  if (category) {
+    filter.category = category;
+  }
+
+  if (language && language !== "All") {
+    filter.language = language;
+  }
+
+  return filter;
+}
+
+function buildRecommendationReason({
+  followedCreator = false,
+  sameLanguage = false,
+  sameCategory = false,
+  tagOverlap = 0,
+}) {
+  if (followedCreator && sameLanguage) {
+    return "From a creator you follow in your preferred language";
+  }
+  if (followedCreator) {
+    return "Fresh drop from a creator you follow";
+  }
+  if (sameCategory && tagOverlap > 0) {
+    return "Matches your recent category and topic interests";
+  }
+  if (sameCategory && sameLanguage) {
+    return "Strong category match in your preferred language";
+  }
+  if (tagOverlap > 0) {
+    return "Similar to the skills and topics you explored recently";
+  }
+  if (sameLanguage) {
+    return "Popular pick in your preferred language";
+  }
+  return "Trending across the creator marketplace";
+}
+
 async function searchApprovedBooks({
   backendBaseUrl = "",
   page = 1,
@@ -131,6 +195,8 @@ async function searchApprovedBooks({
   category = "",
   search = "",
   sort = "",
+  language = "",
+  userId = "",
 }) {
   try {
     await syncProjectCatalogToMarketplace();
@@ -142,16 +208,21 @@ async function searchApprovedBooks({
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 60);
   const safeCategory = String(category || "").trim();
   const safeSearch = String(search || "").trim();
+  const viewer = userId ? await User.findById(userId).select("preferences following") : null;
+  const effectiveLanguage = normalizeMarketplaceLanguage(
+    language || viewer?.preferences?.marketplaceLanguage || "All"
+  );
+  const followedCreatorIds = new Set(
+    (Array.isArray(viewer?.following) ? viewer.following : [])
+      .map((entry) => String(entry || ""))
+      .filter(Boolean)
+  );
 
   if (!safeSearch) {
-    const filter = {
-      status: "Approved",
-      isArchived: { $ne: true },
-    };
-
-    if (safeCategory) {
-      filter.category = safeCategory;
-    }
+    const filter = buildApprovedBookFilter({
+      category: safeCategory,
+      language: effectiveLanguage,
+    });
 
     const skip = (safePage - 1) * safeLimit;
     const [books, total, categories] = await Promise.all([
@@ -164,13 +235,26 @@ async function searchApprovedBooks({
       getCategoryCounts(),
     ]);
 
-    const payload = books.map((book) =>
-      serializeBook(book, {
-        backendBaseUrl,
-        includeFilePath: false,
-        previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
-      })
-    );
+    const payload = books
+      .map((book) => ({
+        ...serializeBook(book, {
+          backendBaseUrl,
+          includeFilePath: false,
+          previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
+        }),
+        recommendationReason: followedCreatorIds.has(String(book.author?._id || book.author))
+          ? "From a creator you follow"
+          : "",
+      }));
+
+    const normalizedSort = String(sort || "").toLowerCase();
+    if (!["price-low", "price-high", "title", "oldest"].includes(normalizedSort)) {
+      payload.sort((left, right) => {
+        const leftFollowed = followedCreatorIds.has(String(left.authorId || ""));
+        const rightFollowed = followedCreatorIds.has(String(right.authorId || ""));
+        return Number(rightFollowed) - Number(leftFollowed);
+      });
+    }
 
     return {
       page: safePage,
@@ -184,18 +268,15 @@ async function searchApprovedBooks({
         totalCategories: categories.length,
         totalFreeBooks: payload.filter((book) => Number(book.price || 0) <= 0).length,
         totalPaidBooks: payload.filter((book) => Number(book.price || 0) > 0).length,
+        appliedLanguage: effectiveLanguage,
       },
     };
   }
 
-  const filter = {
-    status: "Approved",
-    isArchived: { $ne: true },
-  };
-
-  if (safeCategory) {
-    filter.category = safeCategory;
-  }
+  const filter = buildApprovedBookFilter({
+    category: safeCategory,
+    language: effectiveLanguage,
+  });
 
   const books = await Book.find(filter).populate("author", "name username");
   const aiDocs = await BookAI.find({ book: { $in: books.map((book) => book._id) } })
@@ -213,6 +294,11 @@ async function searchApprovedBooks({
       const lexical = lexicalSimilarity(safeSearch, searchText);
       const titleBoost = titleText.includes(queryText) ? 0.24 : 0;
       const categoryBoost = String(book.category || "").toLowerCase().includes(queryText) ? 0.15 : 0;
+      const followsBoost = followedCreatorIds.has(String(book.author?._id || book.author)) ? 0.16 : 0;
+      const languageBoost = effectiveLanguage !== "All"
+        && String(book.language || "").toLowerCase() === effectiveLanguage.toLowerCase()
+        ? 0.1
+        : 0;
       const semantic = queryEmbedding.length && Array.isArray(aiDoc?.embedding) && aiDoc.embedding.length
         ? clamp((cosineSimilarity(queryEmbedding, aiDoc.embedding) + 1) / 2, 0, 1)
         : 0;
@@ -221,7 +307,17 @@ async function searchApprovedBooks({
         0,
         0.2
       );
-      const score = clamp((lexical * 0.55) + (semantic * 0.25) + titleBoost + categoryBoost + popularity, 0, 1.5);
+      const score = clamp(
+        (lexical * 0.55)
+          + (semantic * 0.25)
+          + titleBoost
+          + categoryBoost
+          + popularity
+          + followsBoost
+          + languageBoost,
+        0,
+        1.5
+      );
 
       return {
         book,
@@ -241,7 +337,7 @@ async function searchApprovedBooks({
     ...serializeBook(book, {
       backendBaseUrl,
       includeFilePath: false,
-      previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
+      previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
     }),
     relevanceScore: Number(score.toFixed(3)),
   }));
@@ -258,6 +354,7 @@ async function searchApprovedBooks({
       totalCategories: categories.length,
       totalFreeBooks: payload.filter((book) => Number(book.price || 0) <= 0).length,
       totalPaidBooks: payload.filter((book) => Number(book.price || 0) > 0).length,
+      appliedLanguage: effectiveLanguage,
     },
   };
 }
@@ -269,6 +366,15 @@ async function getRecommendedBooks({
   limit = 6,
 }) {
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 6, 1), 12);
+  const viewer = userId ? await User.findById(userId).select("preferences following") : null;
+  const preferredLanguage = normalizeMarketplaceLanguage(
+    viewer?.preferences?.marketplaceLanguage || "All"
+  );
+  const followedCreatorIds = new Set(
+    (Array.isArray(viewer?.following) ? viewer.following : [])
+      .map((entry) => String(entry || ""))
+      .filter(Boolean)
+  );
   const approvedBooks = await Book.find({
     status: "Approved",
     isArchived: { $ne: true },
@@ -325,6 +431,9 @@ async function getRecommendedBooks({
       const sameCategory = profileCategory
         && (String(book.category || "").toLowerCase() === String(profileCategory).toLowerCase()
           || String(aiDoc?.suggestedCategory || "").toLowerCase() === String(profileCategory).toLowerCase());
+      const followedCreator = followedCreatorIds.has(String(book.author?._id || book.author));
+      const sameLanguage = preferredLanguage !== "All"
+        && String(book.language || "").toLowerCase() === preferredLanguage.toLowerCase();
       const semantic = anchorEmbedding.length && Array.isArray(aiDoc?.embedding) && aiDoc.embedding.length
         ? clamp((cosineSimilarity(anchorEmbedding, aiDoc.embedding) + 1) / 2, 0, 1)
         : 0;
@@ -337,6 +446,8 @@ async function getRecommendedBooks({
         (sameCategory ? 0.35 : 0)
           + Math.min(tagOverlap * 0.12, 0.36)
           + (semantic * 0.22)
+          + (followedCreator ? 0.28 : 0)
+          + (sameLanguage ? 0.14 : 0)
           + trend,
         0,
         1.5
@@ -345,6 +456,12 @@ async function getRecommendedBooks({
       return {
         book,
         score,
+        reason: buildRecommendationReason({
+          followedCreator,
+          sameLanguage,
+          sameCategory,
+          tagOverlap,
+        }),
       };
     })
     .sort((left, right) => right.score - left.score);
@@ -355,13 +472,14 @@ async function getRecommendedBooks({
     return rightTrend - leftTrend;
   }))
     .slice(0, safeLimit)
-    .map(({ book, score }) => ({
+    .map(({ book, score, reason }) => ({
       ...serializeBook(book, {
         backendBaseUrl,
         includeFilePath: false,
-        previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
+        previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
       }),
       recommendationScore: Number(score.toFixed(3)),
+      recommendationReason: reason,
     }));
 
   return picks;

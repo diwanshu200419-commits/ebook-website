@@ -11,6 +11,7 @@ async function initDashboard() {
   }
 
   setupLogout();
+  setupUnlockModal();
 
   try {
     const response = await fetch(`${API_BASE}/api/dashboard/user`, {
@@ -49,6 +50,24 @@ function setupLogout() {
   logoutBtn?.addEventListener("click", logoutAndRedirect);
 }
 
+function setupUnlockModal() {
+  const modal = document.getElementById("unlockModal");
+  const closeBtn = document.getElementById("unlockCloseBtn");
+
+  closeBtn?.addEventListener("click", closeUnlockModal);
+  modal?.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeUnlockModal();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeUnlockModal();
+    }
+  });
+}
+
 function logoutAndRedirect() {
   fetch(`${API_BASE}/api/auth/logout`, {
     method: "POST",
@@ -62,6 +81,8 @@ function logoutAndRedirect() {
 }
 
 function renderDashboard(data, token) {
+  closeUnlockModal();
+
   localStorage.setItem("user", JSON.stringify({
     name: data.profile?.name,
     username: data.profile?.username,
@@ -97,13 +118,13 @@ function renderNavigation(viewer, data) {
   setText("sidebarRole", viewer === "creator" ? "Creator Workspace" : "Reader Workspace");
   setText(
     "sidebarCalloutLabel",
-    viewer === "creator" ? "Available balance" : "Unlocked library"
+    viewer === "creator" ? "Available balance" : "Unlocked products"
   );
   setText(
     "sidebarCalloutValue",
     viewer === "creator"
       ? formatCurrency(data.creatorStats?.walletBalance || 0)
-      : `${data.readerStats?.downloadsUnlocked || 0} unlocked books`
+      : `${data.readerStats?.downloadsUnlocked || 0} unlocked products`
   );
 }
 
@@ -111,9 +132,11 @@ function renderHero(viewer, data) {
   const profile = data.profile || {};
   const joined = profile.joinedAt ? formatDate(profile.joinedAt) : "Recently";
 
-  document.getElementById("profileAvatar").src = profile.avatar || "../assets/default-avatar.png";
+  document.getElementById("profileAvatar").src = resolveAssetUrl(
+    profile.avatar || "../assets/default-avatar.png"
+  );
   setText("profileName", profile.name || "Member");
-  setText("profileMeta", `${profile.username || "member"} · Joined ${joined}`);
+  setText("profileMeta", `${profile.username || "member"} | Joined ${joined}`);
   setText("profileRole", String(profile.role || viewer).toUpperCase());
 
   if (viewer === "creator") {
@@ -121,16 +144,16 @@ function renderHero(viewer, data) {
     setText("dashboardTitle", `${profile.name || "Creator"}, your catalog is connected.`);
     setText(
       "dashboardSubtitle",
-      "Track real earnings, upload health, book approvals, and marketplace momentum from one place."
+      "Track real earnings, product approvals, AI signals, and marketplace momentum from one place."
     );
     return;
   }
 
   setText("heroEyebrow", "Reader Dashboard");
-  setText("dashboardTitle", `${profile.name || "Reader"}, your library is ready.`);
+  setText("dashboardTitle", `${profile.name || "Reader"}, your unlocks are live.`);
   setText(
     "dashboardSubtitle",
-    "See what you purchased, what is ready to download, and every payment status tied to your account."
+    "See what you purchased, what unlocks instantly, and every payment status tied to your account."
   );
 }
 
@@ -141,7 +164,7 @@ function renderSummary(viewer, data) {
         {
           label: "Total earnings",
           value: formatCurrency(data.creatorStats?.totalEarnings || 0),
-          note: `${data.creatorStats?.totalSales || 0} confirmed sales`
+          note: `${numberText(data.creatorStats?.totalSales || 0)} confirmed sales`
         },
         {
           label: "This month",
@@ -151,19 +174,19 @@ function renderSummary(viewer, data) {
         {
           label: "Marketplace reach",
           value: numberText(data.creatorStats?.totalViews || 0),
-          note: `${data.creatorStats?.totalDownloads || 0} downloads recorded`
+          note: `${numberText(data.creatorStats?.totalDownloads || 0)} downloads recorded`
         },
         {
           label: "Creator score",
           value: `${data.creatorStats?.creatorScore || 0}/100`,
-          note: `${data.creatorStats?.totalBooks || 0} active uploads`
+          note: `${numberText(data.creatorStats?.totalBooks || 0)} active products`
         }
       ]
     : [
         {
-          label: "Purchased books",
+          label: "Purchased products",
           value: numberText(data.readerStats?.totalPurchased || 0),
-          note: `${data.readerStats?.downloadsUnlocked || 0} available to download`
+          note: `${numberText(data.readerStats?.downloadsUnlocked || 0)} ready to access`
         },
         {
           label: "Total spent",
@@ -192,9 +215,6 @@ function renderSummary(viewer, data) {
 }
 
 function renderChart(viewer, data) {
-  const chartTitle = document.getElementById("chartTitle");
-  const chartKicker = document.getElementById("chartKicker");
-  const chartBadge = document.getElementById("chartBadge");
   const empty = document.getElementById("chartEmpty");
   const canvas = document.getElementById("dashboardChart");
   const context = canvas.getContext("2d");
@@ -215,9 +235,9 @@ function renderChart(viewer, data) {
           data.readerStats?.pendingOrders || 0,
           data.readerStats?.rejectedOrders || 0
         ],
-        title: "Order status overview",
-        kicker: "Orders",
-        badge: "Real payment records",
+        title: "Payment status overview",
+        kicker: "Payments",
+        badge: "Live unlock records",
         type: "doughnut"
       };
 
@@ -287,7 +307,7 @@ function renderChart(viewer, data) {
 
 function renderReaderPurchases(data, token) {
   setText("primaryKicker", "Library");
-  setText("primaryTitle", "Purchased books");
+  setText("primaryTitle", "Purchased products");
 
   const action = document.getElementById("primaryAction");
   action.href = "../explore.html";
@@ -300,29 +320,53 @@ function renderReaderPurchases(data, token) {
   if (!purchases.length) {
     grid.innerHTML = "";
     empty.classList.remove("hidden");
-    empty.textContent = "No approved purchases yet. When you buy a book, it will appear here with a secure download button.";
+    empty.textContent = "No approved purchases yet. When you buy a product, it will appear here with the right unlock flow automatically.";
     return;
   }
 
   empty.classList.add("hidden");
-  grid.innerHTML = purchases.map((purchase) => `
-    <article class="book-card">
+  grid.innerHTML = purchases.map((purchase, index) => {
+    const delivery = normalizeDelivery(purchase.delivery);
+    const useUnlockModal = shouldUseUnlockModal(purchase);
+    const productType = formatProductType(purchase.type || purchase.category || "Product");
+    const creatorLine = [productType, purchase.authorName || "Creator"].join(" | ");
+
+    return `
+      <article class="book-card">
         <img src="${escapeAttribute(resolveAssetUrl(purchase.coverUrl || purchase.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(purchase.title)}">
-      <div class="book-card-body">
-        <span class="status-pill success">${escapeHTML(purchase.status)}</span>
-        <h3>${escapeHTML(purchase.title)}</h3>
-        <p>${escapeHTML(purchase.category || "Book")} · ${escapeHTML(purchase.authorName || "Creator")}</p>
-        <div class="book-meta">
-          <span>${formatCurrency(purchase.amount || 0)}</span>
-          <span>${formatDate(purchase.purchaseDate)}</span>
+        <div class="book-card-body">
+          <span class="status-pill success">${escapeHTML(purchase.status)}</span>
+          <span class="type-pill">${escapeHTML(productType)}</span>
+          <h3>${escapeHTML(purchase.title)}</h3>
+          <p>${escapeHTML(creatorLine)}</p>
+          <div class="delivery-note">
+            <strong>${escapeHTML(delivery.label || "Digital delivery")}</strong>
+            <span>${escapeHTML(buildDeliveryNote(delivery))}</span>
+          </div>
+          <div class="book-meta">
+            <span>${formatCurrency(purchase.amount || 0)}</span>
+            <span>${formatDate(purchase.purchaseDate)}</span>
+          </div>
+          <div class="card-actions">
+            ${useUnlockModal
+              ? `<button class="solid-btn" type="button" data-unlock-index="${index}">${escapeHTML(getUnlockActionLabel(purchase))}</button>`
+              : `<a class="solid-btn" href="${escapeAttribute(buildDownloadHref(purchase.downloadAccessUrl, purchase.downloadUrl, token))}">${escapeHTML(getUnlockActionLabel(purchase))}</a>`
+            }
+            <a class="ghost-link" href="../book_view.html?id=${encodeURIComponent(purchase.bookId)}">Open details</a>
+          </div>
         </div>
-        <div class="card-actions">
-          <a class="solid-btn" href="${buildSecureFileUrl(purchase.downloadUrl, token)}">Download</a>
-          <a class="ghost-link" href="../book_view.html?id=${encodeURIComponent(purchase.bookId)}">Open details</a>
-        </div>
-      </div>
-    </article>
-  `).join("");
+      </article>
+    `;
+  }).join("");
+
+  grid.querySelectorAll("[data-unlock-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const purchase = purchases[Number(button.dataset.unlockIndex)];
+      if (purchase) {
+        openUnlockModal(purchase, token);
+      }
+    });
+  });
 }
 
 function renderReaderOrders(data) {
@@ -333,7 +377,7 @@ function renderReaderOrders(data) {
   const orders = data.orderHistory || [];
 
   if (!orders.length) {
-    body.innerHTML = `<div class="empty-copy">No payment history yet. Stripe and manual checkout records will appear here automatically.</div>`;
+    body.innerHTML = "<div class=\"empty-copy\">No payment history yet. Stripe and manual checkout records will appear here automatically.</div>";
     return;
   }
 
@@ -343,7 +387,7 @@ function renderReaderOrders(data) {
         <article class="data-row">
           <div>
             <h3>${escapeHTML(order.title)}</h3>
-            <p>${escapeHTML(order.transactionId || "Transaction pending")}</p>
+            <p>${escapeHTML(`${formatProductType(order.type || "Product")} | ${order.transactionId || "Transaction pending"}`)}</p>
           </div>
           <div class="data-row-meta">
             <span class="status-pill ${statusClass(order.status)}">${escapeHTML(order.status)}</span>
@@ -387,11 +431,11 @@ function renderReaderProfile(data) {
 
 function renderCreatorBooks(data, token) {
   setText("primaryKicker", "Catalog");
-  setText("primaryTitle", "Uploaded books");
+  setText("primaryTitle", "Uploaded products");
 
   const action = document.getElementById("primaryAction");
   action.href = "upload.html";
-  action.textContent = "Upload a new book";
+  action.textContent = "Upload a new product";
 
   const grid = document.getElementById("primaryGrid");
   const empty = document.getElementById("primaryEmpty");
@@ -400,18 +444,19 @@ function renderCreatorBooks(data, token) {
   if (!books.length) {
     grid.innerHTML = "";
     empty.classList.remove("hidden");
-    empty.textContent = "No uploads yet. Your first approved upload will immediately become available for marketplace discovery.";
+    empty.textContent = "No uploads yet. Your first approved product will immediately become available for marketplace discovery.";
     return;
   }
 
   empty.classList.add("hidden");
   grid.innerHTML = books.map((book) => `
     <article class="book-card">
-        <img src="${escapeAttribute(resolveAssetUrl(book.coverUrl || book.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(book.title)}">
+      <img src="${escapeAttribute(resolveAssetUrl(book.coverUrl || book.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(book.title)}">
       <div class="book-card-body">
         <span class="status-pill ${statusClass(book.status)}">${escapeHTML(book.status)}</span>
+        <span class="type-pill">${escapeHTML(formatProductType(book.type || "Product"))}</span>
         <h3>${escapeHTML(book.title)}</h3>
-        <p>${escapeHTML(book.category || "Book")} · ${book.isPaid ? formatCurrency(book.price || 0) : "Free"}</p>
+        <p>${escapeHTML(`${book.category || "General"} | ${book.isPaid ? formatCurrency(book.price || 0) : "Free"}`)}</p>
         <div class="book-meta">
           <span>${numberText(book.salesCount || 0)} sales</span>
           <span>${formatCurrency(book.earnings || 0)}</span>
@@ -422,7 +467,7 @@ function renderCreatorBooks(data, token) {
         </div>
         <div class="card-actions">
           <a class="solid-btn" href="content.html">Manage</a>
-          <a class="ghost-link" href="${buildSecureFileUrl(book.downloadUrl, token)}">Download</a>
+          <a class="ghost-link" href="${escapeAttribute(buildDownloadHref(book.downloadAccessUrl, book.downloadUrl, token))}">Download</a>
         </div>
       </div>
     </article>
@@ -431,13 +476,13 @@ function renderCreatorBooks(data, token) {
 
 function renderCreatorTopBooks(data) {
   setText("secondaryKicker", "Performance");
-  setText("secondaryTitle", "Top performing books");
+  setText("secondaryTitle", "Top performing products");
 
   const body = document.getElementById("secondaryBody");
   const topBooks = data.topBooks || [];
 
   if (!topBooks.length) {
-    body.innerHTML = `<div class="empty-copy">No performance data yet. Sales, earnings, and download leaders will appear after your first transactions.</div>`;
+    body.innerHTML = "<div class=\"empty-copy\">No performance data yet. Sales, earnings, and download leaders will appear after your first transactions.</div>";
     return;
   }
 
@@ -447,11 +492,11 @@ function renderCreatorTopBooks(data) {
         <article class="data-row">
           <div>
             <h3>${escapeHTML(book.title)}</h3>
-            <p>${escapeHTML(book.category || "Book")}</p>
+            <p>${escapeHTML(book.category || "General")}</p>
           </div>
           <div class="data-row-meta">
             <strong>${formatCurrency(book.earnings || 0)}</strong>
-            <small>${numberText(book.sales || 0)} sales · ${numberText(book.downloads || 0)} downloads</small>
+            <small>${escapeHTML(`${numberText(book.sales || 0)} sales | ${numberText(book.downloads || 0)} downloads`)}</small>
           </div>
         </article>
       `).join("")}
@@ -471,11 +516,11 @@ function renderCreatorActivity(data) {
       <div class="profile-grid">
         <article class="mini-card">
           <span>Approval statuses</span>
-          <strong>${buildCompactStatus(data.statusBreakdown || {})}</strong>
+          <strong>${escapeHTML(buildCompactStatus(data.statusBreakdown || {}))}</strong>
         </article>
         <article class="mini-card">
           <span>Category coverage</span>
-          <strong>${buildCompactStatus(data.categoryCounts || {})}</strong>
+          <strong>${escapeHTML(buildCompactStatus(data.categoryCounts || {}))}</strong>
         </article>
       </div>
     `;
@@ -501,7 +546,187 @@ function renderCreatorActivity(data) {
   `;
 }
 
+function openUnlockModal(purchase, token) {
+  const modal = document.getElementById("unlockModal");
+  const content = document.getElementById("unlockContent");
+  if (!modal || !content || !purchase) {
+    return;
+  }
+
+  const delivery = normalizeDelivery(purchase.delivery);
+  const sections = [];
+
+  if (delivery.includedItems.length) {
+    sections.push(`
+      <section class="unlock-section">
+        <h3>Included in this unlock</h3>
+        <div class="unlock-tags">
+          ${delivery.includedItems.map((item) => `<span class="unlock-tag">${escapeHTML(item)}</span>`).join("")}
+        </div>
+      </section>
+    `);
+  }
+
+  if (delivery.instructions) {
+    sections.push(`
+      <section class="unlock-section">
+        <h3>How to use it</h3>
+        <p>${escapeHTML(delivery.instructions)}</p>
+      </section>
+    `);
+  }
+
+  if (delivery.unlockedText) {
+    sections.push(`
+      <section class="unlock-section">
+        <h3>Instant unlock</h3>
+        <div class="unlock-copy">${formatMultilineText(delivery.unlockedText)}</div>
+      </section>
+    `);
+  }
+
+  if (!sections.length) {
+    sections.push(`
+      <section class="unlock-section">
+        <h3>Delivery ready</h3>
+        <p>${escapeHTML(buildDeliveryNote(delivery))}</p>
+      </section>
+    `);
+  }
+
+  const actions = [
+    purchase.canDownload && (purchase.downloadAccessUrl || purchase.downloadUrl)
+      ? `<a class="solid-btn" href="${escapeAttribute(buildDownloadHref(purchase.downloadAccessUrl, purchase.downloadUrl, token))}">Download file</a>`
+      : "",
+    delivery.externalUrl
+      ? `<a class="ghost-link" href="${escapeAttribute(delivery.externalUrl)}" target="_blank" rel="noreferrer">Open delivery link</a>`
+      : "",
+    `<a class="ghost-btn" href="../book_view.html?id=${encodeURIComponent(purchase.bookId)}">Open product page</a>`
+  ].filter(Boolean);
+
+  content.innerHTML = `
+    <div class="unlock-header">
+      <span class="status-pill success">Unlocked</span>
+      <h2 id="unlockTitle">${escapeHTML(purchase.title)}</h2>
+      <div class="unlock-meta">
+        <span>${escapeHTML(formatProductType(purchase.type || "Product"))}</span>
+        <span>${escapeHTML(purchase.authorName || "Creator")}</span>
+        <span>${escapeHTML(formatDate(purchase.purchaseDate))}</span>
+        <span>${escapeHTML(formatCurrency(purchase.amount || 0))}</span>
+      </div>
+      <p>${escapeHTML(delivery.label || "Digital delivery")}</p>
+    </div>
+    <div class="unlock-grid">
+      ${sections.join("")}
+    </div>
+    <div class="unlock-actions">
+      ${actions.join("")}
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+}
+
+function closeUnlockModal() {
+  const modal = document.getElementById("unlockModal");
+  const content = document.getElementById("unlockContent");
+  if (!modal || modal.classList.contains("hidden")) {
+    document.body.style.overflow = "";
+    return;
+  }
+
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  if (content) {
+    content.innerHTML = "";
+  }
+}
+
+function shouldUseUnlockModal(purchase) {
+  const delivery = normalizeDelivery(purchase?.delivery);
+  return Boolean(
+    delivery.hasText ||
+    delivery.hasExternalUrl ||
+    delivery.instructions ||
+    delivery.includedItems.length ||
+    delivery.mode !== "file"
+  );
+}
+
+function getUnlockActionLabel(purchase) {
+  const delivery = normalizeDelivery(purchase?.delivery);
+  if (delivery.hasText && purchase?.canDownload) {
+    return "Open unlock";
+  }
+  if (delivery.hasText) {
+    return "View access";
+  }
+  if (delivery.hasExternalUrl) {
+    return "Open access";
+  }
+  if (purchase?.canDownload) {
+    return "Download";
+  }
+  return "View unlock";
+}
+
+function normalizeDelivery(delivery = {}) {
+  const includedItems = Array.isArray(delivery.includedItems)
+    ? delivery.includedItems.filter((item) => String(item || "").trim())
+    : [];
+  const externalUrl = String(delivery.externalUrl || "").trim();
+  const unlockedText = String(delivery.unlockedText || "").trim();
+
+  return {
+    mode: String(delivery.mode || "file").toLowerCase(),
+    label: String(delivery.label || "Digital delivery").trim() || "Digital delivery",
+    instructions: String(delivery.instructions || "").trim(),
+    includedItems,
+    externalUrl,
+    previewText: String(delivery.previewText || "").trim(),
+    unlockedText,
+    hasFile: Boolean(delivery.hasFile),
+    hasText: Boolean(delivery.hasText || unlockedText),
+    hasExternalUrl: Boolean(delivery.hasExternalUrl || externalUrl)
+  };
+}
+
+function buildDeliveryNote(delivery) {
+  const parts = [];
+
+  if (delivery.hasFile) {
+    parts.push("Secure download included");
+  }
+  if (delivery.hasText) {
+    parts.push("Instant text unlock");
+  }
+  if (delivery.hasExternalUrl) {
+    parts.push("External access link included");
+  }
+  if (delivery.includedItems.length) {
+    parts.push(`Includes ${delivery.includedItems.slice(0, 3).join(", ")}`);
+  }
+  if (!parts.length) {
+    parts.push("Ready for digital delivery");
+  }
+
+  return parts.join(" | ");
+}
+
+function formatProductType(value) {
+  const source = String(value || "Product")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return source.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function renderFatalState(message) {
+  closeUnlockModal();
   setText("dashboardTitle", "We could not load your dashboard");
   setText("dashboardSubtitle", message);
   document.getElementById("summaryGrid").innerHTML = `
@@ -513,7 +738,7 @@ function renderFatalState(message) {
   `;
   document.getElementById("primaryGrid").innerHTML = "";
   document.getElementById("secondaryBody").innerHTML = `<div class="empty-copy">${escapeHTML(message)}</div>`;
-  document.getElementById("activityBody").innerHTML = `<div class="empty-copy">Try signing out and back in, then refresh this page.</div>`;
+  document.getElementById("activityBody").innerHTML = "<div class=\"empty-copy\">Try signing out and back in, then refresh this page.</div>";
   document.getElementById("chartEmpty").classList.remove("hidden");
   document.getElementById("dashboardChart").classList.add("hidden");
 }
@@ -527,6 +752,27 @@ function buildSecureFileUrl(relativeUrl, token) {
   return `${API_BASE}${relativeUrl}${separator}token=${encodeURIComponent(token)}`;
 }
 
+function resolveApiUrl(relativeUrl) {
+  const source = String(relativeUrl || "").trim();
+  if (!source) {
+    return "";
+  }
+
+  if (/^(https?:|data:)/i.test(source)) {
+    return source;
+  }
+
+  if (source.startsWith("/")) {
+    return `${API_BASE}${source}`;
+  }
+
+  return source;
+}
+
+function buildDownloadHref(accessUrl, fallbackUrl, token) {
+  return resolveApiUrl(accessUrl) || buildSecureFileUrl(fallbackUrl, token);
+}
+
 function buildCompactStatus(map) {
   const entries = Object.entries(map || {});
   if (!entries.length) {
@@ -535,7 +781,7 @@ function buildCompactStatus(map) {
 
   return entries
     .map(([label, value]) => `${label}: ${value}`)
-    .join(" · ");
+    .join(" | ");
 }
 
 function resolveAssetUrl(value) {
@@ -609,12 +855,16 @@ function formatDate(value) {
   });
 }
 
+function formatMultilineText(value) {
+  return escapeHTML(value).replace(/\n/g, "<br>");
+}
+
 function escapeHTML(value) {
   return String(value || "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
-    '"': "&quot;",
+    "\"": "&quot;",
     "'": "&#39;"
   })[character]);
 }

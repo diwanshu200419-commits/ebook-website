@@ -5,10 +5,19 @@ function normalizeGoogleRole(value = "") {
   return VALID_GOOGLE_ROLES.has(normalized) ? normalized : "";
 }
 
-function buildGoogleAuthState(returnTo = "", role = "") {
+function normalizeGoogleReferralCode(value = "") {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 24);
+}
+
+function buildGoogleAuthState(returnTo = "", role = "", referralCode = "") {
   return encodeURIComponent(JSON.stringify({
     returnTo: String(returnTo || "").trim(),
     role: normalizeGoogleRole(role) || undefined,
+    referralCode: normalizeGoogleReferralCode(referralCode) || undefined,
   }));
 }
 
@@ -25,6 +34,7 @@ function parseGoogleAuthState(input = "") {
     return {
       returnTo: "",
       role: "",
+      referralCode: "",
     };
   }
 
@@ -34,6 +44,7 @@ function parseGoogleAuthState(input = "") {
       return {
         returnTo: String(parsed.returnTo || "").trim(),
         role: normalizeGoogleRole(parsed.role),
+        referralCode: normalizeGoogleReferralCode(parsed.referralCode),
       };
     }
   } catch {
@@ -43,6 +54,7 @@ function parseGoogleAuthState(input = "") {
   return {
     returnTo: decodedValue,
     role: "",
+    referralCode: "",
   };
 }
 

@@ -10,6 +10,10 @@ const CartItemSchema = new mongoose.Schema(
     priceAtAdd: {
       type: Number,
       default: 0
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
     }
   },
   { _id: false }

@@ -11,6 +11,11 @@ const NotificationSchema = new mongoose.Schema({
     enum: ["info", "success", "warning", "error"],
     default: "info"
   },
+  category: {
+    type: String,
+    enum: ["general", "sale", "follow", "release", "streak", "nudge", "purchase", "cart", "referral"],
+    default: "general"
+  },
   title: {
     type: String,
     required: true

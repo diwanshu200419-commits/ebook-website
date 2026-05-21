@@ -4,29 +4,142 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cart | E-Book Market</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="marketplace.css" />
   <script src="config.js"></script>
+  <script src="marketplace-shell.js"></script>
 </head>
-<body>
-  <header class="nav">
-    <div class="logo">E-BOOK MARKET</div>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="dashboard/dashboard.html">Dashboard</a>
-    </nav>
-  </header>
+<body class="marketplace-body">
+  <div class="marketplace-page">
+    <header class="marketplace-header">
+      <div class="marketplace-header-inner">
+        <a class="marketplace-brand" href="index.html">
+          <span class="marketplace-brand-mark">AI</span>
+          <span class="marketplace-brand-copy">
+            <strong>E-Book Market</strong>
+            <span>Checkout stack for Indian youth creators</span>
+          </span>
+        </a>
 
-  <main style="max-width:900px;margin:40px auto;padding:0 16px;">
-    <h1 style="margin-bottom:20px;">Your Cart</h1>
-    <div id="cartList"></div>
-    <div style="margin-top:20px;font-weight:700;">Total: <span id="cartTotal">₹0</span></div>
-    <div style="display:flex;gap:12px;margin-top:20px;">
-      <button id="checkoutBtn">Checkout with Stripe</button>
-      <button id="manualCheckoutBtn">Manual UPI/GPay/PayPal</button>
-      <button id="clearBtn">Clear Cart</button>
-    </div>
-    <p id="cartMessage" style="margin-top:14px;color:#9ca3af;"></p>
-  </main>
+        <button class="marketplace-menu-toggle" type="button" data-shell-toggle>Menu</button>
+
+        <div class="marketplace-nav" data-shell-nav>
+          <nav class="marketplace-links">
+            <a class="marketplace-link" href="index.html">Home</a>
+            <a class="marketplace-link" href="explore.html">Explore</a>
+            <a class="marketplace-link is-active" href="cart.html">Cart</a>
+          </nav>
+
+          <div class="marketplace-actions">
+            <span class="marketplace-chip subtle" data-shell-user>Guest Mode</span>
+            <a class="marketplace-chip" href="cart.html">Cart <strong data-cart-count>0</strong></a>
+            <a class="marketplace-ghost-button" data-shell-dashboard href="dashboard/dashboard.html">Dashboard</a>
+            <a class="marketplace-button" data-shell-auth href="login.html">Sign In</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="marketplace-main">
+      <section class="hero-panel">
+        <div>
+          <span class="hero-eyebrow" id="cartHeroEyebrow">Revenue-ready checkout flow</span>
+          <h1 class="hero-title" id="cartHeroTitle">Your purchase cart for <span>knowledge products</span>.</h1>
+          <p class="hero-copy" id="cartHeroCopy">
+            Review digital products, compare Stripe and UPI checkout options, and move from discovery to creator earnings without breaking the flow.
+          </p>
+        </div>
+
+        <div class="hero-stats">
+          <article class="hero-stat-card">
+            <span id="cartItemsLabel">Products in cart</span>
+            <strong id="cartItemsCount">0</strong>
+          </article>
+          <article class="hero-stat-card">
+            <span id="cartPaidLabel">Paid products ready</span>
+            <strong id="cartPaidCount">0</strong>
+          </article>
+          <article class="hero-stat-card">
+            <span id="cartSubtotalLabel">Order subtotal</span>
+            <strong id="cartSubtotal">₹0</strong>
+          </article>
+        </div>
+      </section>
+
+      <div class="section-stack">
+        <div class="cart-layout">
+          <section class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <h2 id="cartOrderTitle">Your order</h2>
+                <p id="cartOrderCopy">Everything here will unlock after card payment or manual proof verification.</p>
+              </div>
+              <a class="marketplace-ghost-button" id="cartAddMoreLink" href="explore.html">Add more products</a>
+            </div>
+
+            <div id="cartList" class="item-stack"></div>
+          </section>
+
+          <aside class="summary-panel">
+            <div>
+              <h3 class="section-title" id="cartSummaryTitle">Checkout summary</h3>
+              <p class="micro-copy" id="cartSummaryCopy">Choose the payment flow that fits your audience and operations.</p>
+            </div>
+
+            <div class="summary-strip">
+              <span id="cartItemsReadyLabel">Items ready</span>
+              <strong id="cartSummaryCount">0</strong>
+            </div>
+
+            <div class="field-shell">
+              <label for="marketCountrySelect" id="cartMarketLabel">Buyer market</label>
+              <select id="marketCountrySelect"></select>
+            </div>
+
+            <div class="summary-row">
+              <span id="cartSubtotalRowLabel">Subtotal</span>
+              <strong id="cartTotal">₹0</strong>
+            </div>
+            <div class="summary-row">
+              <span id="cartPlatformLabel">Platform checkout</span>
+              <strong id="cartPlatformValue">Secure</strong>
+            </div>
+            <div class="summary-row">
+              <span id="cartCurrencyRowLabel">Checkout currency</span>
+              <strong id="cartCurrencyValue">INR</strong>
+            </div>
+            <div class="summary-row">
+              <span id="cartTaxRowLabel">Tax handling</span>
+              <strong id="cartTaxValue">Checkout</strong>
+            </div>
+            <div class="summary-row total">
+              <span id="cartTotalLabel">Total to pay</span>
+              <strong id="cartSummaryTotal">₹0</strong>
+            </div>
+
+            <p class="inline-note" id="cartMarketNote">Checkout pricing is localized from the creator's INR base price.</p>
+
+            <hr />
+
+            <div class="summary-actions">
+              <button id="checkoutBtn" class="marketplace-button" type="button">Checkout With Stripe</button>
+              <button id="manualCheckoutBtn" class="marketplace-ghost-button" type="button">Manual UPI Checkout</button>
+              <button id="clearBtn" class="marketplace-ghost-button" type="button">Clear Cart</button>
+            </div>
+
+            <div class="helper-list">
+              <div class="helper-item" id="cartHelperStripe">Stripe gives instant unlocks through the automated payment pipeline.</div>
+              <div class="helper-item" id="cartHelperManual">Manual checkout now supports multi-item UPI proof submission for Indian buyers.</div>
+            </div>
+
+            <p id="cartMessage" class="status-message"></p>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script src="cart.js"></script>
 </body>

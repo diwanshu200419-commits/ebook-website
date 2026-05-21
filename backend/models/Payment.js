@@ -59,11 +59,36 @@ const paymentSchema = new mongoose.Schema({
     unique: true
   },
 
+  paymentReference: {
+    type: String,
+    default: ""
+  },
+
+  paymentGroupId: {
+    type: String,
+    default: ""
+  },
+
   // 📊 Status
   status: {
     type: String,
     enum: ["pending", "approved", "rejected"],
     default: "pending"
+  },
+
+  adminNote: {
+    type: String,
+    default: ""
+  },
+
+  reviewedAt: {
+    type: Date,
+    default: null
+  },
+
+  submissionCount: {
+    type: Number,
+    default: 1
   }
 
 }, {
@@ -87,6 +112,7 @@ paymentSchema.pre("save", function (next) {
    🔥 PREVENT DUPLICATES
 ============================ */
 paymentSchema.index({ user: 1, book: 1 }, { unique: true });
+paymentSchema.index({ paymentGroupId: 1 });
 
 
 module.exports = mongoose.model("Payment", paymentSchema);

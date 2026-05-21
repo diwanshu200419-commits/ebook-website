@@ -9,6 +9,11 @@ const {
   isProduction
 } = require("../utils/urlConfig");
 const { normalizeGoogleRole, parseGoogleAuthState } = require("../utils/googleAuthState");
+const {
+  applyReferralSignup,
+  findReferrerByCode,
+  isCreatorRoleValue,
+} = require("../services/referrals");
 
 const backendBaseUrl = getBackendBaseUrl();
 const callbackUrl = getGoogleCallbackUrl();
@@ -34,7 +39,8 @@ passport.use(
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         const email = String(profile.emails?.[0]?.value || "").toLowerCase().trim();
-        const desiredRole = normalizeGoogleRole(parseGoogleAuthState(req.query.state).role) || "reader";
+        const authState = parseGoogleAuthState(req.query.state);
+        const desiredRole = normalizeGoogleRole(authState.role) || "reader";
         if (!email) {
           return done(new Error("Google account did not provide an email address"), null);
         }
@@ -54,6 +60,8 @@ passport.use(
           return done(null, user);
         }
 
+        const referrer = await findReferrerByCode(authState.referralCode);
+
         user = await User.create({
           googleId: profile.id,
           name: profile.displayName,
@@ -62,7 +70,14 @@ passport.use(
           role: desiredRole,
           status: "active",
           verified: true,
+          referredBy: referrer?._id || null,
         });
+
+        if (referrer?._id) {
+          await applyReferralSignup(referrer._id, {
+            countCreator: isCreatorRoleValue(desiredRole),
+          });
+        }
 
         return done(null, user);
 

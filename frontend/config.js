@@ -1,13 +1,30 @@
-// Centralized runtime config for static frontend
-// Keep this file in sync with your deployed backend URL.
+// Centralized runtime config for the static frontend.
+// In production on Vercel, same-origin /api and /uploads routes are handled
+// by Vercel proxy functions, so API_BASE stays empty there.
 (function () {
-  var configuredBackend = "https://ebook-website-v2mj.onrender.com";
   var hostname = window.location.hostname || "";
+  var protocol = window.location.protocol || "";
   var isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(hostname);
-  var isFilePreview = window.location.protocol === "file:";
+  var isFilePreview = protocol === "file:";
   var url = new URL(window.location.href);
   var queryOverride = (url.searchParams.get("apiBase") || "").trim();
+  var metaOverride = "";
+  var globalOverride = "";
   var storedOverride = "";
+  var localDefaultBackend = "http://localhost:5000";
+
+  try {
+    var metaTag = document.querySelector('meta[name="ebook-backend-origin"]');
+    metaOverride = metaTag ? String(metaTag.getAttribute("content") || "").trim() : "";
+  } catch (error) {
+    metaOverride = "";
+  }
+
+  try {
+    globalOverride = String(window.__EBOOK_BACKEND_ORIGIN__ || "").trim();
+  } catch (error) {
+    globalOverride = "";
+  }
 
   try {
     storedOverride = (window.sessionStorage.getItem("ebookApiBase") || "").trim();
@@ -23,16 +40,20 @@
     }
   }
 
-  if (window.location.protocol === "https:" && /^http:\/\//i.test(configuredBackend)) {
-    configuredBackend = configuredBackend.replace(/^http:\/\//i, "https://");
+  function normalizeOrigin(value) {
+    return String(value || "").trim().replace(/\/$/, "");
   }
 
-  configuredBackend = configuredBackend.replace(/\/$/, "");
+  var overrideBackend = normalizeOrigin(
+    queryOverride ||
+    metaOverride ||
+    globalOverride ||
+    storedOverride
+  );
 
-  var overrideBackend = (queryOverride || storedOverride).replace(/\/$/, "");
-  var backendOrigin = overrideBackend || configuredBackend;
+  var localBackend = normalizeOrigin(localDefaultBackend);
+  var backendOrigin = overrideBackend || (isLocalHost || isFilePreview ? localBackend : "");
 
   window.BACKEND_ORIGIN = backendOrigin;
   window.API_BASE = isLocalHost || isFilePreview ? backendOrigin : "";
 })();
-

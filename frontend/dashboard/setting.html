@@ -272,6 +272,160 @@
     <section class="settings-card">
       <div class="card-header">
         <div>
+          <h3>Referral and affiliate growth</h3>
+          <p class="card-subcopy">Share your personal invite link to bring in new readers and future creators.</p>
+        </div>
+        <span class="badge">Growth</span>
+      </div>
+
+      <div class="growth-grid">
+        <article class="growth-card">
+          <span>Referral code</span>
+          <strong id="referralCodeText">-</strong>
+          <p id="referredByText">No referral connection yet.</p>
+        </article>
+
+        <article class="growth-card">
+          <span>Successful signups</span>
+          <strong id="referralSignupCount">0</strong>
+          <p>Users who created an account from your link.</p>
+        </article>
+
+        <article class="growth-card">
+          <span>Activated creators</span>
+          <strong id="referralCreatorCount">0</strong>
+          <p>Referrals who switched on creator mode.</p>
+        </article>
+      </div>
+
+      <div class="profile-form compact-form">
+        <label>
+          <span>Your share link</span>
+          <input type="text" id="referralLink" readonly>
+        </label>
+
+        <div class="action-row">
+          <button class="btn-outline" id="copyReferralBtn" type="button">Copy referral link</button>
+          <span id="referralMsg" class="form-message"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Language and notification preferences</h3>
+          <p class="card-subcopy">Control how the storefront reads on your side and which growth signals reach your inbox.</p>
+        </div>
+        <span class="badge">Preferences</span>
+      </div>
+
+      <form id="preferencesForm" class="profile-form compact-form">
+        <div class="field-grid two-column">
+          <label>
+            <span>Interface language</span>
+            <select id="interfaceLanguage">
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Marketplace content language</span>
+            <select id="marketplaceLanguage">
+              <option value="All">All languages</option>
+              <option value="English">English</option>
+              <option value="Hindi">Hindi</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="preference-grid">
+          <label class="preference-toggle">
+            <input type="checkbox" id="notifEmail">
+            <div>
+              <strong>Email alerts</strong>
+              <p>Keep account-level communication and payout updates enabled.</p>
+            </div>
+          </label>
+
+          <label class="preference-toggle">
+            <input type="checkbox" id="notifSales">
+            <div>
+              <strong>Sales signals</strong>
+              <p>Get notified when revenue-related marketplace activity happens.</p>
+            </div>
+          </label>
+
+          <label class="preference-toggle">
+            <input type="checkbox" id="notifFollows">
+            <div>
+              <strong>Follower alerts</strong>
+              <p>See when new readers follow your creator profile.</p>
+            </div>
+          </label>
+
+          <label class="preference-toggle">
+            <input type="checkbox" id="notifReleases">
+            <div>
+              <strong>Release alerts</strong>
+              <p>Notify followers when your approved products go live, and keep your own publish alerts enabled.</p>
+            </div>
+          </label>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-primary" id="savePreferencesBtn" type="submit">Save preferences</button>
+          <span id="preferencesMsg" class="form-message"></span>
+        </div>
+      </form>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Creator verification</h3>
+          <p class="card-subcopy">Request a verified badge so buyers trust your profile, portfolio, and payouts faster.</p>
+        </div>
+        <span class="badge" id="verificationBadge">Unverified</span>
+      </div>
+
+      <div class="verification-shell">
+        <div class="verification-status-panel">
+          <strong id="verificationHeadline">Verification not submitted yet</strong>
+          <p id="verificationSummary">Submit your creator proof and portfolio links to enter the admin verification queue.</p>
+          <p class="verification-admin-note hidden" id="verificationAdminNote"></p>
+        </div>
+
+        <form id="verificationForm" class="profile-form compact-form">
+          <div class="field-grid two-column">
+            <label>
+              <span>Portfolio link</span>
+              <input type="text" id="verificationPortfolio" placeholder="yourportfolio.com or drive link">
+            </label>
+
+            <label>
+              <span>Proof link</span>
+              <input type="text" id="verificationProof" placeholder="LinkedIn, Instagram, YouTube, or proof of work">
+            </label>
+          </div>
+
+          <label>
+            <span>Why should buyers trust your creator profile?</span>
+            <textarea id="verificationNote" maxlength="600" placeholder="Share your expertise, niche, audience proof, and what you publish on the marketplace."></textarea>
+          </label>
+
+          <div class="action-row">
+            <button class="btn-primary" id="submitVerificationBtn" type="submit">Submit verification request</button>
+            <span id="verificationMsg" class="form-message"></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
           <h3>Creator health</h3>
           <p class="card-subcopy">Quick view of how your public creator page is performing.</p>
         </div>

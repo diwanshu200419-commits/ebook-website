@@ -1,4 +1,9 @@
 const DEFAULT_COVER = "/assets/covers/Ebook_AI.png";
+const { buildPublicAssetUrl } = require("../utils/uploads");
+const {
+  buildDeliveryLabel,
+  normalizeDeliveryMode,
+} = require("../utils/productTypes");
 
 function normalizeClientPath(value = "") {
   const source = String(value || "").trim();
@@ -34,16 +39,19 @@ function buildAbsoluteUrl(baseUrl, relativePath) {
     return normalizedPath;
   }
 
-  return `${normalizedBase}${normalizedPath}`;
+  return buildPublicAssetUrl(normalizedPath, normalizedBase);
 }
 
 function serializeBook(book, options = {}) {
   const {
     backendBaseUrl = "",
     previewUrl = "",
+    previewAccessUrl = "",
     downloadUrl = "",
+    downloadAccessUrl = "",
     includeFilePath = true,
     statusLabel = "",
+    access = null,
   } = options;
 
   const raw = book && typeof book.toObject === "function"
@@ -53,8 +61,19 @@ function serializeBook(book, options = {}) {
   const author =
     raw && raw.author && typeof raw.author === "object" ? raw.author : null;
   const normalizedCoverImage = normalizeClientPath(raw?.coverImage || DEFAULT_COVER);
-  const normalizedPreviewPath = normalizeClientPath(previewUrl || raw?.previewPath || "");
+  const normalizedPreviewPath = normalizeClientPath(
+    previewUrl || (includeFilePath ? raw?.previewPath : "") || ""
+  );
+  const normalizedPreviewAccessUrl = normalizeClientPath(previewAccessUrl || "");
   const normalizedFilePath = normalizeClientPath(raw?.filePath || "");
+  const normalizedDownloadAccessUrl = normalizeClientPath(downloadAccessUrl || "");
+  const canDownloadDelivery = Boolean(access?.canDownload || includeFilePath);
+  const delivery = raw?.delivery || {};
+  const normalizedDeliveryMode = normalizeDeliveryMode(delivery.mode || "");
+  const deliveryPreviewText = String(delivery.previewText || "").trim();
+  const deliveryUnlockedText = canDownloadDelivery
+    ? String(delivery.textContent || "").trim()
+    : "";
 
   return {
     id: raw?._id,
@@ -79,11 +98,14 @@ function serializeBook(book, options = {}) {
       ? buildAbsoluteUrl(backendBaseUrl, raw.coverImage)
       : DEFAULT_COVER,
     previewPath: normalizedPreviewPath,
+    previewAccessUrl: normalizedPreviewAccessUrl,
     previewPdf: normalizedPreviewPath,
     previewPages: Number(raw?.previewPages || 0),
     pageCount: Number(raw?.pageCount || 0),
     filePath: includeFilePath ? normalizedFilePath : "",
-    pdfUrl: downloadUrl || "",
+    pdfUrl: normalizedDownloadAccessUrl || downloadUrl || "",
+    downloadUrl: downloadUrl || "",
+    downloadAccessUrl: normalizedDownloadAccessUrl,
     isPaid: Boolean(raw?.isPaid),
     isPremium: Boolean(raw?.isPremium),
     requiresLogin: Boolean(raw?.requiresLogin),
@@ -101,6 +123,21 @@ function serializeBook(book, options = {}) {
     aiTags: raw?.aiTags || [],
     aiProcessingState: raw?.aiProcessingState || "idle",
     aiReviewedAt: raw?.aiReviewedAt || null,
+    delivery: {
+      mode: normalizedDeliveryMode,
+      label: buildDeliveryLabel(raw?.type || "Book", delivery),
+      fileName: delivery.fileName || "",
+      fileMimeType: delivery.fileMimeType || "",
+      fileSize: Number(delivery.fileSize || 0),
+      instructions: delivery.instructions || "",
+      includedItems: Array.isArray(delivery.includedItems) ? delivery.includedItems : [],
+      externalUrl: canDownloadDelivery ? (delivery.externalUrl || "") : "",
+      previewText: deliveryPreviewText,
+      unlockedText: deliveryUnlockedText,
+      hasFile: Boolean(raw?.filePath),
+      hasText: Boolean(delivery.textContent),
+      hasExternalUrl: Boolean(delivery.externalUrl),
+    },
     downloads: Number(raw?.downloads || 0),
     views: Number(raw?.views || 0),
     salesCount: Number(raw?.salesCount || 0),

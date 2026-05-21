@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const User = require("../models/user");
 const Book = require("../models/book");
 const Payment = require("../models/Payment");
+const { createNotification } = require("./notifications");
 const { buildAbsoluteUrl, serializeBook } = require("./bookData");
 const { roundMoney } = require("../utils/revenue");
 
@@ -130,6 +131,78 @@ function buildCreatorRankScore({ totalSales, totalViews, totalEarnings, follower
   );
 }
 
+function buildCreatorTrustProfile({
+  verified,
+  role,
+  followersCount,
+  totalBooks,
+  totalSales,
+  totalEarnings,
+  ratingAverage,
+  ratingCount,
+}) {
+  const safeFollowersCount = Number(followersCount || 0);
+  const safeTotalBooks = Number(totalBooks || 0);
+  const safeTotalSales = Number(totalSales || 0);
+  const safeTotalEarnings = Number(totalEarnings || 0);
+  const safeRatingAverage = Number(ratingAverage || 0);
+  const safeRatingCount = Number(ratingCount || 0);
+
+  if (!isCreatorRole(role)) {
+    return {
+      badge: "Member",
+      trustLevel: "member",
+      trustReason: "Marketplace member exploring creator products.",
+    };
+  }
+
+  if (verified && safeTotalSales >= 25 && safeRatingCount >= 8 && safeRatingAverage >= 4.6) {
+    return {
+      badge: "Verified Mentor",
+      trustLevel: "elite",
+      trustReason: `Verified creator with ${safeRatingCount} learner reviews and ${safeTotalSales} completed sales.`,
+    };
+  }
+
+  if (safeTotalSales >= 10 && safeRatingCount >= 5 && safeRatingAverage >= 4.4) {
+    return {
+      badge: "Top Seller",
+      trustLevel: "trusted",
+      trustReason: `Top-performing creator with ${safeTotalSales} sales and a ${safeRatingAverage.toFixed(1)}/5 rating.`,
+    };
+  }
+
+  if (verified) {
+    return {
+      badge: "Verified Creator",
+      trustLevel: "verified",
+      trustReason: "Identity verified and catalog approved by the platform.",
+    };
+  }
+
+  if (safeFollowersCount >= 50 || safeTotalEarnings >= 10000 || safeTotalSales >= 5) {
+    return {
+      badge: "Rising Creator",
+      trustLevel: "rising",
+      trustReason: `Growing marketplace traction with ${safeFollowersCount} followers and real revenue momentum.`,
+    };
+  }
+
+  if (safeTotalBooks >= 2) {
+    return {
+      badge: "Emerging Creator",
+      trustLevel: "emerging",
+      trustReason: `Publishing consistently with ${safeTotalBooks} live products in the marketplace.`,
+    };
+  }
+
+  return {
+    badge: "New Creator",
+    trustLevel: "new",
+    trustReason: "Early-stage creator building their first digital income stream.",
+  };
+}
+
 function buildFollowPreview(user, backendBaseUrl = "") {
   return {
     id: user?._id || null,
@@ -145,13 +218,45 @@ function buildFollowPreview(user, backendBaseUrl = "") {
   };
 }
 
-function buildCreatorIdentity(user, backendBaseUrl = "") {
-  const followersCount = Array.isArray(user?.followers)
-    ? user.followers.length
-    : Number(user?.creatorStats?.followersCount || 0);
-  const followingCount = Array.isArray(user?.following)
-    ? user.following.length
-    : Number(user?.creatorStats?.followingCount || 0);
+function buildCreatorIdentity(user, backendBaseUrl = "", stats = {}) {
+  const safeStats = stats && typeof stats === "object" ? stats : {};
+  const followersCount = Number(
+    safeStats.followersCount
+      ?? (Array.isArray(user?.followers)
+        ? user.followers.length
+        : Number(user?.creatorStats?.followersCount || 0))
+  );
+  const followingCount = Number(
+    safeStats.followingCount
+      ?? (Array.isArray(user?.following)
+        ? user.following.length
+        : Number(user?.creatorStats?.followingCount || 0))
+  );
+  const totalBooks = Number(
+    safeStats.totalBooks ?? Number(user?.creatorStats?.totalBooks || 0)
+  );
+  const totalSales = Number(
+    safeStats.totalSales ?? Number(user?.creatorStats?.totalSales || 0)
+  );
+  const totalEarnings = Number(
+    safeStats.totalEarnings ?? Number(user?.creatorStats?.totalEarnings || 0)
+  );
+  const ratingAverage = Number(
+    safeStats.ratingAverage ?? Number(user?.creatorStats?.ratingAverage || 0)
+  );
+  const ratingCount = Number(
+    safeStats.ratingCount ?? Number(user?.creatorStats?.ratingCount || 0)
+  );
+  const trustProfile = buildCreatorTrustProfile({
+    verified: Boolean(user?.verified),
+    role: user?.role,
+    followersCount,
+    totalBooks,
+    totalSales,
+    totalEarnings,
+    ratingAverage,
+    ratingCount,
+  });
 
   return {
     id: user?._id || null,
@@ -159,7 +264,9 @@ function buildCreatorIdentity(user, backendBaseUrl = "") {
     username: user?.username || "",
     role: user?.role || "reader",
     verified: Boolean(user?.verified),
-    badge: isCreatorRole(user?.role) ? "Creator" : "Member",
+    badge: trustProfile.badge,
+    trustLevel: trustProfile.trustLevel,
+    trustReason: trustProfile.trustReason,
     bio: String(user?.bio || "").trim(),
     about: String(user?.about || user?.bio || "").trim(),
     avatar: user?.profileImage || "/assets/default-avatar.png",
@@ -182,8 +289,8 @@ function buildCreatorIdentity(user, backendBaseUrl = "") {
     joinedAt: user?.createdAt || null,
     followersCount,
     followingCount,
-    ratingAverage: Number(user?.creatorStats?.ratingAverage || 0),
-    ratingCount: Number(user?.creatorStats?.ratingCount || 0),
+    ratingAverage,
+    ratingCount,
   };
 }
 
@@ -192,7 +299,7 @@ function buildCreatorCollections(books, backendBaseUrl = "") {
     serializeBook(book, {
       backendBaseUrl,
       includeFilePath: false,
-      previewUrl: !book.isPaid ? `/api/books/${book._id}/preview` : "",
+      previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
       downloadUrl: `/api/books/${book._id}/download`,
     })
   );
@@ -330,7 +437,7 @@ async function buildPublicCreatorProfile({
     refreshCreatorStats(creator),
   ]);
 
-  const creatorIdentity = buildCreatorIdentity(creator, backendBaseUrl);
+  const creatorIdentity = buildCreatorIdentity(creator, backendBaseUrl, analytics);
   const collections = buildCreatorCollections(books, backendBaseUrl);
   const safeViewerId = String(viewerId || "");
   const isSelf = safeViewerId && safeViewerId === String(creator._id);
@@ -400,6 +507,8 @@ async function buildTrendingCreators(backendBaseUrl = "", limit = 6) {
       const totalDownloads = Number(bookStat.totalDownloads || 0);
       const totalViews = Number(bookStat.totalViews || 0);
       const totalEarnings = roundMoney(bookStat.totalEarnings || 0);
+      const ratingAverage = Number(creator.creatorStats?.ratingAverage || 0);
+      const ratingCount = Number(creator.creatorStats?.ratingCount || 0);
       const creatorScore = buildCreatorRankScore({
         totalSales,
         totalViews,
@@ -408,7 +517,17 @@ async function buildTrendingCreators(backendBaseUrl = "", limit = 6) {
       });
 
       return {
-        ...buildCreatorIdentity(creator, backendBaseUrl),
+        ...buildCreatorIdentity(creator, backendBaseUrl, {
+          followersCount,
+          followingCount,
+          totalBooks,
+          totalSales,
+          totalDownloads,
+          totalViews,
+          totalEarnings,
+          ratingAverage,
+          ratingCount,
+        }),
         stats: {
           followersCount,
           followingCount,
@@ -417,8 +536,8 @@ async function buildTrendingCreators(backendBaseUrl = "", limit = 6) {
           totalDownloads,
           totalViews,
           totalEarnings,
-          ratingAverage: Number(creator.creatorStats?.ratingAverage || 0),
-          ratingCount: Number(creator.creatorStats?.ratingCount || 0),
+          ratingAverage,
+          ratingCount,
           creatorScore,
         },
       };
@@ -494,6 +613,31 @@ async function followCreator({ viewerId, creatorId }) {
       updatedAt: new Date(),
     };
     await updatedCreator.save({ validateBeforeSave: false });
+  }
+
+  if (!alreadyFollowing && updatedCreator && viewer) {
+    await createNotification({
+      user: updatedCreator,
+      type: "success",
+      category: "follow",
+      preferenceKey: "follows",
+      title: "New follower on your creator profile",
+      message: `${viewer.name || viewer.username || "A learner"} just followed your creator page.`,
+      link: updatedCreator.username
+        ? `creator/creator.html?username=${encodeURIComponent(updatedCreator.username)}`
+        : "dashboard/setting.html",
+      email: {
+        subject: "You have a new follower",
+        body: `${viewer.name || viewer.username || "A learner"} just followed your creator page. Keep the momentum going with a fresh product or update.`,
+        ctaLabel: "Open creator profile",
+        ctaUrl: updatedCreator.username
+          ? `creator/creator.html?username=${encodeURIComponent(updatedCreator.username)}`
+          : "dashboard/setting.html",
+        tags: [{ name: "campaign", value: "new_follower" }],
+      },
+    }).catch((error) => {
+      console.error("Follow notification error:", error.message);
+    });
   }
 
   return {

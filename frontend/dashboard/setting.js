@@ -41,6 +41,19 @@ const elements = {
   bankAccount: document.getElementById("bankAccount"),
   ifscCode: document.getElementById("ifscCode"),
   payoutStatusText: document.getElementById("payoutStatusText"),
+  referralCodeText: document.getElementById("referralCodeText"),
+  referredByText: document.getElementById("referredByText"),
+  referralSignupCount: document.getElementById("referralSignupCount"),
+  referralCreatorCount: document.getElementById("referralCreatorCount"),
+  referralLink: document.getElementById("referralLink"),
+  copyReferralBtn: document.getElementById("copyReferralBtn"),
+  verificationBadge: document.getElementById("verificationBadge"),
+  verificationHeadline: document.getElementById("verificationHeadline"),
+  verificationSummary: document.getElementById("verificationSummary"),
+  verificationAdminNote: document.getElementById("verificationAdminNote"),
+  verificationPortfolio: document.getElementById("verificationPortfolio"),
+  verificationProof: document.getElementById("verificationProof"),
+  verificationNote: document.getElementById("verificationNote"),
   followingCount: document.getElementById("followingCount"),
   totalSales: document.getElementById("totalSales"),
   totalDownloads: document.getElementById("totalDownloads"),
@@ -48,19 +61,32 @@ const elements = {
   profileMsg: document.getElementById("profileMsg"),
   passwordMsg: document.getElementById("passwordMsg"),
   payoutMsg: document.getElementById("payoutMsg"),
+  referralMsg: document.getElementById("referralMsg"),
+  verificationMsg: document.getElementById("verificationMsg"),
+  preferencesMsg: document.getElementById("preferencesMsg"),
   deleteMsg: document.getElementById("deleteMsg"),
   profileForm: document.getElementById("profileForm"),
   passwordForm: document.getElementById("passwordForm"),
   payoutForm: document.getElementById("payoutForm"),
+  preferencesForm: document.getElementById("preferencesForm"),
+  verificationForm: document.getElementById("verificationForm"),
   profileImage: document.getElementById("profileImage"),
   bannerImage: document.getElementById("bannerImage"),
   profileSelectBtn: document.getElementById("profileSelectBtn"),
   bannerSelectBtn: document.getElementById("bannerSelectBtn"),
   currentPassword: document.getElementById("currentPassword"),
   newPassword: document.getElementById("newPassword"),
+  interfaceLanguage: document.getElementById("interfaceLanguage"),
+  marketplaceLanguage: document.getElementById("marketplaceLanguage"),
+  notifEmail: document.getElementById("notifEmail"),
+  notifSales: document.getElementById("notifSales"),
+  notifFollows: document.getElementById("notifFollows"),
+  notifReleases: document.getElementById("notifReleases"),
   saveProfileBtn: document.getElementById("saveProfileBtn"),
   updatePasswordBtn: document.getElementById("updatePasswordBtn"),
   savePayoutBtn: document.getElementById("savePayoutBtn"),
+  savePreferencesBtn: document.getElementById("savePreferencesBtn"),
+  submitVerificationBtn: document.getElementById("submitVerificationBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
 };
 
@@ -82,8 +108,11 @@ function bindEvents() {
   elements.profileForm?.addEventListener("submit", updateProfile);
   elements.passwordForm?.addEventListener("submit", changePassword);
   elements.payoutForm?.addEventListener("submit", savePayout);
+  elements.preferencesForm?.addEventListener("submit", savePreferences);
+  elements.verificationForm?.addEventListener("submit", submitVerificationRequest);
   elements.deleteAccountBtn?.addEventListener("click", deleteAccount);
   elements.activateCreatorBtn?.addEventListener("click", activateCreatorMode);
+  elements.copyReferralBtn?.addEventListener("click", copyReferralLink);
 
   elements.profileSelectBtn?.addEventListener("click", () => elements.profileImage?.click());
   elements.bannerSelectBtn?.addEventListener("click", () => elements.bannerImage?.click());
@@ -108,7 +137,13 @@ async function loadSettingsData() {
     ]);
 
     state.profile = profileResponse.user || {};
-    state.creatorProfile = creatorResponse.creator || {};
+    state.creatorProfile = {
+      ...(creatorResponse.creator || {}),
+      verification: creatorResponse.verification || {},
+      growth: creatorResponse.growth || {},
+      payout: creatorResponse.payout || {},
+      notifications: creatorResponse.notifications || {},
+    };
 
     renderSettings();
   } catch (error) {
@@ -122,6 +157,10 @@ function renderSettings() {
   const user = state.profile || {};
   const creator = state.creatorProfile || {};
   const stats = creator.stats || {};
+  const growth = state.creatorProfile?.growth || {};
+  const verification = normalizeVerificationState(state.creatorProfile?.verification, user);
+  const preferences = normalizePreferences(user);
+  const notifications = normalizeNotifications(user.notifications || creator.notifications);
 
   elements.fullName.value = user.name || creator.name || "";
   elements.email.value = user.email || "";
@@ -139,6 +178,24 @@ function renderSettings() {
   elements.upiId.value = user.payout?.upiId || "";
   elements.bankAccount.value = user.payout?.bankAccount || "";
   elements.ifscCode.value = user.payout?.ifscCode || "";
+  elements.interfaceLanguage.value = preferences.interfaceLanguage;
+  elements.marketplaceLanguage.value = preferences.marketplaceLanguage;
+  elements.notifEmail.checked = notifications.email;
+  elements.notifSales.checked = notifications.sales;
+  elements.notifFollows.checked = notifications.follows;
+  elements.notifReleases.checked = notifications.releases;
+  elements.referralCodeText.textContent = user.referralCode || growth.referralCode || "Pending";
+  elements.referralSignupCount.textContent = formatNumber(growth.referralStats?.signupsCount || user.referralStats?.signupsCount || 0);
+  elements.referralCreatorCount.textContent = formatNumber(growth.referralStats?.creatorsCount || user.referralStats?.creatorsCount || 0);
+  elements.referredByText.textContent = growth.referredBy?.username
+    ? `Referred by @${growth.referredBy.username}`
+    : user.referredBy?.username
+      ? `Referred by @${user.referredBy.username}`
+      : "No referral connection yet.";
+  elements.referralLink.value = buildReferralLink(user.referralCode || growth.referralCode || "");
+  elements.verificationPortfolio.value = verification.portfolioUrl || "";
+  elements.verificationProof.value = verification.proofUrl || "";
+  elements.verificationNote.value = verification.note || "";
 
   const avatar = resolveAssetUrl(creator.avatarUrl || user.profileImage || "", FALLBACK_AVATAR);
   elements.profilePreview.src = avatar;
@@ -151,7 +208,9 @@ function renderSettings() {
   elements.accountRole.textContent = formatRole(user.role || creator.role || "reader");
   elements.followerCount.textContent = formatNumber(stats.followersCount || 0);
   elements.creatorBookCount.textContent = formatNumber(stats.totalBooks || 0);
-  elements.accountEarnings.textContent = formatCurrency(stats.totalEarnings || 0);
+  elements.accountEarnings.textContent = formatCurrency(
+    Number(stats.totalEarnings || 0) + Number(growth.referralStats?.totalRewardAmount || user.referralStats?.totalRewardAmount || 0)
+  );
   elements.followingCount.textContent = formatNumber(stats.followingCount || 0);
   elements.totalSales.textContent = formatNumber(stats.totalSales || 0);
   elements.totalDownloads.textContent = formatNumber(stats.totalDownloads || 0);
@@ -165,9 +224,11 @@ function renderSettings() {
   const isCreator = ["creator", "author", "admin"].includes(String(user.role || "").toLowerCase());
   elements.accountBadge.textContent = user.verified
     ? "Verified creator"
-    : isCreator
-      ? "Creator mode live"
-      : "Reader mode";
+    : verification.status === "pending"
+      ? "Verification pending"
+      : isCreator
+        ? "Creator mode live"
+        : "Reader mode";
   elements.activateCreatorBtn.classList.toggle("hidden", isCreator);
 
   const publicProfileHref = user.username
@@ -181,6 +242,8 @@ function renderSettings() {
   }
 
   renderLivePreview();
+  renderVerificationStatus(verification, isCreator);
+  persistMarketplacePreferences(preferences);
   persistUserSnapshot(user);
 }
 
@@ -221,7 +284,10 @@ async function updateProfile(event) {
       throw new Error(data.message || "Unable to save creator profile");
     }
 
-    state.creatorProfile = data.creator || state.creatorProfile;
+    state.creatorProfile = {
+      ...(state.creatorProfile || {}),
+      ...(data.creator || {}),
+    };
     state.profile = {
       ...(state.profile || {}),
       name: data.creator?.name || elements.fullName.value.trim(),
@@ -268,12 +334,74 @@ async function activateCreatorMode() {
       ...(state.profile || {}),
       role: data.role || "creator",
     };
-    renderSettings();
+    await loadSettingsData();
     showMessage(elements.profileMsg, "Creator mode is active. You can now publish and build a public creator profile.");
   } catch (error) {
     showMessage(elements.profileMsg, error.message || "Unable to activate creator mode", "error");
   } finally {
     setButtonLoading(elements.activateCreatorBtn, false);
+  }
+}
+
+async function submitVerificationRequest(event) {
+  event.preventDefault();
+
+  const role = String(state.profile?.role || "").toLowerCase();
+  if (!["creator", "author", "admin"].includes(role)) {
+    showMessage(elements.verificationMsg, "Activate creator mode first, then submit verification.", "error");
+    return;
+  }
+
+  setButtonLoading(elements.submitVerificationBtn, true, "Submitting...");
+
+  try {
+    const response = await fetch(`${API_BASE}/api/creator/me/verification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${state.token}`,
+      },
+      body: JSON.stringify({
+        portfolioUrl: elements.verificationPortfolio.value.trim(),
+        proofUrl: elements.verificationProof.value.trim(),
+        note: elements.verificationNote.value.trim(),
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to submit verification request");
+    }
+
+    state.creatorProfile = {
+      ...(state.creatorProfile || {}),
+      verification: data.verification || {},
+    };
+    renderSettings();
+    showMessage(elements.verificationMsg, data.message || "Verification request submitted.");
+  } catch (error) {
+    showMessage(elements.verificationMsg, error.message || "Unable to submit verification request", "error");
+  } finally {
+    setButtonLoading(elements.submitVerificationBtn, false);
+  }
+}
+
+async function copyReferralLink() {
+  const link = elements.referralLink?.value || "";
+  if (!link) {
+    showMessage(elements.referralMsg, "Referral link is not ready yet.", "error");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(link);
+    showMessage(elements.referralMsg, "Referral link copied.");
+  } catch {
+    if (elements.referralLink) {
+      elements.referralLink.focus();
+      elements.referralLink.select();
+    }
+    showMessage(elements.referralMsg, "Copy the link manually from the field above.");
   }
 }
 
@@ -359,6 +487,59 @@ async function savePayout(event) {
   }
 }
 
+async function savePreferences(event) {
+  event.preventDefault();
+  setButtonLoading(elements.savePreferencesBtn, true, "Saving...");
+
+  try {
+    const payload = {
+      interfaceLanguage: elements.interfaceLanguage.value || "English",
+      marketplaceLanguage: elements.marketplaceLanguage.value || "All",
+      notifications: {
+        email: Boolean(elements.notifEmail.checked),
+        sales: Boolean(elements.notifSales.checked),
+        follows: Boolean(elements.notifFollows.checked),
+        releases: Boolean(elements.notifReleases.checked),
+      },
+    };
+
+    const response = await fetch(`${API_BASE}/api/profile/preferences`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${state.token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to update preferences");
+    }
+
+    state.profile = {
+      ...(state.profile || {}),
+      preferences: data.preferences || {
+        interfaceLanguage: payload.interfaceLanguage,
+        marketplaceLanguage: payload.marketplaceLanguage,
+      },
+      notifications: data.notifications || payload.notifications,
+    };
+    state.creatorProfile = {
+      ...(state.creatorProfile || {}),
+      notifications: data.notifications || payload.notifications,
+    };
+
+    persistMarketplacePreferences(state.profile.preferences);
+    persistUserSnapshot(state.profile);
+    showMessage(elements.preferencesMsg, data.message || "Preferences updated.");
+  } catch (error) {
+    showMessage(elements.preferencesMsg, error.message || "Unable to update preferences", "error");
+  } finally {
+    setButtonLoading(elements.savePreferencesBtn, false);
+  }
+}
+
 async function deleteAccount() {
   const confirmed = window.confirm("Delete this account permanently?");
   if (!confirmed) {
@@ -441,6 +622,9 @@ function persistUserSnapshot(user) {
     email: user.email,
     role: user.role,
     profileImage: user.profileImage,
+    verified: Boolean(user.verified),
+    referralCode: user.referralCode || "",
+    preferences: normalizePreferences(user),
   };
   localStorage.setItem("user", JSON.stringify(stored));
 }
@@ -545,6 +729,113 @@ function formatCurrency(value) {
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString("en-IN");
+}
+
+function normalizePreferences(user) {
+  const source = user && typeof user === "object" ? user : {};
+  return {
+    interfaceLanguage: source.preferences?.interfaceLanguage || "English",
+    marketplaceLanguage: source.preferences?.marketplaceLanguage || "All",
+  };
+}
+
+function normalizeNotifications(notifications) {
+  const source = notifications && typeof notifications === "object" ? notifications : {};
+  return {
+    email: source.email !== false,
+    sales: source.sales !== false,
+    follows: source.follows !== false,
+    releases: source.releases !== false,
+  };
+}
+
+function persistMarketplacePreferences(preferences) {
+  const safe = normalizePreferences({ preferences });
+  localStorage.setItem("marketplace-interface-language", safe.interfaceLanguage);
+  localStorage.setItem("marketplace-market-language", safe.marketplaceLanguage);
+}
+
+function normalizeVerificationState(verification, user) {
+  const safeVerification = verification && typeof verification === "object" ? verification : {};
+  const rawStatus = String(safeVerification.status || "").trim().toLowerCase();
+  const status = user?.verified
+    ? "approved"
+    : rawStatus || "unverified";
+
+  return {
+    status,
+    note: safeVerification.note || "",
+    portfolioUrl: safeVerification.portfolioUrl || "",
+    proofUrl: safeVerification.proofUrl || "",
+    submittedAt: safeVerification.submittedAt || null,
+    reviewedAt: safeVerification.reviewedAt || null,
+    adminNote: safeVerification.adminNote || "",
+  };
+}
+
+function renderVerificationStatus(verification, isCreator) {
+  const statusMap = {
+    approved: {
+      badge: "Verified",
+      headline: "Verification approved",
+      summary: "Your public creator profile now carries a trust badge for buyers and collaborators.",
+      noteClass: "approved",
+      button: "Verified",
+    },
+    pending: {
+      badge: "Pending",
+      headline: "Verification in admin review",
+      summary: "Your verification request is queued for manual review. Keep your profile and links up to date.",
+      noteClass: "pending",
+      button: "Resubmit verification",
+    },
+    rejected: {
+      badge: "Needs changes",
+      headline: "Verification needs stronger proof",
+      summary: "Update your portfolio links and note, then resubmit to get back into the queue.",
+      noteClass: "rejected",
+      button: "Resubmit verification",
+    },
+    unverified: {
+      badge: "Unverified",
+      headline: isCreator ? "Submit your creator verification" : "Creator mode required",
+      summary: isCreator
+        ? "Share your proof of work, audience, or portfolio links to unlock a verified creator badge."
+        : "Activate creator mode first, then submit verification from this page.",
+      noteClass: "",
+      button: "Submit verification request",
+    },
+  };
+
+  const active = statusMap[verification.status] || statusMap.unverified;
+  elements.verificationBadge.textContent = active.badge;
+  elements.verificationHeadline.textContent = active.headline;
+  elements.verificationSummary.textContent = active.summary;
+  elements.submitVerificationBtn.textContent = active.button;
+  elements.submitVerificationBtn.disabled = verification.status === "approved" || !isCreator;
+
+  const adminNote = String(verification.adminNote || "").trim();
+  if (adminNote) {
+    elements.verificationAdminNote.textContent = adminNote;
+    elements.verificationAdminNote.className = `verification-admin-note ${active.noteClass || ""}`;
+    elements.verificationAdminNote.classList.remove("hidden");
+  } else if (verification.status === "pending") {
+    elements.verificationAdminNote.textContent = "No admin note yet. The verification team is reviewing your request.";
+    elements.verificationAdminNote.className = "verification-admin-note pending";
+    elements.verificationAdminNote.classList.remove("hidden");
+  } else {
+    elements.verificationAdminNote.textContent = "";
+    elements.verificationAdminNote.className = "verification-admin-note hidden";
+  }
+}
+
+function buildReferralLink(code) {
+  const safeCode = String(code || "").trim();
+  if (!safeCode) {
+    return "";
+  }
+
+  return new URL(`../register.html?ref=${encodeURIComponent(safeCode)}`, window.location.href).href;
 }
 
 function escapeHTML(value) {

@@ -9,12 +9,19 @@ const passport = require("passport");
 const { clearAuthCookie, setAuthCookie } = require("../utils/authCookies");
 const { resolveFrontendRedirectUrl } = require("../utils/urlConfig");
 const { buildGoogleAuthState, parseGoogleAuthState } = require("../utils/googleAuthState");
+const {
+  applyReferralSignup,
+  findReferrerByCode,
+  isCreatorRoleValue,
+} = require("../services/referrals");
+const { syncUserEngagement } = require("../services/engagementSignals");
 
 const registerSchema = Joi.object({
   name: Joi.string().trim().min(2).max(80).required(),
   email: Joi.string().email({ tlds: { allow: false } }).required(),
   password: Joi.string().min(6).max(128).required(),
-  role: Joi.string().valid("reader", "creator", "author").default("reader")
+  role: Joi.string().valid("reader", "creator", "author").default("reader"),
+  referralCode: Joi.string().trim().max(24).allow(""),
 });
 
 const loginSchema = Joi.object({
@@ -66,6 +73,8 @@ const buildUserPayload = (user) => ({
   username: user.username,
   email: user.email,
   role: user.role,
+  verified: Boolean(user.verified),
+  referralCode: user.referralCode || "",
 });
 
 const buildFailureRedirect = (redirectUrl, code) => {
@@ -85,6 +94,12 @@ const buildSuccessRedirect = (redirectUrl, token) => {
 const touchLastLogin = async (user) => {
   user.lastLogin = new Date();
   await user.save({ validateBeforeSave: false });
+
+  try {
+    await syncUserEngagement(user);
+  } catch (error) {
+    console.error("Engagement Sync Error:", error.message);
+  }
 };
 
 const getTokenFromRequest = (req) => {
@@ -118,7 +133,7 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    let { name, email, password, role } = value;
+    let { name, email, password, role, referralCode } = value;
 
     email = email.toLowerCase().trim();
 
@@ -129,6 +144,8 @@ router.post("/register", async (req, res) => {
         message: "Email already registered",
       });
     }
+
+    const referrer = await findReferrerByCode(referralCode);
 
     /* =============================
        AUTO USERNAME GENERATION
@@ -143,7 +160,14 @@ router.post("/register", async (req, res) => {
       password,
       role: role || "reader",
       provider: "local",
+      referredBy: referrer?._id || null,
     });
+
+    if (referrer?._id) {
+      await applyReferralSignup(referrer._id, {
+        countCreator: isCreatorRoleValue(role),
+      });
+    }
 
     await touchLastLogin(user);
 
@@ -254,7 +278,7 @@ router.post("/login", async (req, res) => {
 router.get("/google", (req, res, next) => {
   const requestedReturnTo = req.query.returnTo || req.query.clientOrigin || req.query.frontend;
   const returnTo = resolveFrontendRedirectUrl(requestedReturnTo, "/login.html");
-  const state = buildGoogleAuthState(returnTo, req.query.role);
+  const state = buildGoogleAuthState(returnTo, req.query.role, req.query.ref || req.query.referralCode);
 
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.redirect(buildFailureRedirect(returnTo, "google_not_configured"));
@@ -359,50 +383,10 @@ router.post("/logout", (req, res) => {
 ========================================= */
 
 router.post("/create-admin", async (req, res) => {
-  try {
-
-    const { secret } = req.body;
-
-    if (secret !== process.env.ADMIN_SECRET) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const exists = await User.findOne({ email: "admin@ebook.com" });
-
-    if (exists) {
-      return res.json({
-        success: true,
-        message: "Admin already exists",
-      });
-    }
-
-    const admin = await User.create({
-      name: "Admin",
-      username: "admin",
-      email: "admin@ebook.com",
-      password: "admin123",
-      role: "admin",
-      provider: "local",
-    });
-
-    res.json({
-      success: true,
-      message: "Admin created successfully",
-    });
-
-  } catch (error) {
-
-    console.error("Admin Create Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-
-  }
+  return res.status(410).json({
+    success: false,
+    message: "Admin bootstrap route disabled. Provision admins through secure environment configuration only.",
+  });
 });
 
 module.exports = router;

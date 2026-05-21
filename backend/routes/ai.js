@@ -6,10 +6,12 @@ const rateLimit = require("express-rate-limit");
 const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
 const { serializeBook } = require("../services/bookData");
+const { buildSignedBookAccessUrls } = require("../services/bookAccess");
 const {
   generateDescriptionWithAI,
   getBookAiReport,
 } = require("../services/ai/pipeline");
+const { buildCreatorAssist } = require("../services/ai/creatorAssist");
 const {
   getConfiguredAiProvider,
   getEmbeddingDimensions,
@@ -46,6 +48,20 @@ const aiLimiter = rateLimit({
 const descriptionSchema = Joi.object({
   title: Joi.string().trim().min(3).max(160).required(),
   category: Joi.string().trim().max(60).allow(""),
+  tags: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim().max(32)).max(8),
+    Joi.string().allow("")
+  ),
+  notes: Joi.string().trim().max(5000).allow(""),
+  excerpt: Joi.string().trim().max(6000).allow(""),
+});
+
+const creatorAssistSchema = Joi.object({
+  title: Joi.string().trim().min(3).max(160).required(),
+  type: Joi.string().trim().max(60).allow(""),
+  category: Joi.string().trim().max(60).allow(""),
+  language: Joi.string().trim().max(40).allow(""),
+  price: Joi.number().min(0).max(100000).default(0),
   tags: Joi.alternatives().try(
     Joi.array().items(Joi.string().trim().max(32)).max(8),
     Joi.string().allow("")
@@ -114,8 +130,22 @@ router.get("/books/:bookId/report", protect, authorize("admin", "creator", "auth
       book: serializeBook(payload.book, {
         backendBaseUrl,
         includeFilePath: false,
-        previewUrl: !payload.book.isPaid ? `/api/books/${payload.book._id}/preview` : "",
+        previewUrl: payload.book.previewPath ? `/api/books/${payload.book._id}/preview` : "",
         downloadUrl: `/api/books/${payload.book._id}/download`,
+        ...buildSignedBookAccessUrls(payload.book, {
+          canPreview: true,
+          canDownload: true,
+          isOwner: true,
+          isAdmin: req.user.role === "admin",
+          isPurchased: false,
+        }),
+        access: {
+          canPreview: true,
+          canDownload: true,
+          isOwner: true,
+          isAdmin: req.user.role === "admin",
+          isPurchased: false,
+        },
       }),
       report: payload.report,
     });
@@ -184,6 +214,42 @@ router.post("/generate-description", protect, authorize("creator", "author", "ad
   } catch (error) {
     console.error("Generate description error:", error.message);
     return res.status(500).json({ success: false, message: "Failed to generate description" });
+  }
+});
+
+router.post("/creator-assist", protect, authorize("creator", "author", "admin"), async (req, res) => {
+  try {
+    const parsedTags = Array.isArray(req.body.tags)
+      ? req.body.tags
+      : String(req.body.tags || "")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+    const { value, error } = creatorAssistSchema.validate(
+      {
+        ...req.body,
+        price: Number(req.body.price || 0),
+        tags: parsedTags,
+      },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      }
+    );
+
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
+    const result = await buildCreatorAssist(value);
+    return res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error("Creator assist error:", error.message);
+    return res.status(500).json({ success: false, message: "Failed to build creator assist suggestions" });
   }
 });
 

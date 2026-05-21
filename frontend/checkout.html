@@ -4,56 +4,142 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Manual Checkout | E-Book Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="marketplace.css" />
   <script src="config.js"></script>
+  <script src="marketplace-shell.js"></script>
 </head>
-<body style="font-family:Inter,Arial,sans-serif;background:#0b1020;color:#fff;margin:0;">
-  <header style="display:flex;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #1f2937;">
-    <strong>E-BOOK MARKET</strong>
-    <nav style="display:flex;gap:16px;">
-      <a href="cart.html" style="color:#cbd5e1;">Cart</a>
-      <a href="dashboard/dashboard.html" style="color:#cbd5e1;">Dashboard</a>
-    </nav>
-  </header>
+<body class="marketplace-body">
+  <div class="marketplace-page">
+    <header class="marketplace-header">
+      <div class="marketplace-header-inner">
+        <a class="marketplace-brand" href="index.html">
+          <span class="marketplace-brand-mark">AI</span>
+          <span class="marketplace-brand-copy">
+            <strong>E-Book Market</strong>
+            <span>UPI-first checkout for student buyers</span>
+          </span>
+        </a>
 
-  <main style="max-width:980px;margin:24px auto;padding:0 16px;">
-    <h1>Manual Checkout (India-ready)</h1>
-    <p style="color:#9ca3af;">Use UPI, GPay or PayPal QR and upload payment proof.</p>
+        <button class="marketplace-menu-toggle" type="button" data-shell-toggle>Menu</button>
 
-    <section style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:16px;">
-      <h2 style="margin-top:0;">Step 1: Select Book + Method</h2>
-      <label>Book</label><br/>
-      <select id="bookSelect" style="padding:10px;min-width:260px;margin:8px 0 14px 0;"></select><br/>
+        <div class="marketplace-nav" data-shell-nav>
+          <nav class="marketplace-links">
+            <a class="marketplace-link" href="index.html">Home</a>
+            <a class="marketplace-link" href="explore.html">Explore</a>
+            <a class="marketplace-link is-active" href="checkout.html">Manual Checkout</a>
+          </nav>
 
-      <label>Payment Method</label><br/>
-      <select id="methodSelect" style="padding:10px;min-width:260px;margin:8px 0;">
-        <option value="UPI">UPI</option>
-        <option value="GPay">GPay</option>
-        <option value="PayPal">PayPal</option>
-      </select>
-    </section>
-
-    <section style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:16px;">
-      <h2 style="margin-top:0;">Step 2: Scan QR and Pay</h2>
-      <p id="payInfo" style="color:#cbd5e1;margin:0 0 12px 0;"></p>
-      <p id="amountInfo" style="color:#fbbf24;margin:0 0 12px 0;font-weight:700;"></p>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px 0;">
-        <span id="upiIdLabel" style="font-size:13px;color:#9ca3af;">UPI ID: -</span>
-        <button id="copyUpiBtn" style="padding:6px 10px;font-size:12px;">Copy UPI ID</button>
+          <div class="marketplace-actions">
+            <span class="marketplace-chip subtle" data-shell-user>Guest Mode</span>
+            <a class="marketplace-chip" href="cart.html">Cart <strong data-cart-count>0</strong></a>
+            <a class="marketplace-ghost-button" data-shell-dashboard href="dashboard/dashboard.html">Dashboard</a>
+            <a class="marketplace-button" data-shell-auth href="login.html">Sign In</a>
+          </div>
+        </div>
       </div>
-      <img id="qrImage" alt="Payment QR" style="max-width:260px;width:100%;height:auto;border-radius:10px;border:1px solid #374151;background:#0f172a;" />
-      <p style="font-size:13px;color:#9ca3af;">If image is missing, set your real QR file paths in `checkout.js` constants.</p>
-    </section>
+    </header>
 
-    <section style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:16px;margin-top:16px;">
-      <h2 style="margin-top:0;">Step 3: Upload Payment Proof</h2>
-      <label>Transaction ID / UTR</label><br/>
-      <input id="transactionId" type="text" placeholder="Enter UTR/transaction id" style="padding:10px;min-width:280px;margin:8px 0 14px 0;" /><br/>
-      <label>Payment Screenshot</label><br/>
-      <input id="screenshot" type="file" accept="image/*" style="margin:8px 0 14px 0;" /><br/>
-      <button id="submitBtn" style="padding:10px 16px;">Submit for Verification</button>
-      <p id="status" style="margin-top:12px;color:#93c5fd;"></p>
-    </section>
-  </main>
+    <main class="marketplace-main">
+      <section class="hero-panel">
+        <div>
+          <span class="hero-eyebrow" id="checkoutHeroEyebrow">India-ready proof checkout</span>
+          <h1 class="hero-title" id="checkoutHeroTitle">Submit one payment proof for <span>multiple products</span>.</h1>
+          <p class="hero-copy" id="checkoutHeroCopy">
+            Select the items you want to pay for, scan the QR, pay the exact total, and upload one screenshot plus UTR so the order can be approved as a batch.
+          </p>
+        </div>
+
+        <div class="hero-stats">
+          <article class="hero-stat-card">
+            <span id="checkoutSelectedLabel">Selected products</span>
+            <strong id="selectedCount">0</strong>
+          </article>
+          <article class="hero-stat-card">
+            <span id="checkoutTotalLabel">Manual order total</span>
+            <strong id="selectedTotal">₹0</strong>
+          </article>
+          <article class="hero-stat-card">
+            <span id="checkoutReviewSpeedLabel">Review speed</span>
+            <strong id="checkoutReviewSpeedValue">Admin verified</strong>
+          </article>
+        </div>
+      </section>
+
+      <div class="section-stack">
+        <div class="checkout-layout">
+          <section class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <h2 id="checkoutSelectTitle">Select products for this payment</h2>
+                <p id="orderHint">All paid products are pre-selected. Deselect anything you are not paying for in this order.</p>
+              </div>
+              <a class="marketplace-ghost-button" id="checkoutEditCartLink" href="cart.html">Edit Cart</a>
+            </div>
+
+            <div id="checkoutItems" class="item-stack"></div>
+          </section>
+
+          <aside class="summary-panel">
+            <div>
+              <h3 class="section-title" id="checkoutProofTitle">Submit payment proof</h3>
+              <p class="micro-copy" id="checkoutProofCopy">Works for UPI, Google Pay, and PayPal QR based payments.</p>
+            </div>
+
+            <div class="summary-strip">
+              <span id="checkoutMarketBadge">India · INR</span>
+              <strong id="checkoutMarketMode">UPI-first</strong>
+            </div>
+            <p class="inline-note" id="checkoutMarketNote">Manual proof checkout is designed for India-first orders. Global buyers should use Stripe card checkout from the cart or product page.</p>
+
+            <div class="field-shell">
+              <label for="methodSelect" id="paymentMethodLabel">Payment method</label>
+              <select id="methodSelect">
+                <option value="UPI">UPI</option>
+                <option value="GPay">GPay</option>
+                <option value="PayPal">PayPal</option>
+              </select>
+            </div>
+
+            <div class="payment-preview">
+              <div>
+                <strong id="payInfo">Loading payment instructions...</strong>
+                <p class="inline-note" id="amountInfo">Pay exact amount: ₹0</p>
+              </div>
+
+              <div class="summary-strip">
+                <span id="upiIdLabel">UPI ID is included in the QR code</span>
+                <button id="copyUpiBtn" class="marketplace-ghost-button" type="button">Copy UPI ID</button>
+              </div>
+
+              <div class="payment-qr-frame">
+                <img id="qrImage" alt="Payment QR" />
+              </div>
+
+              <div class="proof-tip" id="proofTip">
+                Use the exact same UTR or reference number that appears in the proof screenshot. One proof now covers every selected product in this order.
+              </div>
+            </div>
+
+            <div class="field-shell">
+              <label for="transactionId" id="transactionLabel">Transaction ID / UTR</label>
+              <input id="transactionId" type="text" placeholder="Enter the payment reference visible in your UPI or PayPal app" />
+            </div>
+
+            <div class="field-shell">
+              <label for="screenshot" id="screenshotLabel">Payment screenshot</label>
+              <input id="screenshot" type="file" accept="image/*" />
+            </div>
+
+            <button id="submitBtn" class="marketplace-button" type="button">Submit Proof For Verification</button>
+            <p id="status" class="status-message"></p>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script src="checkout.js"></script>
 </body>

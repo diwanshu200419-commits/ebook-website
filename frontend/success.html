@@ -5,32 +5,491 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Payment Success | E-Book Market</title>
   <script src="config.js"></script>
+  <style>
+    :root {
+      --bg: #050816;
+      --panel: rgba(10, 14, 31, 0.9);
+      --panel-border: rgba(148, 163, 184, 0.16);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #8b5cf6;
+      --accent-2: #22d3ee;
+      --success: #34d399;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 34%),
+        radial-gradient(circle at top right, rgba(139, 92, 246, 0.18), transparent 36%),
+        linear-gradient(180deg, #040713, #091126 60%, #07111f);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .shell {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    .hero,
+    .product-card {
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.34);
+    }
+
+    .hero {
+      padding: 28px;
+      border-radius: 28px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .hero h1,
+    .product-card h2,
+    .product-card h3 {
+      margin: 0;
+      font-family: "Space Grotesk", Inter, Arial, sans-serif;
+    }
+
+    .eyebrow,
+    .type-pill {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow {
+      color: #c4b5fd;
+      background: rgba(139, 92, 246, 0.12);
+      border: 1px solid rgba(167, 139, 250, 0.16);
+    }
+
+    .status {
+      color: #dbeafe;
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+
+    .status.success {
+      color: #a7f3d0;
+    }
+
+    .status.error {
+      color: #fda4af;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .cta,
+    .ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 13px 18px;
+      border-radius: 16px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .cta {
+      background: linear-gradient(135deg, var(--accent), #2563eb);
+    }
+
+    .ghost {
+      border-color: rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.56);
+    }
+
+    .products {
+      display: grid;
+      gap: 18px;
+      margin-top: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .product-card {
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    .product-card img {
+      width: 100%;
+      height: 210px;
+      object-fit: cover;
+      display: block;
+      background: #0f172a;
+    }
+
+    .product-body {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .type-pill {
+      color: #bfdbfe;
+      background: rgba(37, 99, 235, 0.14);
+      border: 1px solid rgba(96, 165, 250, 0.18);
+    }
+
+    .meta,
+    .delivery-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .delivery-panel,
+    .detail-panel {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .delivery-panel strong,
+    .detail-panel strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .delivery-panel span,
+    .detail-panel p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .detail-panel pre {
+      margin: 12px 0 0;
+      padding: 14px;
+      border-radius: 16px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(3, 7, 18, 0.76);
+      border: 1px solid rgba(148, 163, 184, 0.08);
+      color: #e2e8f0;
+      font: inherit;
+      line-height: 1.7;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      padding: 9px 12px;
+      border-radius: 14px;
+      background: rgba(34, 211, 238, 0.12);
+      border: 1px solid rgba(34, 211, 238, 0.18);
+      color: #cffafe;
+      font-size: 13px;
+    }
+
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .empty-state {
+      margin-top: 24px;
+      padding: 24px;
+      border-radius: 24px;
+      border: 1px dashed rgba(148, 163, 184, 0.18);
+      color: var(--muted);
+      background: rgba(10, 14, 31, 0.72);
+      line-height: 1.8;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100% - 20px, 1100px);
+        padding: 24px 0 40px;
+      }
+
+      .hero,
+      .product-body {
+        padding: 20px;
+      }
+
+      .hero-actions,
+      .card-actions {
+        flex-direction: column;
+      }
+
+      .cta,
+      .ghost {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
-<body style="font-family:Inter,Arial,sans-serif;padding:32px;background:#0b1020;color:#fff;">
-  <h1>Payment Processing...</h1>
-  <p id="status">Verifying your payment and unlocking books.</p>
-  <a href="dashboard/dashboard.html" style="color:#93c5fd;">Go to Dashboard</a>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">Payment verification</span>
+      <h1 id="headline">Finishing your unlock...</h1>
+      <p class="status" id="status">We are confirming the payment and preparing your products.</p>
+      <div class="hero-actions">
+        <a class="cta" href="dashboard/dashboard.html">Open dashboard</a>
+        <a class="ghost" href="explore.html">Continue exploring</a>
+      </div>
+    </section>
+
+    <section class="products" id="unlockGrid"></section>
+    <section class="empty-state" id="emptyState">
+      Your unlocked products will appear here as soon as payment verification completes.
+    </section>
+  </main>
 
   <script>
     (async function () {
       const API_BASE = window.API_BASE || "";
       const token = localStorage.getItem("token");
-      const status = document.getElementById("status");
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get("session_id");
+      const status = document.getElementById("status");
+      const headline = document.getElementById("headline");
+      const unlockGrid = document.getElementById("unlockGrid");
+      const emptyState = document.getElementById("emptyState");
+
       if (!token || !sessionId) {
+        headline.textContent = "We could not verify this payment";
         status.textContent = "Missing session or login. Please sign in and retry.";
+        status.classList.add("error");
         return;
       }
+
       try {
         const res = await fetch(`${API_BASE}/api/payments/verify-session?session_id=${encodeURIComponent(sessionId)}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Verification failed");
-        status.textContent = "Payment verified. Downloads are now unlocked.";
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || "Verification failed");
+        }
+
+        const purchases = Array.isArray(data.purchases) ? data.purchases : [];
+        headline.textContent = "Payment confirmed";
+        status.textContent = purchases.length
+          ? `${purchases.length} product unlock${purchases.length === 1 ? "" : "s"} are ready right now.`
+          : "Payment verified. Your unlocks will appear in the dashboard shortly.";
+        status.classList.add("success");
+
+        if (!purchases.length) {
+          emptyState.textContent = "Verification passed, but no product unlocks were returned yet. Open the dashboard to refresh your library.";
+          return;
+        }
+
+        emptyState.classList.add("hidden");
+        unlockGrid.innerHTML = purchases.map((purchase) => renderPurchaseCard(purchase, token)).join("");
       } catch (err) {
+        headline.textContent = "Verification failed";
         status.textContent = err.message || "Verification failed.";
+        status.classList.add("error");
+      }
+
+      function renderPurchaseCard(purchase, authToken) {
+        const delivery = normalizeDelivery(purchase.delivery);
+        const details = [];
+
+        if (delivery.includedItems.length) {
+          details.push(`
+            <section class="detail-panel">
+              <strong>Included in this unlock</strong>
+              <div class="tag-list">
+                ${delivery.includedItems.map((item) => `<span class="tag">${escapeHTML(item)}</span>`).join("")}
+              </div>
+            </section>
+          `);
+        }
+
+        if (delivery.instructions) {
+          details.push(`
+            <section class="detail-panel">
+              <strong>How to use it</strong>
+              <p>${escapeHTML(delivery.instructions)}</p>
+            </section>
+          `);
+        }
+
+        if (delivery.unlockedText) {
+          details.push(`
+            <section class="detail-panel">
+              <strong>Instant unlock</strong>
+              <pre>${escapeHTML(delivery.unlockedText)}</pre>
+            </section>
+          `);
+        }
+
+        if (!details.length) {
+          details.push(`
+            <section class="detail-panel">
+              <strong>Delivery ready</strong>
+              <p>${escapeHTML(buildDeliveryNote(delivery))}</p>
+            </section>
+          `);
+        }
+
+        return `
+          <article class="product-card">
+            <img src="${escapeAttribute(resolveAssetUrl(purchase.coverUrl || purchase.coverImage || "assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(purchase.title)}">
+            <div class="product-body">
+              <span class="type-pill">${escapeHTML(formatProductType(purchase.type || "Product"))}</span>
+              <h2>${escapeHTML(purchase.title)}</h2>
+              <div class="meta">
+                <span>${escapeHTML(purchase.authorName || "Creator")}</span>
+                <span>${escapeHTML(formatDate(purchase.purchaseDate))}</span>
+                <span>${escapeHTML(formatCurrency(purchase.amount || 0))}</span>
+              </div>
+              <div class="delivery-panel">
+                <strong>${escapeHTML(delivery.label || "Digital delivery")}</strong>
+                <span>${escapeHTML(buildDeliveryNote(delivery))}</span>
+              </div>
+              <div class="delivery-meta">
+                <span>Status: ${escapeHTML(purchase.status || "approved")}</span>
+                <span>Payment ref: ${escapeHTML(purchase.transactionId || purchase.paymentId || "Processing")}</span>
+              </div>
+              ${details.join("")}
+              <div class="card-actions">
+                ${purchase.canDownload && (purchase.downloadAccessUrl || purchase.downloadUrl)
+                  ? `<a class="cta" href="${escapeAttribute(buildDownloadHref(purchase.downloadAccessUrl, purchase.downloadUrl, authToken))}">Download file</a>`
+                  : ""
+                }
+                ${delivery.externalUrl
+                  ? `<a class="ghost" href="${escapeAttribute(delivery.externalUrl)}" target="_blank" rel="noreferrer">Open delivery link</a>`
+                  : ""
+                }
+                <a class="ghost" href="book_view.html?id=${encodeURIComponent(purchase.bookId)}">Open product page</a>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      function normalizeDelivery(delivery = {}) {
+        const includedItems = Array.isArray(delivery.includedItems)
+          ? delivery.includedItems.filter((item) => String(item || "").trim())
+          : [];
+        const externalUrl = String(delivery.externalUrl || "").trim();
+        const unlockedText = String(delivery.unlockedText || "").trim();
+
+        return {
+          label: String(delivery.label || "Digital delivery").trim() || "Digital delivery",
+          includedItems,
+          instructions: String(delivery.instructions || "").trim(),
+          externalUrl,
+          unlockedText,
+          hasFile: Boolean(delivery.hasFile),
+          hasText: Boolean(delivery.hasText || unlockedText),
+          hasExternalUrl: Boolean(delivery.hasExternalUrl || externalUrl)
+        };
+      }
+
+      function buildDeliveryNote(delivery) {
+        const parts = [];
+        if (delivery.hasFile) parts.push("Secure download included");
+        if (delivery.hasText) parts.push("Instant text unlock");
+        if (delivery.hasExternalUrl) parts.push("External access link included");
+        if (delivery.includedItems.length) parts.push(`Includes ${delivery.includedItems.slice(0, 3).join(", ")}`);
+        if (!parts.length) parts.push("Ready for digital delivery");
+        return parts.join(" | ");
+      }
+
+      function formatProductType(value) {
+        return String(value || "Product")
+          .replace(/[_-]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .replace(/\b\w/g, (character) => character.toUpperCase());
+      }
+
+      function buildSecureFileUrl(relativeUrl, authToken) {
+        if (!relativeUrl) return "#";
+        const separator = relativeUrl.includes("?") ? "&" : "?";
+        return `${API_BASE}${relativeUrl}${separator}token=${encodeURIComponent(authToken)}`;
+      }
+
+      function resolveApiUrl(relativeUrl) {
+        const source = String(relativeUrl || "").trim();
+        if (!source) return "";
+        if (/^(https?:|data:)/i.test(source)) return source;
+        if (source.startsWith("/")) return `${API_BASE}${source}`;
+        return source;
+      }
+
+      function buildDownloadHref(accessUrl, fallbackUrl, authToken) {
+        return resolveApiUrl(accessUrl) || buildSecureFileUrl(fallbackUrl, authToken);
+      }
+
+      function resolveAssetUrl(value) {
+        const source = String(value || "").trim();
+        if (!source) return "assets/covers/Ebook_AI.png";
+        if (/^(https?:|data:|\/|\.\/|\.\.\/)/i.test(source)) return source;
+        if (/^assets\//i.test(source)) return `/${source}`;
+        if (source.startsWith("/uploads")) return `${API_BASE}${source}`;
+        if (/^uploads\//i.test(source)) return `${API_BASE}/${source}`;
+        return source;
+      }
+
+      function formatCurrency(value) {
+        return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+      }
+
+      function formatDate(value) {
+        if (!value) return "N/A";
+        return new Date(value).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        });
+      }
+
+      function escapeHTML(value) {
+        return String(value || "").replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#39;"
+        })[character]);
+      }
+
+      function escapeAttribute(value) {
+        return escapeHTML(value).replace(/"/g, "&quot;");
       }
     })();
   </script>

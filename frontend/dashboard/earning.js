@@ -49,6 +49,14 @@ async function initWallet() {
     renderCategoryChart(data.categoryRevenue || data.category || {});
     renderTopBooks(data.topBooks || []);
     renderTransactions(data.transactions || []);
+    renderWithdrawRequests(data.withdrawRequests || []);
+    renderReferralSummary(data.referralSummary || {});
+    renderReferralRewards(data.referralRewards || []);
+    renderCampaignOverview(data.campaignOverview || {});
+    renderCampaignBreakdown(data.campaignBreakdown || []);
+    renderCampaignInsights(data.campaignInsights || {});
+    renderCampaignRecommendations(data.campaignRecommendations || []);
+    renderCampaignHistory(data.campaignHistory || []);
     renderPayout(data.payout || {});
     renderForecast(data.chart);
     renderCreatorScore(data.creatorScore || 0);
@@ -110,6 +118,178 @@ function renderTransactions(transactions) {
       <td>Rs. ${Number(transaction.amount || 0).toLocaleString("en-IN")}</td>
       <td class="status ${String(transaction.status || "").toLowerCase()}">${escapeHTML(transaction.status)}</td>
     </tr>
+  `).join("");
+}
+
+function renderWithdrawRequests(withdrawRequests) {
+  const tbody = document.getElementById("withdrawRequestList");
+  if (!tbody) {
+    return;
+  }
+
+  if (!withdrawRequests.length) {
+    tbody.innerHTML = `<tr><td colspan="4">No withdrawal requests yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = withdrawRequests.map((request) => `
+    <tr>
+      <td>${formatDate(request.requestedAt)}</td>
+      <td>Rs. ${Number(request.amount || 0).toLocaleString("en-IN")}</td>
+      <td>${escapeHTML(String(request.method || "bank").toUpperCase())}</td>
+      <td class="status ${String(request.status || "").toLowerCase()}" title="${escapeHTML(request.adminNote || "")}">
+        ${escapeHTML(request.status)}
+      </td>
+    </tr>
+  `).join("");
+}
+
+function renderReferralSummary(summary) {
+  setText("referralRewardTotal", `₹${Number(summary.totalRewardAmount || 0).toLocaleString("en-IN")}`);
+  setText("referralRewardCount", Number(summary.rewardedPurchasesCount || 0).toLocaleString("en-IN"));
+  setText("referralSignupTotal", Number(summary.signupsCount || 0).toLocaleString("en-IN"));
+}
+
+function renderReferralRewards(rewards) {
+  const tbody = document.getElementById("referralRewardList");
+  if (!tbody) {
+    return;
+  }
+
+  if (!rewards.length) {
+    tbody.innerHTML = `<tr><td colspan="4">No referral rewards yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rewards.map((reward) => `
+    <tr>
+      <td>${formatDate(reward.createdAt)}</td>
+      <td>${escapeHTML(reward.referredUser?.username ? `@${reward.referredUser.username}` : reward.referredUser?.name || "Referred buyer")}</td>
+      <td>${escapeHTML(formatRewardTrigger(reward.triggerType))}</td>
+      <td>₹${Number(reward.amount || 0).toLocaleString("en-IN")}</td>
+    </tr>
+  `).join("");
+}
+
+function renderCampaignOverview(summary) {
+  setText("campaignTotalSent", Number(summary.totalSent || 0).toLocaleString("en-IN"));
+  setText("campaignConverted", Number(summary.converted || 0).toLocaleString("en-IN"));
+  setText("campaignRevenueInfluenced", formatCurrency(summary.creatorRevenueInfluenced || 0));
+  setText("campaignEmailRate", `${Number(summary.totalSent ? ((Number(summary.emailDelivered || 0) / Number(summary.totalSent || 1)) * 100) : 0).toFixed(1)}%`);
+}
+
+function renderCampaignBreakdown(entries) {
+  const container = document.getElementById("campaignBreakdownList");
+  if (!container) {
+    return;
+  }
+
+  if (!entries.length) {
+    container.innerHTML = `<div class="crm-empty">No lifecycle CRM activity yet. Once recovery and upsell campaigns start firing, performance will appear here.</div>`;
+    return;
+  }
+
+  container.innerHTML = entries.map((entry) => `
+    <article class="crm-card">
+      <div>
+        <h3>${escapeHTML(entry.label || "Campaign")}</h3>
+        <p>${escapeHTML(entry.description || "Lifecycle campaign performance")}</p>
+      </div>
+      <div class="crm-metrics">
+        <span>Sent: <strong>${Number(entry.sent || 0).toLocaleString("en-IN")}</strong></span>
+        <span>Converted: <strong>${Number(entry.converted || 0).toLocaleString("en-IN")}</strong></span>
+        <span>Rate: <strong>${Number(entry.conversionRate || 0).toFixed(1)}%</strong></span>
+        <span>${escapeHTML(entry.metricLabel || "Value")}: <strong>${escapeHTML(formatCampaignMetric(entry))}</strong></span>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderCampaignInsights(insights) {
+  const container = document.getElementById("campaignInsightList");
+  if (!container) {
+    return;
+  }
+
+  const recommendations = Array.isArray(insights.recommendations) ? insights.recommendations : [];
+  if (!recommendations.length) {
+    container.innerHTML = `<div class="crm-empty">Variant learning will appear here once your lifecycle campaigns gather enough sends.</div>`;
+    return;
+  }
+
+  container.innerHTML = recommendations.slice(0, 4).map((entry) => `
+    <article class="crm-card">
+      <div>
+        <h3>${escapeHTML(entry.label || "Campaign")} · ${escapeHTML(entry.winningVariantLabel || formatVariantLabel(entry.winningVariant || "default"))}</h3>
+        <p>${escapeHTML(entry.rationale || "Experiment data is still learning.")}</p>
+      </div>
+      <div class="crm-metrics">
+        <span>Status: <strong>${escapeHTML(formatExperimentStatus(entry.action, entry.confidence))}</strong></span>
+        <span>Sent: <strong>${Number(entry.sent || 0).toLocaleString("en-IN")}</strong></span>
+        <span>Converted: <strong>${Number(entry.converted || 0).toLocaleString("en-IN")}</strong></span>
+        <span>Rate: <strong>${Number(entry.conversionRate || 0).toFixed(1)}%</strong></span>
+        <span>Lead: <strong>${Number(entry.leadRate || 0).toFixed(1)}%</strong></span>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderCampaignRecommendations(recommendations) {
+  const container = document.getElementById("campaignRecommendationList");
+  if (!container) {
+    return;
+  }
+
+  if (!recommendations.length) {
+    container.innerHTML = `<div class="crm-empty">We need a bit more catalog and CRM data before recommending your next lifecycle loop.</div>`;
+    return;
+  }
+
+  container.innerHTML = recommendations.map((entry) => `
+    <article class="crm-card">
+      <div>
+        <h3>${escapeHTML(entry.label || "Campaign")} · ${escapeHTML(entry.recommendedVariantLabel || formatVariantLabel(entry.recommendedVariant || "default"))}</h3>
+        <p>${escapeHTML(entry.reason || "This lifecycle loop has strong monetization potential for your catalog.")}</p>
+        <p>${escapeHTML(entry.nextStep || "")}</p>
+      </div>
+      <div class="crm-metrics">
+        <span>Priority: <strong>${Number(entry.priority || 0)}/100</strong></span>
+        <span>Status: <strong>${escapeHTML(formatRecommendationStatus(entry.status || "new_test"))}</strong></span>
+        <span>Sent: <strong>${Number(entry.metrics?.sent || 0).toLocaleString("en-IN")}</strong></span>
+        <span>Rate: <strong>${Number(entry.metrics?.conversionRate || 0).toFixed(1)}%</strong></span>
+        <span>Earnings: <strong>${escapeHTML(formatCurrency(entry.metrics?.creatorRevenueInfluenced || 0))}</strong></span>
+      </div>
+      <div class="crm-actions-row">
+        <span class="crm-chip">${escapeHTML(formatVariantSource(entry.variantSource || "default"))}</span>
+        <a class="crm-action" href="${escapeAttribute(entry.actionLink || "dashboard.html")}">${escapeHTML(entry.actionLabel || "Open workflow")}</a>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderCampaignHistory(entries) {
+  const container = document.getElementById("campaignHistoryList");
+  if (!container) {
+    return;
+  }
+
+  if (!entries.length) {
+    container.innerHTML = `<div class="crm-empty">No CRM sends logged yet.</div>`;
+    return;
+  }
+
+  container.innerHTML = entries.map((entry) => `
+    <article class="crm-history-card">
+      <div>
+        <h3>${escapeHTML(entry.label || "Campaign")}</h3>
+        <p>${escapeHTML(entry.title || "Lifecycle message")}</p>
+      </div>
+      <div class="crm-history-meta">
+        <span>${escapeHTML(formatDate(entry.sentAt))}</span>
+        <span>${escapeHTML(buildCampaignChannel(entry.channel || {}))}</span>
+        <span>${escapeHTML(entry.historyHeadline || "Awaiting conversion")}</span>
+      </div>
+    </article>
   `).join("");
 }
 
@@ -256,6 +436,86 @@ function renderPayout(payout) {
   element.textContent = "No payout method configured yet";
 }
 
+function buildCampaignChannel(channel = {}) {
+  if (channel.emailDelivered) {
+    return "Email + inbox";
+  }
+
+  if (channel.inAppDelivered) {
+    return "Inbox only";
+  }
+
+  return "CRM";
+}
+
+function formatCampaignMetric(entry = {}) {
+  if (entry.primaryMetricType === "count") {
+    return Number(entry.primaryMetricValue || 0).toLocaleString("en-IN");
+  }
+
+  return formatCurrency(entry.creatorRevenueInfluenced > 0 ? entry.creatorRevenueInfluenced : entry.primaryMetricValue || 0);
+}
+
+function formatVariantLabel(variant = "default") {
+  const normalized = String(variant || "default").trim().toLowerCase();
+  if (normalized === "social_proof") {
+    return "Social Proof";
+  }
+
+  if (normalized === "auto") {
+    return "Auto";
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatExperimentStatus(action = "observe", confidence = "collecting") {
+  if (action === "promote") {
+    return "Winner ready";
+  }
+
+  if (confidence === "testing") {
+    return "Keep testing";
+  }
+
+  return "Collecting data";
+}
+
+function formatRecommendationStatus(status = "new_test") {
+  if (status === "winner_ready") {
+    return "Winner ready";
+  }
+
+  if (status === "learning") {
+    return "Learning";
+  }
+
+  return "New test";
+}
+
+function formatVariantSource(source = "default") {
+  if (source === "auto_promoted") {
+    return "Auto winner";
+  }
+
+  if (source === "top_variant") {
+    return "Best current variant";
+  }
+
+  return "Default copy";
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.textContent = value;
+  }
+}
+
+function formatCurrency(value) {
+  return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
 function animateCurrency(id, value) {
   const element = document.getElementById(id);
   if (!element) {
@@ -319,6 +579,12 @@ function formatDate(value) {
   });
 }
 
+function formatRewardTrigger(triggerType) {
+  return String(triggerType || "").toLowerCase() === "first_purchase"
+    ? "First purchase"
+    : "Referral reward";
+}
+
 function escapeHTML(value) {
   return String(value || "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
@@ -327,6 +593,10 @@ function escapeHTML(value) {
     '"': "&quot;",
     "'": "&#39;"
   })[character]);
+}
+
+function escapeAttribute(value) {
+  return escapeHTML(value).replace(/`/g, "&#96;");
 }
 
 function showLoading() {

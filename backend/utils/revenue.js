@@ -1,5 +1,5 @@
-const CREATOR_REVENUE_SHARE = 0.82;
-const PLATFORM_REVENUE_SHARE = 0.18;
+const CREATOR_REVENUE_SHARE = 0.8;
+const PLATFORM_REVENUE_SHARE = 0.2;
 
 function roundMoney(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;

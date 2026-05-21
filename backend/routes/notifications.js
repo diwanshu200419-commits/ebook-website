@@ -2,17 +2,30 @@ const express = require("express");
 const router = express.Router();
 const { protect } = require("../middleware/auth");
 const Notification = require("../models/Notification");
+const { ensureRetentionSignals } = require("../services/engagementSignals");
 
 /* =====================================
    📬 GET USER'S NOTIFICATIONS
 ===================================== */
 router.get("/", protect, async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user.id })
-      .sort({ createdAt: -1 })
-      .limit(50);
+    const safeLimit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 60);
+    let engagement = null;
 
-    res.json({ success: true, notifications });
+    try {
+      engagement = await ensureRetentionSignals(req.user.id);
+    } catch (error) {
+      console.error("Retention Signal Error:", error.message);
+    }
+
+    const [notifications, unreadCount] = await Promise.all([
+      Notification.find({ user: req.user.id })
+        .sort({ createdAt: -1 })
+        .limit(safeLimit),
+      Notification.countDocuments({ user: req.user.id, read: false }),
+    ]);
+
+    res.json({ success: true, notifications, unreadCount, engagement });
   } catch (err) {
     console.error("Get Notifications Error:", err.message);
     res.status(500).json({ success: false, message: "Server error" });

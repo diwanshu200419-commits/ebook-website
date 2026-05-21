@@ -294,6 +294,86 @@ margin-bottom:5px;
 
 }
 
+.crm-list,
+.crm-history-list{
+display:grid;
+gap:16px;
+}
+
+.crm-card,
+.crm-history-card{
+background:#111827;
+border:1px solid rgba(255,255,255,0.06);
+border-radius:16px;
+padding:18px 20px;
+display:grid;
+gap:12px;
+}
+
+.crm-card h3,
+.crm-history-card h3{
+font-size:18px;
+margin-bottom:6px;
+}
+
+.crm-card p,
+.crm-history-card p,
+.crm-empty{
+color:#94a3b8;
+font-size:14px;
+line-height:1.6;
+}
+
+.crm-metrics,
+.crm-history-meta{
+display:flex;
+flex-wrap:wrap;
+gap:12px;
+color:#cbd5e1;
+font-size:13px;
+}
+
+.crm-history-meta span,
+.crm-metrics span{
+padding:8px 12px;
+border-radius:999px;
+background:rgba(255,255,255,0.05);
+}
+
+.crm-actions-row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:12px;
+flex-wrap:wrap;
+}
+
+.crm-chip{
+display:inline-flex;
+align-items:center;
+padding:8px 12px;
+border-radius:999px;
+background:rgba(96,165,250,0.16);
+color:#bfdbfe;
+font-size:13px;
+}
+
+.crm-action{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+padding:10px 16px;
+border-radius:999px;
+background:linear-gradient(135deg,#22c55e,#38bdf8);
+color:#04111f;
+font-weight:700;
+text-decoration:none;
+}
+
+.crm-action:hover{
+filter:brightness(1.05);
+}
+
 /* =====================================
 TABLE
 ===================================== */

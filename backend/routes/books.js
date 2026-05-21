@@ -9,16 +9,30 @@ const router = express.Router();
 const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
 const BookAI = require("../models/BookAI");
+const BookReview = require("../models/BookReview");
 const Payment = require("../models/Payment");
+const ReviewReport = require("../models/ReviewReport");
 const User = require("../models/user");
 const { buildAIReview } = require("../services/aiReview");
 const { enqueueBookAIProcessing } = require("../services/ai/queue");
-const { searchApprovedBooks } = require("../services/ai/search");
+const {
+  getOptionalUserFromRequest,
+  searchApprovedBooks,
+} = require("../services/ai/search");
 const { serializeBook } = require("../services/bookData");
+const {
+  serializeBookReview,
+  syncBookAndCreatorRatings,
+} = require("../services/reviewData");
 const {
   getImportableLibraryCatalog,
   importBuiltinLibraryForCreator,
 } = require("../services/catalogImport");
+const {
+  buildSignedBookAccessUrls,
+  verifyBookAssetToken,
+} = require("../services/bookAccess");
+const { readCookieValue } = require("../utils/authCookies");
 const {
   ensureUploadDir,
   buildPublicUploadPath,
@@ -30,6 +44,15 @@ const {
   normalizePreviewPages,
   normalizePricing,
 } = require("../utils/bookCatalog");
+const {
+  buildDeliveryMode,
+  buildDownloadFilename,
+  buildTextPreview,
+  isPdfLikeFile,
+  isPdfRequiredType,
+  isSupportedPrimaryFile,
+  isTextFirstType,
+} = require("../utils/productTypes");
 const { createBookPreview } = require("../utils/pdfPreview");
 
 const backendBaseUrl = (
@@ -38,7 +61,7 @@ const backendBaseUrl = (
   ""
 ).replace(/\/$/, "");
 
-const PDF_FIELDS = new Set(["pdf", "bookFile"]);
+const PRODUCT_FILE_FIELDS = new Set(["pdf", "bookFile", "productFile"]);
 const IMAGE_FIELDS = new Set(["cover", "thumbnail"]);
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
 const categoryValues = Book.schema.path("category").enumValues;
@@ -56,6 +79,13 @@ const uploadSchema = Joi.object({
   language: Joi.string().trim().max(40).default("English"),
   authorName: Joi.string().trim().max(120).allow(""),
   bookAuthor: Joi.string().trim().max(120).allow(""),
+  promptText: Joi.string().trim().max(20000).allow(""),
+  deliveryInstructions: Joi.string().trim().max(2000).allow(""),
+  deliveryIncludes: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim().max(120)).max(10),
+    Joi.string().allow("")
+  ),
+  externalUrl: Joi.string().uri({ scheme: ["http", "https"] }).allow(""),
   previewPages: Joi.number().integer().min(1).max(25).default(5),
   isPremium: Joi.boolean().optional(),
   isFeatured: Joi.boolean().optional(),
@@ -76,10 +106,28 @@ const updateSchema = Joi.object({
   type: Joi.string().valid(...typeValues),
   language: Joi.string().trim().max(40),
   bookAuthor: Joi.string().trim().max(120).allow(""),
+  promptText: Joi.string().trim().max(20000).allow(""),
+  deliveryInstructions: Joi.string().trim().max(2000).allow(""),
+  deliveryIncludes: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim().max(120)).max(10),
+    Joi.string().allow("")
+  ),
+  externalUrl: Joi.string().uri({ scheme: ["http", "https"] }).allow(""),
   previewPages: Joi.number().integer().min(1).max(25),
   isPremium: Joi.boolean(),
   isFeatured: Joi.boolean(),
   tags: Joi.array().items(Joi.string().trim().max(24)).max(8),
+});
+
+const reviewSchema = Joi.object({
+  rating: Joi.number().integer().min(1).max(5).required(),
+  title: Joi.string().trim().max(120).allow(""),
+  comment: Joi.string().trim().min(20).max(1200).required(),
+});
+
+const reviewReportSchema = Joi.object({
+  reason: Joi.string().valid("spam", "abuse", "fake", "offensive", "other").required(),
+  details: Joi.string().trim().max(600).allow(""),
 });
 
 const booksUploadPath = ensureUploadDir("books");
@@ -94,11 +142,6 @@ function safeFilename(originalname) {
     .slice(0, 80);
 
   return `${Date.now()}-${baseName || "file"}${extension}`;
-}
-
-function isPdfFile(file) {
-  const extension = path.extname(String(file?.originalname || "")).toLowerCase();
-  return file?.mimetype === "application/pdf" || extension === ".pdf";
 }
 
 function isImageFile(file) {
@@ -139,6 +182,88 @@ function parseTags(value) {
     .slice(0, 8);
 }
 
+function parseListField(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parseListField(parsed);
+    }
+  } catch {
+    // fall through to line parsing
+  }
+
+  return trimmed
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 10);
+}
+
+function validateDeliveryPayload({ type, primaryFile, promptText, externalUrl }) {
+  const safeType = String(type || "Book");
+  const hasFile = Boolean(primaryFile);
+  const hasText = Boolean(String(promptText || "").trim());
+  const hasExternalUrl = Boolean(String(externalUrl || "").trim());
+
+  if (isPdfRequiredType(safeType)) {
+    if (!primaryFile || !isPdfLikeFile(primaryFile)) {
+      return "A valid PDF file is required for books, notes, study packs, and comics";
+    }
+
+    return "";
+  }
+
+  if (primaryFile && !isSupportedPrimaryFile(primaryFile)) {
+    return "Supported product files include PDF, ZIP, TXT, MD, JSON, CSV, DOCX, PPTX, XLSX, PNG, JPG, and WEBP";
+  }
+
+  if (isTextFirstType(safeType) && !hasText && !hasFile) {
+    return "Prompt products need a prompt text body or an attached file";
+  }
+
+  if (!hasFile && !hasText && !hasExternalUrl) {
+    return "Add a file, prompt text, or an external delivery link before publishing this product";
+  }
+
+  return "";
+}
+
+function buildDeliveryMetadata({ primaryFile, promptText, deliveryInstructions, deliveryIncludes, externalUrl }) {
+  const textContent = String(promptText || "").trim();
+  const includedItems = parseListField(deliveryIncludes);
+  const hasFile = Boolean(primaryFile);
+  const hasText = Boolean(textContent);
+  const hasExternalUrl = Boolean(String(externalUrl || "").trim());
+
+  return {
+    mode: buildDeliveryMode({ hasFile, hasText, hasExternalUrl }),
+    fileName: primaryFile?.originalname || "",
+    fileMimeType: primaryFile?.mimetype || "",
+    fileSize: Number(primaryFile?.size || 0),
+    textContent,
+    previewText: buildTextPreview(textContent),
+    externalUrl: String(externalUrl || "").trim(),
+    instructions: String(deliveryInstructions || "").trim(),
+    includedItems,
+  };
+}
+
 function buildCatalogFields(payload = {}) {
   const pricing = normalizePricing(payload);
 
@@ -154,19 +279,23 @@ function buildCatalogFields(payload = {}) {
 }
 
 function buildBookPayload(book, access) {
+  const accessUrls = buildSignedBookAccessUrls(book, access);
   return serializeBook(book, {
     backendBaseUrl,
     includeFilePath: false,
-    previewUrl: access.canPreview ? `/api/books/${book._id}/preview` : "",
+    previewUrl: access.canPreview && book.previewPath ? `/api/books/${book._id}/preview` : "",
     downloadUrl: access.canDownload ? `/api/books/${book._id}/download` : "",
+    previewAccessUrl: accessUrls.previewAccessUrl,
+    downloadAccessUrl: accessUrls.downloadAccessUrl,
     statusLabel: book.isArchived ? "Archived" : book.status,
+    access,
   });
 }
 
 function createUploadMiddleware() {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      if (PDF_FIELDS.has(file.fieldname)) {
+      if (PRODUCT_FILE_FIELDS.has(file.fieldname)) {
         return cb(null, booksUploadPath);
       }
 
@@ -183,10 +312,10 @@ function createUploadMiddleware() {
     storage,
     limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-      if (PDF_FIELDS.has(file.fieldname)) {
-        return isPdfFile(file)
+      if (PRODUCT_FILE_FIELDS.has(file.fieldname)) {
+        return isSupportedPrimaryFile(file)
           ? cb(null, true)
-          : cb(new Error("Only PDF files are allowed for book uploads"));
+          : cb(new Error("Unsupported product file type"));
       }
 
       if (IMAGE_FIELDS.has(file.fieldname)) {
@@ -207,6 +336,7 @@ function runUpload(req, res) {
     upload.fields([
       { name: "pdf", maxCount: 1 },
       { name: "bookFile", maxCount: 1 },
+      { name: "productFile", maxCount: 1 },
       { name: "cover", maxCount: 1 },
       { name: "thumbnail", maxCount: 1 },
     ])(req, res, (error) => {
@@ -227,7 +357,7 @@ function cleanupUploadedFiles(req) {
       return;
     }
 
-    if (PDF_FIELDS.has(file.fieldname)) {
+    if (PRODUCT_FILE_FIELDS.has(file.fieldname)) {
       safeDeletePublicFile(buildPublicUploadPath("books", file.filename));
       return;
     }
@@ -246,6 +376,19 @@ function getAuthToken(req) {
 
   if (typeof req.query?.token === "string" && req.query.token.trim()) {
     return req.query.token.trim();
+  }
+
+  const cookieToken = readCookieValue(req);
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  return "";
+}
+
+function getAssetToken(req) {
+  if (typeof req.query?.asset === "string" && req.query.asset.trim()) {
+    return req.query.asset.trim();
   }
 
   return "";
@@ -321,6 +464,29 @@ async function getBookAccess(book, user) {
   };
 }
 
+function getReviewAccess(book, access, user) {
+  const isSignedIn = Boolean(user?._id || user?.id);
+  const isOwnerOrAdmin = Boolean(access?.isOwner || access?.isAdmin);
+  const canReviewPaidBook = Boolean(book?.isPaid && access?.isPurchased);
+  const canReviewFreeBook = Boolean(!book?.isPaid && isSignedIn);
+  const canReview = isSignedIn && !isOwnerOrAdmin && (canReviewPaidBook || canReviewFreeBook);
+
+  let gateMessage = "Reviews are not available for this product yet.";
+  if (!isSignedIn) {
+    gateMessage = "Sign in to leave a review.";
+  } else if (isOwnerOrAdmin) {
+    gateMessage = "Creators and admins cannot review their own marketplace products.";
+  } else if (book?.isPaid && !access?.isPurchased) {
+    gateMessage = "Complete the purchase flow to unlock reviews for this paid product.";
+  }
+
+  return {
+    canReview,
+    verifiedPurchase: Boolean(book?.isPaid && access?.isPurchased),
+    gateMessage,
+  };
+}
+
 function getSortConfig(sort) {
   switch (String(sort || "").toLowerCase()) {
     case "oldest":
@@ -347,6 +513,7 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
     await runUpload(req, res);
 
     const rawTags = parseTags(req.body.tags);
+    const rawIncludes = parseListField(req.body.deliveryIncludes);
     const { value, error } = uploadSchema.validate(
       {
         ...req.body,
@@ -357,6 +524,7 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
         isPremium: req.body.isPremium !== undefined ? normalizeBooleanFlag(req.body.isPremium) : undefined,
         isFeatured: req.body.isFeatured !== undefined ? normalizeBooleanFlag(req.body.isFeatured) : undefined,
         tags: rawTags,
+        deliveryIncludes: rawIncludes,
       },
       {
         abortEarly: false,
@@ -372,14 +540,20 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       });
     }
 
-    const pdfFile = req.files?.pdf?.[0] || req.files?.bookFile?.[0];
+    const primaryFile = req.files?.pdf?.[0] || req.files?.bookFile?.[0] || req.files?.productFile?.[0];
     const coverFile = req.files?.cover?.[0] || req.files?.thumbnail?.[0];
 
-    if (!pdfFile || !isPdfFile(pdfFile)) {
+    const deliveryValidationError = validateDeliveryPayload({
+      type: value.type,
+      primaryFile,
+      promptText: value.promptText,
+      externalUrl: value.externalUrl,
+    });
+    if (deliveryValidationError) {
       cleanupUploadedFiles(req);
       return res.status(400).json({
         success: false,
-        message: "A valid PDF file is required",
+        message: deliveryValidationError,
       });
     }
 
@@ -401,17 +575,58 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
     });
 
     const catalogFields = buildCatalogFields(value);
-    const filePath = buildPublicUploadPath("books", pdfFile.filename);
-    const preview = await createBookPreview({
-      sourcePublicPath: filePath,
-      title: value.title,
-      isPaid: catalogFields.isPaid,
-      previewPages: catalogFields.previewPages,
-    });
+    const filePath = primaryFile ? buildPublicUploadPath("books", primaryFile.filename) : "";
+    const canGeneratePdfPreview = Boolean(primaryFile && isPdfLikeFile(primaryFile));
+    const preview = canGeneratePdfPreview
+      ? await createBookPreview({
+        sourcePublicPath: filePath,
+        title: value.title,
+        isPaid: catalogFields.isPaid,
+        previewPages: catalogFields.previewPages,
+      })
+      : {
+        previewPath: "",
+        previewPages: canGeneratePdfPreview ? catalogFields.previewPages : 0,
+        pageCount: 0,
+      };
     generatedPreviewPath = preview.previewPath;
     const coverImage = coverFile
       ? buildPublicUploadPath("covers", coverFile.filename)
       : "";
+    const delivery = buildDeliveryMetadata({
+      primaryFile,
+      promptText: value.promptText,
+      deliveryInstructions: value.deliveryInstructions,
+      deliveryIncludes: value.deliveryIncludes,
+      externalUrl: value.externalUrl,
+    });
+    const usesQueuedPdfReview = canGeneratePdfPreview;
+    const resolvedStatus = aiReview.aiStatus === "rejected"
+      ? "Rejected"
+      : usesQueuedPdfReview
+        ? "AI_Review"
+        : aiReview.aiStatus === "approved"
+          ? "Approved"
+          : "Admin_Review";
+    const resolvedAiStatus = aiReview.aiStatus === "rejected"
+      ? "rejected"
+      : usesQueuedPdfReview
+        ? "pending"
+        : aiReview.aiStatus;
+    const resolvedAiSuggestion = aiReview.aiStatus === "rejected"
+      ? aiReview.aiSuggestion
+      : usesQueuedPdfReview
+        ? "AI scan queued. Full PDF moderation is processing in the background."
+        : aiReview.aiStatus === "approved"
+          ? "Initial AI review approved this digital product for marketplace delivery."
+          : "Initial AI review completed. This digital product is waiting for admin review.";
+    const resolvedModerationReason = aiReview.aiStatus === "rejected"
+      ? aiReview.aiSuggestion
+      : usesQueuedPdfReview
+        ? "Initial validation passed. Full PDF AI review has been queued."
+        : aiReview.aiStatus === "approved"
+          ? "Metadata and delivery checks passed without requiring a PDF scan."
+          : "Delivery metadata is valid, but this product needs admin review before launch.";
 
     const book = await Book.create({
       title: value.title,
@@ -428,6 +643,7 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       originalPrice: catalogFields.originalPrice,
       discountPrice: catalogFields.discountPrice,
       filePath,
+      delivery,
       previewPath: preview.previewPath,
       previewPages: preview.previewPages,
       pageCount: preview.pageCount,
@@ -436,26 +652,24 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
       isPaid: catalogFields.isPaid,
       isPremium: catalogFields.isPremium,
       requiresLogin: true,
-      status: aiReview.aiStatus === "rejected" ? "Rejected" : "AI_Review",
-      aiStatus: aiReview.aiStatus === "rejected" ? "rejected" : "pending",
+      status: resolvedStatus,
+      aiStatus: resolvedAiStatus,
       aiScore: aiReview.aiScore,
       plagiarismScore: aiReview.plagiarismScore,
       qualityScore: aiReview.qualityScore,
-      aiSuggestion:
-        aiReview.aiStatus === "rejected"
-          ? aiReview.aiSuggestion
-          : "AI scan queued. Full PDF moderation is processing in the background.",
-      moderationReason:
-        aiReview.aiStatus === "rejected"
-          ? aiReview.aiSuggestion
-          : "Initial validation passed. Full PDF AI review has been queued.",
+      aiSuggestion: resolvedAiSuggestion,
+      moderationReason: resolvedModerationReason,
       aiCategory: value.category,
       aiTags: value.tags,
-      aiProcessingState: aiReview.aiStatus === "rejected" ? "completed" : "queued",
+      aiProcessingState: aiReview.aiStatus === "rejected"
+        ? "completed"
+        : usesQueuedPdfReview
+          ? "queued"
+          : "completed",
       isFeatured: catalogFields.isFeatured,
     });
 
-    if (aiReview.aiStatus !== "rejected") {
+    if (aiReview.aiStatus !== "rejected" && usesQueuedPdfReview) {
       enqueueBookAIProcessing(book._id, { allowStatusChange: true });
     }
 
@@ -464,8 +678,12 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
     return res.status(201).json({
       success: true,
       message: aiReview.aiStatus === "rejected"
-        ? "Book uploaded, but the initial AI checks flagged it for rejection."
-        : "Book uploaded successfully and AI review has started.",
+        ? "Product uploaded, but the initial AI checks flagged it for rejection."
+        : usesQueuedPdfReview
+          ? "Product uploaded successfully and AI review has started."
+          : resolvedStatus === "Approved"
+            ? "Digital product uploaded and approved for marketplace delivery."
+            : "Digital product uploaded successfully and routed to admin review.",
       book: buildBookPayload(book, access),
       moderation: {
         status: book.status,
@@ -498,7 +716,7 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
         success: false,
         message:
           error.code === "LIMIT_FILE_SIZE"
-            ? "Upload limit exceeded. PDFs can be up to 50MB."
+            ? "Upload limit exceeded. Product files can be up to 50MB."
             : error.message,
       });
     }
@@ -595,6 +813,7 @@ router.post("/library-import", protect, authorize("creator", "author", "admin"),
 ===================================== */
 router.get("/", async (req, res) => {
   try {
+    const viewer = await getOptionalUserFromRequest(req);
     const result = await searchApprovedBooks({
       backendBaseUrl,
       page: req.query.page,
@@ -602,6 +821,8 @@ router.get("/", async (req, res) => {
       category: req.query.category,
       search: req.query.search,
       sort: req.query.sort,
+      language: req.query.language,
+      userId: viewer?._id ? String(viewer._id) : "",
     });
 
     return res.json({
@@ -643,6 +864,220 @@ router.get("/categories/counts", async (req, res) => {
     });
   } catch (error) {
     console.error("Get Category Counts Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+router.get("/:id/reviews", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid book ID" });
+    }
+
+    const book = await Book.findById(req.params.id).select(
+      "_id author isPaid isArchived requiresLogin ratingAverage ratingCount"
+    );
+    if (!book) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    const user = await getOptionalUser(req);
+    const access = await getBookAccess(book, user);
+    const reviewAccess = getReviewAccess(book, access, user);
+
+    if (book.isArchived && !access.canDownload && !access.isOwner && !access.isAdmin) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    const [reviews, viewerReview] = await Promise.all([
+      BookReview.find({ book: book._id })
+        .populate("reviewer", "name username profileImage verified")
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(24),
+      user
+        ? BookReview.findOne({
+            book: book._id,
+            reviewer: user._id || user.id,
+          }).populate("reviewer", "name username profileImage verified")
+        : null,
+    ]);
+
+    return res.json({
+      success: true,
+      summary: {
+        ratingAverage: Number(book.ratingAverage || 0),
+        ratingCount: Number(book.ratingCount || 0),
+      },
+      reviewAccess,
+      viewerReview: viewerReview
+        ? serializeBookReview(viewerReview, backendBaseUrl)
+        : null,
+      reviews: reviews.map((review) => serializeBookReview(review, backendBaseUrl)),
+    });
+  } catch (error) {
+    console.error("Get Book Reviews Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+router.post("/:id/reviews", protect, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid book ID" });
+    }
+
+    const { value, error } = reviewSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
+    }
+
+    const book = await Book.findById(req.params.id).select("_id author isPaid isArchived requiresLogin");
+    if (!book) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    const access = await getBookAccess(book, req.user);
+    const reviewAccess = getReviewAccess(book, access, req.user);
+
+    if (book.isArchived && !access.canDownload && !access.isOwner && !access.isAdmin) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    if (!reviewAccess.canReview) {
+      return res.status(403).json({
+        success: false,
+        message: reviewAccess.gateMessage,
+      });
+    }
+
+    let review = await BookReview.findOne({
+      book: book._id,
+      reviewer: req.user.id,
+    });
+    const isUpdate = Boolean(review);
+
+    if (!review) {
+      review = new BookReview({
+        book: book._id,
+        creator: book.author,
+        reviewer: req.user.id,
+      });
+    }
+
+    review.creator = book.author;
+    review.rating = Number(value.rating);
+    review.title = String(value.title || "").trim();
+    review.comment = String(value.comment || "").trim();
+    review.verifiedPurchase = reviewAccess.verifiedPurchase;
+
+    await review.save();
+    await review.populate("reviewer", "name username profileImage verified");
+
+    const metrics = await syncBookAndCreatorRatings(book);
+
+    return res.status(isUpdate ? 200 : 201).json({
+      success: true,
+      message: isUpdate ? "Review updated successfully" : "Review published successfully",
+      review: serializeBookReview(review, backendBaseUrl),
+      summary: metrics?.bookStats || {
+        ratingAverage: Number(book.ratingAverage || 0),
+        ratingCount: Number(book.ratingCount || 0),
+      },
+    });
+  } catch (error) {
+    console.error("Save Book Review Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+router.post("/:id/reviews/:reviewId/report", protect, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id) || !mongoose.Types.ObjectId.isValid(req.params.reviewId)) {
+      return res.status(400).json({ success: false, message: "Invalid review target" });
+    }
+
+    const { value, error } = reviewReportSchema.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
+    }
+
+    const review = await BookReview.findOne({
+      _id: req.params.reviewId,
+      book: req.params.id,
+    }).select("_id book reviewer creator");
+
+    if (!review) {
+      return res.status(404).json({ success: false, message: "Review not found" });
+    }
+
+    if (String(review.reviewer) === String(req.user.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot report your own review",
+      });
+    }
+
+    let report = await ReviewReport.findOne({
+      review: review._id,
+      reporter: req.user.id,
+    });
+
+    if (report?.status === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "You have already reported this review",
+      });
+    }
+
+    if (!report) {
+      report = new ReviewReport({
+        review: review._id,
+        book: review.book,
+        reporter: req.user.id,
+        reviewOwner: review.reviewer,
+      });
+    }
+
+    report.book = review.book;
+    report.reviewOwner = review.reviewer;
+    report.reason = value.reason;
+    report.details = String(value.details || "").trim();
+    report.status = "pending";
+    report.actionTaken = "none";
+    report.reviewedAt = null;
+    report.adminNote = "";
+
+    await report.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Review report submitted for moderation",
+    });
+  } catch (error) {
+    console.error("Report Review Error:", error.message);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -708,8 +1143,20 @@ router.get("/:id/preview", async (req, res) => {
       return res.status(404).json({ success: false, message: "Book not found" });
     }
 
-    const user = await getOptionalUser(req);
-    const access = await getBookAccess(book, user);
+    const assetGrant = verifyBookAssetToken(getAssetToken(req), {
+      bookId: req.params.id,
+      kind: "preview",
+    });
+    const user = assetGrant ? null : await getOptionalUser(req);
+    const access = assetGrant
+      ? {
+          canPreview: true,
+          canDownload: false,
+          isOwner: false,
+          isAdmin: false,
+          isPurchased: false,
+        }
+      : await getBookAccess(book, user);
 
     if (book.isArchived && !access.canPreview && !access.isOwner && !access.isAdmin) {
       return res.status(404).json({ success: false, message: "Book not found" });
@@ -782,7 +1229,7 @@ router.get("/:id", async (req, res) => {
 /* =====================================
    Download Book
 ===================================== */
-router.get("/:id/download", protect, async (req, res) => {
+router.get("/:id/download", async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ success: false, message: "Invalid book ID" });
@@ -793,12 +1240,38 @@ router.get("/:id/download", protect, async (req, res) => {
       return res.status(404).json({ success: false, message: "Book not found" });
     }
 
-    const access = await getBookAccess(book, req.user);
+    const assetGrant = verifyBookAssetToken(getAssetToken(req), {
+      bookId: req.params.id,
+      kind: "download",
+    });
+    const user = assetGrant ? null : await getOptionalUser(req);
+    const access = assetGrant
+      ? {
+          canPreview: true,
+          canDownload: true,
+          isOwner: false,
+          isAdmin: false,
+          isPurchased: true,
+        }
+      : await getBookAccess(book, user);
+
     if (!access.canDownload) {
       return res.status(403).json({
         success: false,
         message: "Purchase required to download",
       });
+    }
+
+    await Book.findByIdAndUpdate(book._id, { $inc: { downloads: 1 } });
+    if (book.delivery?.mode === "link" && book.delivery?.externalUrl) {
+      return res.redirect(book.delivery.externalUrl);
+    }
+
+    if (book.delivery?.textContent && !book.filePath) {
+      const filename = buildDownloadFilename(book);
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      return res.send(book.delivery.textContent);
     }
 
     const filePath = resolvePublicUploadPath(book.filePath);
@@ -809,9 +1282,7 @@ router.get("/:id/download", protect, async (req, res) => {
       });
     }
 
-    await Book.findByIdAndUpdate(book._id, { $inc: { downloads: 1 } });
-
-    return res.download(filePath, `${book.title}.pdf`);
+    return res.download(filePath, buildDownloadFilename(book));
   } catch (error) {
     console.error("Download Error:", error.message);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -841,6 +1312,7 @@ router.put("/:id", protect, async (req, res) => {
     const payload = {
       ...req.body,
       tags: parseTags(req.body.tags),
+      deliveryIncludes: parseListField(req.body.deliveryIncludes),
     };
 
     if (payload.price !== undefined) {
@@ -874,7 +1346,39 @@ router.put("/:id", protect, async (req, res) => {
       });
     }
 
-    Object.assign(book, value);
+    const persistedPrimaryFile = book.filePath
+      ? {
+        originalname: book.delivery?.fileName || path.basename(book.filePath),
+        mimetype: book.delivery?.fileMimeType || "",
+        size: Number(book.delivery?.fileSize || 0),
+      }
+      : null;
+    const deliveryValidationError = validateDeliveryPayload({
+      type: value.type !== undefined ? value.type : book.type,
+      primaryFile: persistedPrimaryFile,
+      promptText: value.promptText !== undefined ? value.promptText : book.delivery?.textContent,
+      externalUrl: value.externalUrl !== undefined ? value.externalUrl : book.delivery?.externalUrl,
+    });
+    if (deliveryValidationError) {
+      return res.status(400).json({
+        success: false,
+        message: deliveryValidationError,
+      });
+    }
+
+    const nextDeliveryInput = {
+      promptText: value.promptText !== undefined ? value.promptText : book.delivery?.textContent,
+      deliveryInstructions: value.deliveryInstructions !== undefined ? value.deliveryInstructions : book.delivery?.instructions,
+      deliveryIncludes: value.deliveryIncludes !== undefined ? value.deliveryIncludes : book.delivery?.includedItems,
+      externalUrl: value.externalUrl !== undefined ? value.externalUrl : book.delivery?.externalUrl,
+    };
+    const nextBookFields = { ...value };
+    delete nextBookFields.promptText;
+    delete nextBookFields.deliveryInstructions;
+    delete nextBookFields.deliveryIncludes;
+    delete nextBookFields.externalUrl;
+
+    Object.assign(book, nextBookFields);
 
     const catalogFields = buildCatalogFields({
       price: value.price !== undefined ? value.price : book.price,
@@ -892,34 +1396,73 @@ router.put("/:id", protect, async (req, res) => {
     book.isPremium = catalogFields.isPremium;
     book.isFeatured = catalogFields.isFeatured;
 
-    const previousPreviewPath = book.previewPath;
-    const regeneratedPreview = await createBookPreview({
-      sourcePublicPath: book.filePath,
-      title: book.title,
-      isPaid: book.isPaid,
-      previewPages: catalogFields.previewPages,
-    });
+    book.delivery = {
+      ...(book.delivery?.toObject ? book.delivery.toObject() : book.delivery || {}),
+      ...buildDeliveryMetadata({
+        primaryFile: book.filePath
+          ? {
+            originalname: book.delivery?.fileName || path.basename(book.filePath),
+            mimetype: book.delivery?.fileMimeType || "",
+            size: Number(book.delivery?.fileSize || 0),
+          }
+          : null,
+        ...nextDeliveryInput,
+      }),
+    };
 
-    book.previewPath = regeneratedPreview.previewPath;
-    book.previewPages = regeneratedPreview.previewPages;
-    book.pageCount = regeneratedPreview.pageCount;
+    const usesQueuedPdfReview = Boolean(book.filePath && isPdfLikeFile({
+      originalname: book.delivery?.fileName || book.filePath,
+      mimetype: book.delivery?.fileMimeType || "",
+    }));
 
-    if (
-      previousPreviewPath
-      && previousPreviewPath !== book.filePath
-      && previousPreviewPath !== book.previewPath
-      && previousPreviewPath.startsWith("/uploads/previews/")
-    ) {
-      safeDeletePublicFile(previousPreviewPath);
+    if (usesQueuedPdfReview) {
+      const previousPreviewPath = book.previewPath;
+      const regeneratedPreview = await createBookPreview({
+        sourcePublicPath: book.filePath,
+        title: book.title,
+        isPaid: book.isPaid,
+        previewPages: catalogFields.previewPages,
+      });
+
+      book.previewPath = regeneratedPreview.previewPath;
+      book.previewPages = regeneratedPreview.previewPages;
+      book.pageCount = regeneratedPreview.pageCount;
+
+      if (
+        previousPreviewPath
+        && previousPreviewPath !== book.filePath
+        && previousPreviewPath !== book.previewPath
+        && previousPreviewPath.startsWith("/uploads/previews/")
+      ) {
+        safeDeletePublicFile(previousPreviewPath);
+      }
+    } else {
+      if (
+        book.previewPath
+        && book.previewPath !== book.filePath
+        && book.previewPath.startsWith("/uploads/previews/")
+      ) {
+        safeDeletePublicFile(book.previewPath);
+      }
+      book.previewPath = "";
+      book.previewPages = 0;
+      book.pageCount = 0;
     }
 
-    book.aiProcessingState = "queued";
-    book.aiStatus = "pending";
-    book.aiSuggestion = "Metadata updated. AI analysis is refreshing.";
-    book.moderationReason = "Metadata changed after upload. AI analysis queued again.";
+    book.aiProcessingState = usesQueuedPdfReview ? "queued" : "completed";
+    book.aiStatus = usesQueuedPdfReview ? "pending" : "approved";
+    book.status = usesQueuedPdfReview ? "AI_Review" : "Approved";
+    book.aiSuggestion = usesQueuedPdfReview
+      ? "Metadata updated. AI analysis is refreshing."
+      : "Metadata updated. This digital product remains ready for marketplace delivery.";
+    book.moderationReason = usesQueuedPdfReview
+      ? "Metadata changed after upload. AI analysis queued again."
+      : "Metadata updated without requiring a PDF preview refresh.";
 
     await book.save();
-    enqueueBookAIProcessing(book._id, { allowStatusChange: false });
+    if (usesQueuedPdfReview) {
+      enqueueBookAIProcessing(book._id, { allowStatusChange: false });
+    }
     const access = await getBookAccess(book, req.user);
 
     return res.json({

@@ -13,7 +13,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const passport = require("passport");
 const User = require("./models/user");
-const { uploadsRoot } = require("./utils/uploads");
+const { describeUploadStorage } = require("./utils/uploads");
 const {
   getAllowedFrontendOrigins,
   getFrontendBaseUrl,
@@ -36,10 +36,12 @@ const marketplaceRoutes = require("./routes/marketplace");
 const creatorRoutes = require("./routes/creator");
 const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
+const paymentRoutes = require("./routes/payments");
 const { initializeAIQueue } = require("./services/ai/queue");
 const { syncProjectCatalogToMarketplace } = require("./services/catalogImport");
 
 const app = express();
+const uploadStorage = describeUploadStorage();
 
 /* ===================================
    ✅ BASIC SECURITY FIXES
@@ -105,6 +107,12 @@ require("./config/passport");
    ✅ MIDDLEWARE
 =================================== */
 
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json" }),
+  paymentRoutes.handleStripeWebhook
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -152,11 +160,12 @@ app.use((req, res, next) => {
 =================================== */
 
 // Serve only non-sensitive upload assets publicly.
-app.use("/uploads/books", express.static(path.join(uploadsRoot, "books")));
-app.use("/uploads/covers", express.static(path.join(uploadsRoot, "covers")));
-app.use("/uploads/creators", express.static(path.join(uploadsRoot, "creators")));
-app.use("/uploads/payments", express.static(path.join(uploadsRoot, "payments")));
-app.use("/uploads/previews", express.static(path.join(uploadsRoot, "previews")));
+if (uploadStorage.servesLocally) {
+  app.use("/uploads/books", express.static(path.join(uploadStorage.uploadsRoot, "books")));
+  app.use("/uploads/covers", express.static(path.join(uploadStorage.uploadsRoot, "covers")));
+  app.use("/uploads/creators", express.static(path.join(uploadStorage.uploadsRoot, "creators")));
+  app.use("/uploads/previews", express.static(path.join(uploadStorage.uploadsRoot, "previews")));
+}
 
 /* ===================================
    ✅ DATABASE
@@ -201,6 +210,9 @@ mongoose
     console.log(
       `AI provider configured: ${getConfiguredAiProvider()} | model: ${getModerationModel()} | embeddings: ${getEmbeddingModel() || "disabled"}`
     );
+    console.log(
+      `Upload storage: ${uploadStorage.provider} | root: ${uploadStorage.uploadsRoot}${uploadStorage.publicBaseUrl ? ` | public base: ${uploadStorage.publicBaseUrl}` : ""}`
+    );
   })
   .catch((err) => {
     console.error("❌ MongoDB Error:", err.message);
@@ -218,8 +230,9 @@ app.use("/api/books", require("./routes/books"));
 app.use("/api/dashboard", require("./routes/dashboard"));
 app.use("/api/analytics", require("./routes/analytics"));
 app.use("/api/earnings", require("./routes/earnings"));
-app.use("/api/payments", require("./routes/payments"));
+app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/lifecycle", require("./routes/lifecycle"));
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/creator", creatorRoutes);
@@ -244,6 +257,11 @@ app.get("/api/health", (req, res) => {
     status: "success",
     message: "API healthy",
     env: process.env.NODE_ENV,
+    uploadStorage: {
+      provider: uploadStorage.provider,
+      servesLocally: uploadStorage.servesLocally,
+      publicBaseUrl: uploadStorage.publicBaseUrl || "",
+    },
     time: new Date()
   });
 });

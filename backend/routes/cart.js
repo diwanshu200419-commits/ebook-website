@@ -18,7 +18,7 @@ async function getOrCreateCart(userId) {
 router.get("/", protect, async (req, res) => {
   try {
     const cart = await getOrCreateCart(req.user.id);
-    await cart.populate("items.book", "title price coverImage cover status");
+    await cart.populate("items.book", "title price coverImage cover status category authorName bookAuthor isPaid");
 
     const items = (cart.items || []).filter((item) => item.book);
     const total = items.reduce((sum, item) => sum + (item.priceAtAdd || 0), 0);
@@ -62,7 +62,11 @@ router.post("/add", protect, async (req, res) => {
     const cart = await getOrCreateCart(req.user.id);
     const alreadyAdded = cart.items.some((item) => String(item.book) === String(book._id));
     if (!alreadyAdded) {
-      cart.items.push({ book: book._id, priceAtAdd: Number(book.price || 0) });
+      cart.items.push({
+        book: book._id,
+        priceAtAdd: Number(book.price || 0),
+        addedAt: new Date(),
+      });
       await cart.save();
     }
 

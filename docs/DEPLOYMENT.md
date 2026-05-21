@@ -1,48 +1,101 @@
-# Permanent Deployment
+# Production Deployment
 
-This project is set up for a permanent split deployment:
+This project is designed for a split production setup:
 
 - Frontend: Vercel
 - Backend API: Render
-- Frontend API calls in production: same-origin `/api/...` and `/uploads/...`
-- Vercel routes those paths to the Render backend through [`vercel.json`](/vercel.json)
+- Database: MongoDB Atlas
 
-## 1. Frontend
+The frontend now uses same-origin `/api/...` and `/uploads/...` calls in production. Vercel proxy functions forward those requests to the backend origin you configure with env vars, so the deploy no longer depends on a hardcoded Render URL inside `vercel.json`.
+
+## Frontend on Vercel
 
 Deploy the repo to Vercel with the existing [`vercel.json`](/vercel.json).
 
+Set this Vercel environment variable:
+
+```env
+BACKEND_PROXY_ORIGIN=https://your-backend.onrender.com
+```
+
 Production behavior:
 
-- On localhost or `file:` preview, [`frontend/config.js`](/frontend/config.js) points the frontend to the Render backend URL for development.
-- On the public Vercel site, `window.API_BASE` is empty, so requests stay same-origin and use the Vercel rewrites.
+- Public Vercel site: frontend requests stay same-origin and flow through the Vercel proxy functions in [`api/[...path].js`](/c:/Users/DELL/OneDrive/Desktop/E%20book%20website/api/%5B...path%5D.js:1) and [`uploads/[...path].js`](/c:/Users/DELL/OneDrive/Desktop/E%20book%20website/uploads/%5B...path%5D.js:1)
+- Localhost or `file:` preview: [`frontend/config.js`](/c:/Users/DELL/OneDrive/Desktop/E%20book%20website/frontend/config.js:1) defaults to `http://localhost:5000`
+- Manual override: append `?apiBase=https://your-backend.example.com` to any frontend URL
 
-## 2. Backend
+## Backend on Render
 
-Deploy the `backend` service to Render and set these required environment variables:
+Deploy the `backend` service to Render and set these baseline env vars:
 
 ```env
 MONGO_URI=...
 NODE_ENV=production
 JWT_SECRET=...
-FRONTEND_URL=https://ebook-website-theta-nine.vercel.app
-CLIENT_URL=https://ebook-website-theta-nine.vercel.app
-ALLOWED_ORIGINS=https://ebook-website-theta-nine.vercel.app
-BACKEND_URL=https://ebook-website-v2mj.onrender.com
-RENDER_EXTERNAL_URL=https://ebook-website-v2mj.onrender.com
-GOOGLE_CALLBACK_URL=https://ebook-website-v2mj.onrender.com/api/auth/google/callback
+FRONTEND_URL=https://your-frontend.vercel.app
+CLIENT_URL=https://your-frontend.vercel.app
+ALLOWED_ORIGINS=https://your-frontend.vercel.app
+BACKEND_URL=https://your-backend.onrender.com
+RENDER_EXTERNAL_URL=https://your-backend.onrender.com
+GOOGLE_CALLBACK_URL=https://your-backend.onrender.com/api/auth/google/callback
 ```
 
-## 3. AI Options
+Payments and lifecycle:
 
-The backend supports three AI modes, in this order:
+```env
+STRIPE_SECRET_KEY=...
+STRIPE_PUBLISHABLE_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+STRIPE_AUTOMATIC_TAX=true
+EMAIL_FROM=noreply@yourdomain.com
+RESEND_API_KEY=
+EMAIL_WEBHOOK_URL=
+EMAIL_WEBHOOK_TOKEN=
+LIFECYCLE_CRON_SECRET=...
+```
+
+Global market pricing:
+
+```env
+FX_RATE_USD=0.012
+FX_RATE_GBP=0.0095
+FX_RATE_EUR=0.011
+FX_RATE_AED=0.044
+FX_RATE_SGD=0.016
+```
+
+## Storage Modes
+
+Uploads are controlled through the storage helpers in [`backend/utils/uploads.js`](/c:/Users/DELL/OneDrive/Desktop/E%20book%20website/backend/utils/uploads.js:1).
+
+### Local or Render disk
+
+```env
+UPLOAD_STORAGE_PROVIDER=local
+UPLOAD_ROOT=/var/data/ebook-uploads
+```
+
+Use this when your Render service is attached to a persistent disk or volume.
+
+### Hybrid or external public assets
+
+```env
+UPLOAD_STORAGE_PROVIDER=hybrid
+UPLOAD_ROOT=/var/data/ebook-uploads
+UPLOAD_PUBLIC_BASE_URL=https://cdn.yourdomain.com
+```
+
+Use this when files still exist on backend disk for processing, but public asset URLs should resolve from a CDN or object-storage domain.
+
+## AI Options
+
+The backend supports these AI modes, in priority order:
 
 1. OpenAI
-2. Ollama
+2. Remote Ollama
 3. Local heuristic fallback
 
-### Option A: Permanent hosted AI with OpenAI
-
-Add these on Render:
+### Hosted AI with OpenAI
 
 ```env
 OPENAI_API_KEY=sk-...
@@ -51,21 +104,13 @@ OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 OPENAI_EMBEDDING_DIMENSIONS=512
 ```
 
-This is the easiest permanent hosted setup.
-
-If you use a hosted provider that is OpenAI-compatible, you can also set:
+Optional compatible provider:
 
 ```env
 OPENAI_BASE_URL=https://your-provider-api-base
 ```
 
-This backend expects a provider that supports the OpenAI Responses API for text generation plus embeddings for semantic search.
-
-### Option B: Permanent hosted AI with remote Ollama
-
-Do not point Render at `http://127.0.0.1:11434`, because that only works on your own laptop.
-
-Instead, run Ollama on an always-on server or GPU box and set:
+### Remote Ollama
 
 ```env
 OLLAMA_BASE_URL=https://your-remote-ollama-host
@@ -75,31 +120,22 @@ OLLAMA_AUTH_TOKEN=
 OLLAMA_TIMEOUT_MS=90000
 ```
 
-### Option C: Free built-in fallback
+Do not point production envs at `http://127.0.0.1:11434` inside Render.
 
-If neither OpenAI nor Ollama is configured, the app still works with the built-in local heuristic review pipeline. That mode is permanently deployable because it does not depend on an external model server, but the results are much simpler than OpenAI or Ollama.
-
-## 4. What Not To Use For Production
-
-These were only for temporary demos and should not be used as the permanent public setup:
-
-- `cloudflared` quick tunnels
-- `localtunnel`
-- laptop-hosted Ollama with Render pointed at `127.0.0.1`
-
-## 5. Verify
+## What To Verify
 
 After deployment, verify:
 
-1. `https://ebook-website-theta-nine.vercel.app/api/health`
-2. `https://ebook-website-theta-nine.vercel.app/api/ai/status`
-3. login/register flows
-4. upload flow
-5. AI review page provider label
+1. `https://your-frontend.vercel.app/api/health`
+2. `https://your-frontend.vercel.app/api/ai/status`
+3. `explore -> cart -> Stripe checkout -> success`
+4. `manual UPI proof flow for India`
+5. upload flow, creator profile images, and product covers
+6. admin launch-readiness screen in reports
 
-Expected `mode` values from `/api/ai/status`:
+Expected `/api/ai/status` `mode` values:
 
-- `fallback`: built-in local heuristic only
+- `fallback`: built-in heuristic only
 - `openai`: direct OpenAI production setup
 - `hosted-compatible`: another OpenAI-compatible hosted provider
 - `ollama`: remote Ollama server

@@ -394,6 +394,197 @@ cursor:pointer;
 }
 
 /* =========================================
+AI CREATOR STUDIO
+========================================= */
+
+.creator-ai-studio{
+display:grid;
+gap:18px;
+padding:24px;
+border-radius:28px;
+border:1px solid rgba(255,255,255,.08);
+background:linear-gradient(135deg,rgba(14,165,233,.12),rgba(99,102,241,.12));
+}
+
+.creator-ai-toolbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:16px;
+flex-wrap:wrap;
+}
+
+.creator-ai-toolbar small{
+color:#cbd5e1;
+max-width:620px;
+line-height:1.7;
+}
+
+.creator-ai-grid{
+display:grid;
+grid-template-columns:repeat(2,minmax(0,1fr));
+gap:18px;
+}
+
+.creator-ai-card{
+display:grid;
+gap:14px;
+padding:20px;
+border-radius:22px;
+border:1px solid rgba(255,255,255,.08);
+background:rgba(2,6,23,.45);
+box-shadow:0 16px 40px rgba(2,6,23,.24);
+}
+
+.creator-ai-label{
+font-size:12px;
+font-weight:800;
+letter-spacing:.16em;
+text-transform:uppercase;
+color:#7dd3fc;
+}
+
+.creator-ai-stack{
+display:grid;
+gap:12px;
+}
+
+.creator-ai-empty{
+color:#94a3b8;
+font-size:14px;
+line-height:1.7;
+}
+
+.suggestion-pills,
+.creator-ai-tags{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+}
+
+.suggestion-pill,
+.tag-suggestion-chip{
+display:inline-flex;
+align-items:center;
+gap:8px;
+padding:10px 14px;
+border-radius:999px;
+border:1px solid rgba(255,255,255,.1);
+background:rgba(15,23,42,.7);
+color:#e2e8f0;
+font-size:13px;
+font-weight:600;
+}
+
+.suggestion-pill button,
+.tag-suggestion-chip button,
+.mini-action-btn{
+border:none;
+border-radius:999px;
+padding:7px 12px;
+background:linear-gradient(135deg,#0ea5e9,#6366f1);
+color:white;
+font-size:12px;
+font-weight:700;
+cursor:pointer;
+}
+
+.creator-ai-category-row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:12px;
+flex-wrap:wrap;
+padding:14px 16px;
+border-radius:18px;
+background:rgba(15,23,42,.68);
+border:1px solid rgba(255,255,255,.08);
+}
+
+.creator-ai-category-row strong{
+font-size:15px;
+color:#f8fafc;
+}
+
+.thumbnail-idea-card{
+display:grid;
+gap:8px;
+padding:14px 16px;
+border-radius:18px;
+background:rgba(15,23,42,.68);
+border:1px solid rgba(255,255,255,.08);
+}
+
+.thumbnail-idea-card strong{
+color:#f8fafc;
+font-size:14px;
+}
+
+.thumbnail-idea-card p{
+color:#cbd5e1;
+line-height:1.7;
+font-size:13px;
+}
+
+.creator-ai-pricing{
+padding:16px;
+border-radius:18px;
+border:1px solid rgba(255,255,255,.08);
+background:rgba(15,23,42,.68);
+display:grid;
+gap:8px;
+}
+
+.creator-ai-pricing strong{
+font-size:15px;
+color:#f8fafc;
+}
+
+.creator-ai-pricing p{
+color:#cbd5e1;
+line-height:1.7;
+font-size:13px;
+}
+
+.creator-ai-readiness{
+display:grid;
+gap:12px;
+padding:16px;
+border-radius:18px;
+border:1px solid rgba(255,255,255,.08);
+background:rgba(15,23,42,.68);
+}
+
+.creator-ai-score-row{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:12px;
+flex-wrap:wrap;
+}
+
+.creator-ai-score-row strong{
+font-size:26px;
+font-weight:900;
+color:#86efac;
+}
+
+.creator-ai-score-row span{
+color:#cbd5e1;
+font-size:13px;
+font-weight:600;
+}
+
+.creator-ai-list{
+display:grid;
+gap:8px;
+padding-left:18px;
+color:#cbd5e1;
+font-size:13px;
+line-height:1.7;
+}
+
+/* =========================================
 EARNING BOX
 ========================================= */
 
@@ -962,6 +1153,10 @@ border-bottom:
 grid-template-columns:1fr;
 }
 
+.creator-ai-grid{
+grid-template-columns:1fr;
+}
+
 }
 
 /* =========================================
@@ -1000,6 +1195,14 @@ width:100%;
 align-items:flex-start;
 }
 
+.creator-ai-toolbar{
+align-items:flex-start;
+}
+
+.creator-ai-studio{
+padding:20px;
+}
+
 .ai-review-box{
 
 flex-direction:column;
@@ -1035,6 +1238,17 @@ gap:14px;
 
 .tag-input{
 padding:10px;
+}
+
+.creator-ai-category-row,
+.creator-ai-score-row{
+align-items:flex-start;
+}
+
+.suggestion-pill,
+.tag-suggestion-chip{
+width:100%;
+justify-content:space-between;
 }
 
 }

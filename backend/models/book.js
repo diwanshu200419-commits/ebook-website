@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { PRODUCT_TYPES } = require("../utils/productTypes");
 
 const BookSchema = new mongoose.Schema({
 
@@ -26,7 +27,7 @@ const BookSchema = new mongoose.Schema({
 
   type: {
     type: String,
-    enum: ["Book", "Notes", "Study", "AI", "Comics", "Other"],
+    enum: PRODUCT_TYPES,
     default: "Book"
   },
 
@@ -117,7 +118,7 @@ const BookSchema = new mongoose.Schema({
 
   filePath: {
     type: String,
-    required: true   // FULL PDF (keep existing logic)
+    default: ""
   },
 
   previewPath: {
@@ -137,6 +138,46 @@ const BookSchema = new mongoose.Schema({
   isPaid: {
     type: Boolean,
     default: false   // 👈 NEW
+  },
+
+  delivery: {
+    mode: {
+      type: String,
+      enum: ["file", "text", "link", "mixed"],
+      default: "file"
+    },
+    fileName: {
+      type: String,
+      default: ""
+    },
+    fileMimeType: {
+      type: String,
+      default: ""
+    },
+    fileSize: {
+      type: Number,
+      default: 0
+    },
+    textContent: {
+      type: String,
+      default: ""
+    },
+    previewText: {
+      type: String,
+      default: ""
+    },
+    externalUrl: {
+      type: String,
+      default: ""
+    },
+    instructions: {
+      type: String,
+      default: ""
+    },
+    includedItems: {
+      type: [String],
+      default: []
+    }
   },
 
   /* =====================

@@ -477,6 +477,104 @@ textarea {
   margin-top: 1rem;
 }
 
+.growth-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.growth-card,
+.verification-status-panel {
+  padding: 1.1rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.growth-card span,
+.verification-admin-note {
+  color: var(--muted);
+}
+
+.growth-card strong,
+.verification-status-panel strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 1.4rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.growth-card p,
+.verification-status-panel p {
+  margin: 0.65rem 0 0;
+  line-height: 1.6;
+}
+
+.verification-shell {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.preference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.preference-toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.preference-toggle strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.preference-toggle p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.preference-toggle input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  accent-color: #67e8f9;
+}
+
+.verification-admin-note {
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.verification-admin-note.rejected {
+  color: #ffb0bf;
+  background: rgba(251, 113, 133, 0.12);
+}
+
+.verification-admin-note.pending {
+  color: #f7df8d;
+  background: rgba(250, 204, 21, 0.08);
+}
+
+.verification-admin-note.approved {
+  color: #7af0c6;
+  background: rgba(52, 211, 153, 0.1);
+}
+
 .health-card {
   padding: 1.1rem;
   border-radius: 1.2rem;
@@ -529,6 +627,12 @@ textarea {
   .summary-item {
     flex: 1 1 16rem;
   }
+
+  .growth-grid,
+  .health-grid,
+  .preference-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
@@ -547,7 +651,9 @@ textarea {
     justify-items: start;
   }
 
-  .health-grid {
+  .growth-grid,
+  .health-grid,
+  .preference-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -563,7 +669,9 @@ textarea {
     font-size: 1.95rem;
   }
 
-  .health-grid {
+  .growth-grid,
+  .health-grid,
+  .preference-grid {
     grid-template-columns: 1fr;
   }
 
