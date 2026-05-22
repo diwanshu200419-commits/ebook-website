@@ -290,9 +290,18 @@ router.get(
   (req, res, next) => {
     const googleState = parseGoogleAuthState(req.query.state);
     const frontendRedirect = resolveFrontendRedirectUrl(googleState.returnTo, "/login.html");
-    return passport.authenticate("google", {
-      session: false,
-      failureRedirect: buildFailureRedirect(frontendRedirect, "google_auth_failed"),
+    return passport.authenticate("google", { session: false }, (error, user) => {
+      if (error) {
+        console.error("Google Passport Callback Error:", error);
+        return res.redirect(buildFailureRedirect(frontendRedirect, "google_auth_failed"));
+      }
+
+      if (!user) {
+        return res.redirect(buildFailureRedirect(frontendRedirect, "google_auth_failed"));
+      }
+
+      req.user = user;
+      return next();
     })(req, res, next);
   },
   async (req, res) => {

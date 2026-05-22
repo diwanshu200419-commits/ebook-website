@@ -118,7 +118,7 @@ const getFrontendBaseUrl = () => {
     return configured;
   }
 
-  return isProduction() ? "" : DEFAULT_DEV_FRONTEND_BASE;
+  return isProduction() ? LEGACY_FRONTEND_ORIGIN : DEFAULT_DEV_FRONTEND_BASE;
 };
 
 const getAllowedFrontendOrigins = () => {

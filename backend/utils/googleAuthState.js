@@ -22,15 +22,9 @@ function buildGoogleAuthState(returnTo = "", role = "", referralCode = "") {
 }
 
 function parseGoogleAuthState(input = "") {
-  let decodedValue = String(input || "").trim();
+  let candidate = String(input || "").trim();
 
-  try {
-    decodedValue = decodeURIComponent(decodedValue);
-  } catch {
-    decodedValue = String(input || "").trim();
-  }
-
-  if (!decodedValue) {
+  if (!candidate) {
     return {
       returnTo: "",
       role: "",
@@ -38,21 +32,33 @@ function parseGoogleAuthState(input = "") {
     };
   }
 
-  try {
-    const parsed = JSON.parse(decodedValue);
-    if (parsed && typeof parsed === "object") {
-      return {
-        returnTo: String(parsed.returnTo || "").trim(),
-        role: normalizeGoogleRole(parsed.role),
-        referralCode: normalizeGoogleReferralCode(parsed.referralCode),
-      };
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === "object") {
+        return {
+          returnTo: String(parsed.returnTo || "").trim(),
+          role: normalizeGoogleRole(parsed.role),
+          referralCode: normalizeGoogleReferralCode(parsed.referralCode),
+        };
+      }
+    } catch {
+      // Keep trying after decoding below.
     }
-  } catch {
-    // Backward compatibility: older flows stored only the return URL in state.
+
+    try {
+      const decoded = decodeURIComponent(candidate);
+      if (!decoded || decoded === candidate) {
+        break;
+      }
+      candidate = decoded;
+    } catch {
+      break;
+    }
   }
 
   return {
-    returnTo: decodedValue,
+    returnTo: candidate,
     role: "",
     referralCode: "",
   };
