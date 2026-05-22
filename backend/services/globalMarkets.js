@@ -111,6 +111,17 @@ const MARKET_ALIASES = {
   UAE: "AE",
 };
 
+function readPaymentSetting(...keys) {
+  for (const key of keys) {
+    const value = String(process.env[key] || "").trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
 function roundMoney(value) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount)) {
@@ -271,27 +282,41 @@ function buildManualPaymentMethods() {
     UPI: {
       label: "UPI Payment",
       details: "Pay using any UPI app and upload the payment screenshot for admin verification.",
-      upiId: process.env.STORE_UPI_ID || "",
-      qrImage: process.env.STORE_UPI_QR || "assets/payment/gpay-qr.PNG",
+      upiId: readPaymentSetting("STORE_UPI_ID", "PAYMENT_UPI_ID", "UPI_ID"),
+      qrImage: readPaymentSetting("STORE_UPI_QR", "PAYMENT_UPI_QR", "PAYMENT_QR_IMAGE") || "assets/payment/gpay-qr.PNG",
     },
     GPay: {
       label: "Google Pay",
       details: "Scan the Google Pay QR and upload the payment screenshot after paying.",
-      upiId: process.env.STORE_GPAY_UPI_ID || process.env.STORE_UPI_ID || "",
-      qrImage: process.env.STORE_GPAY_QR || "assets/payment/gpay-qr.PNG",
+      upiId: readPaymentSetting("STORE_GPAY_UPI_ID", "GPAY_UPI_ID", "STORE_UPI_ID", "PAYMENT_UPI_ID", "UPI_ID"),
+      qrImage: readPaymentSetting("STORE_GPAY_QR", "GPAY_QR_IMAGE", "STORE_UPI_QR", "PAYMENT_UPI_QR", "PAYMENT_QR_IMAGE") || "assets/payment/gpay-qr.PNG",
     },
     PayPal: {
       label: "PayPal",
       details: "Scan the PayPal QR and upload the payment screenshot after paying.",
       upiId: "",
-      qrImage: process.env.STORE_PAYPAL_QR || "assets/payment/paypal-qr.PNG",
+      qrImage: readPaymentSetting("STORE_PAYPAL_QR", "PAYPAL_QR_IMAGE") || "assets/payment/paypal-qr.PNG",
     },
   };
 }
 
 function hasStripeEnabled() {
   const key = String(process.env.STRIPE_SECRET_KEY || "").trim();
-  return Boolean(key) && key !== "sk_test_dummy";
+  if (!key || key === "sk_test_dummy") {
+    return false;
+  }
+
+  const lowered = key.toLowerCase();
+  if (
+    lowered.includes("your_stripe_secret_key_here")
+    || lowered.includes("replace_me")
+    || lowered.includes("changeme")
+    || lowered.includes("example")
+  ) {
+    return false;
+  }
+
+  return /^sk_(test|live)_/i.test(key);
 }
 
 function hasAutomaticTaxEnabled() {

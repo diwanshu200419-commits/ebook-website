@@ -244,6 +244,10 @@ function validateDeliveryPayload({ type, primaryFile, promptText, externalUrl })
   return "";
 }
 
+function isPaidProduct(book) {
+  return Boolean(book?.isPaid || Number(book?.price || 0) > 0);
+}
+
 function buildDeliveryMetadata({ primaryFile, promptText, deliveryInstructions, deliveryIncludes, externalUrl }) {
   const textContent = String(promptText || "").trim();
   const includedItems = parseListField(deliveryIncludes);
@@ -418,8 +422,9 @@ async function getBookAccess(book, user) {
   const isOwner = Boolean(userId) && String(book.author) === String(userId);
   const isAdmin = user?.role === "admin";
   const hasPublicPreview = Boolean(book.previewPath);
+  const paidProduct = isPaidProduct(book);
 
-  if (!book.isPaid) {
+  if (!paidProduct) {
     return {
       isOwner,
       isAdmin,
@@ -467,8 +472,9 @@ async function getBookAccess(book, user) {
 function getReviewAccess(book, access, user) {
   const isSignedIn = Boolean(user?._id || user?.id);
   const isOwnerOrAdmin = Boolean(access?.isOwner || access?.isAdmin);
-  const canReviewPaidBook = Boolean(book?.isPaid && access?.isPurchased);
-  const canReviewFreeBook = Boolean(!book?.isPaid && isSignedIn);
+  const paidProduct = isPaidProduct(book);
+  const canReviewPaidBook = Boolean(paidProduct && access?.isPurchased);
+  const canReviewFreeBook = Boolean(!paidProduct && isSignedIn);
   const canReview = isSignedIn && !isOwnerOrAdmin && (canReviewPaidBook || canReviewFreeBook);
 
   let gateMessage = "Reviews are not available for this product yet.";
@@ -476,13 +482,13 @@ function getReviewAccess(book, access, user) {
     gateMessage = "Sign in to leave a review.";
   } else if (isOwnerOrAdmin) {
     gateMessage = "Creators and admins cannot review their own marketplace products.";
-  } else if (book?.isPaid && !access?.isPurchased) {
+  } else if (paidProduct && !access?.isPurchased) {
     gateMessage = "Complete the purchase flow to unlock reviews for this paid product.";
   }
 
   return {
     canReview,
-    verifiedPurchase: Boolean(book?.isPaid && access?.isPurchased),
+    verifiedPurchase: Boolean(paidProduct && access?.isPurchased),
     gateMessage,
   };
 }

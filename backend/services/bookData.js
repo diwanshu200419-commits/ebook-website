@@ -74,6 +74,7 @@ function serializeBook(book, options = {}) {
   const deliveryUnlockedText = canDownloadDelivery
     ? String(delivery.textContent || "").trim()
     : "";
+  const isPaidProduct = Boolean(raw?.isPaid || Number(raw?.price || 0) > 0);
 
   return {
     id: raw?._id,
@@ -106,7 +107,7 @@ function serializeBook(book, options = {}) {
     pdfUrl: normalizedDownloadAccessUrl || downloadUrl || "",
     downloadUrl: downloadUrl || "",
     downloadAccessUrl: normalizedDownloadAccessUrl,
-    isPaid: Boolean(raw?.isPaid),
+    isPaid: isPaidProduct,
     isPremium: Boolean(raw?.isPremium),
     requiresLogin: Boolean(raw?.requiresLogin),
     status: statusLabel || (raw?.isArchived ? "Archived" : raw?.status || "Draft"),

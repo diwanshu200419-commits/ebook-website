@@ -7,6 +7,10 @@ const Cart = require("../models/Cart");
 const Book = require("../models/book");
 const Payment = require("../models/Payment");
 
+function isPaidProduct(book) {
+  return Boolean(book?.isPaid || Number(book?.price || 0) > 0);
+}
+
 async function getOrCreateCart(userId) {
   let cart = await Cart.findOne({ user: userId });
   if (!cart) {
@@ -46,7 +50,7 @@ router.post("/add", protect, async (req, res) => {
     if ((book.status || "") !== "Approved") {
       return res.status(400).json({ success: false, message: "Book is not available for purchase" });
     }
-    if (!book.isPaid || Number(book.price || 0) <= 0) {
+    if (!isPaidProduct(book) || Number(book.price || 0) <= 0) {
       return res.status(400).json({ success: false, message: "Free books do not require cart checkout" });
     }
 

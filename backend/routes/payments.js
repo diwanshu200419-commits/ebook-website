@@ -38,6 +38,10 @@ function formatCurrency(value) {
   return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
+function isPaidProduct(book) {
+  return Boolean(book?.isPaid || Number(book?.price || 0) > 0);
+}
+
 function safeFilename(originalname) {
   const extension = path.extname(String(originalname || "")).toLowerCase();
   const baseName = path
@@ -566,7 +570,7 @@ router.post("/create-checkout", protect, async (req, res) => {
       return res.status(404).json({ success: false, message: "Book not found" });
     }
 
-    if (!book.price || book.price <= 0 || !book.isPaid) {
+    if (!isPaidProduct(book) || Number(book.price || 0) <= 0) {
       return res.status(400).json({ success: false, message: "Only paid approved books can be purchased" });
     }
 
@@ -668,22 +672,23 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
     const books = await Book.find({
       _id: { $in: validIds },
       status: "Approved",
-      isPaid: true,
       isArchived: { $ne: true }
     });
 
-    if (!books.length) {
+    const paidBooks = books.filter((book) => isPaidProduct(book) && Number(book.price || 0) > 0);
+
+    if (!paidBooks.length) {
       return res.status(400).json({ success: false, message: "No valid paid books found" });
     }
 
     const purchased = await Payment.find({
       user: req.user.id,
       status: "approved",
-      book: { $in: books.map((book) => book._id) }
+      book: { $in: paidBooks.map((book) => book._id) }
     }).select("book");
 
     const purchasedSet = new Set(purchased.map((payment) => String(payment.book)));
-    const payableBooks = books.filter((book) => !purchasedSet.has(String(book._id)));
+    const payableBooks = paidBooks.filter((book) => !purchasedSet.has(String(book._id)));
 
     if (!payableBooks.length) {
       return res.status(200).json({
@@ -763,11 +768,10 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
       const sampleBook = await Book.findOne({
         _id: { $in: fallbackBookIds },
         status: "Approved",
-        isPaid: true,
         isArchived: { $ne: true },
-      }).select("price");
+      }).select("price isPaid");
 
-      if (sampleBook) {
+      if (sampleBook && isPaidProduct(sampleBook) && Number(sampleBook.price || 0) > 0) {
         const marketSnapshot = buildCheckoutAmount(sampleBook.price || 0, {
           country: req.body?.country,
           currency: req.body?.currency,
@@ -851,7 +855,7 @@ router.post("/manual", protect, (req, res) => {
         });
       }
 
-      const freeSelections = books.filter((book) => !book.isPaid || Number(book.price || 0) <= 0);
+      const freeSelections = books.filter((book) => !isPaidProduct(book) || Number(book.price || 0) <= 0);
       if (freeSelections.length) {
         return res.status(400).json({
           success: false,
