@@ -1,3 +1,4 @@
+(() => {
 const API_BASE = window.API_BASE || "";
 const token = localStorage.getItem("token");
 
@@ -2645,6 +2646,36 @@ async function rejectPayment(paymentId, isBatch = false) {
   }
 }
 
-syncAdminIdentity();
-setHeaderStatus("Booting Ops", "warning");
-switchSection(resolveInitialSection());
+async function bootstrapAdmin() {
+  try {
+    syncAdminIdentity();
+    setHeaderStatus("Booting Ops", "warning");
+    await switchSection(resolveInitialSection());
+  } catch (error) {
+    console.error("Admin dashboard bootstrap failed:", error);
+    setHeaderStatus("Ops Error", "blocked");
+    if (headerSyncTime) {
+      headerSyncTime.textContent = "Dashboard failed to initialize";
+    }
+    if (overviewOpsBoard) {
+      overviewOpsBoard.innerHTML = `
+        <article class="priority-card">
+          <div class="priority-meta">
+            <span class="priority-value">!</span>
+            <span class="priority-tone critical">Error</span>
+          </div>
+          <h3>Admin dashboard failed to initialize</h3>
+          <p>${escapeHTML(error?.message || "Unexpected admin startup failure.")}</p>
+          <button class="priority-action" type="button" id="adminRetryBootBtn">Retry boot</button>
+        </article>
+      `;
+      document.getElementById("adminRetryBootBtn")?.addEventListener("click", () => {
+        bootstrapAdmin();
+      });
+    }
+  }
+}
+
+window.logoutUser = logoutUser;
+void bootstrapAdmin();
+})();
