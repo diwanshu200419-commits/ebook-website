@@ -1,4 +1,5 @@
 const API_BASE = window.API_BASE || "";
+const CHECKOUT_NOTICE_KEY = "ebook-market-checkout-notice";
 const bookViewState = {
   bookId: "",
   book: null,
@@ -101,6 +102,7 @@ const COPY = {
     buyNow: "Buy Now",
     startingDirectCheckout: "Preparing secure checkout...",
     directCheckoutUnavailable: "Secure checkout is not available right now.",
+    directCheckoutFallback: "Stripe card checkout is temporarily unavailable. Redirecting you to manual proof checkout for this product.",
     openFreeProduct: "Open Free Product",
     unlockFreeContent: "Unlock Free Content",
     downloadFree: "Download Free",
@@ -217,6 +219,7 @@ const COPY = {
     buyNow: "Buy now",
     startingDirectCheckout: "Secure checkout prepare ho raha hai...",
     directCheckoutUnavailable: "Secure checkout abhi available nahin hai.",
+    directCheckoutFallback: "Stripe card checkout abhi unavailable hai. Is product ke liye aapko manual proof checkout par bheja ja raha hai.",
     openFreeProduct: "Free product kholiye",
     unlockFreeContent: "Free content unlock kijiye",
     downloadFree: "Free download",
@@ -876,6 +879,12 @@ async function startDirectStripeCheckout(bookId) {
       throw new Error(data.message || t("directCheckoutUnavailable"));
     }
 
+    if (data.checkoutMode === "manual_fallback" && data.url) {
+      persistCheckoutNotice(data.message || t("directCheckoutFallback"), "warning");
+      window.location.href = data.url;
+      return;
+    }
+
     if (data.url) {
       window.location.href = data.url;
       return;
@@ -1315,6 +1324,17 @@ function fillTemplate(template, values = {}) {
   return String(template || "").replace(/\{(\w+)\}/g, (match, key) => (
     Object.prototype.hasOwnProperty.call(values, key) ? values[key] : match
   ));
+}
+
+function persistCheckoutNotice(message, tone = "warning") {
+  try {
+    sessionStorage.setItem(CHECKOUT_NOTICE_KEY, JSON.stringify({
+      message: String(message || ""),
+      tone: String(tone || "warning"),
+    }));
+  } catch {
+    // Ignore storage failures and continue with the redirect.
+  }
 }
 
 function t(key) {

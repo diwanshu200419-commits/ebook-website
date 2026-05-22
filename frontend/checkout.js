@@ -63,6 +63,7 @@ const selectedTotalEl = document.getElementById("selectedTotal");
 const checkoutMarketBadge = document.getElementById("checkoutMarketBadge");
 const checkoutMarketMode = document.getElementById("checkoutMarketMode");
 const checkoutMarketNote = document.getElementById("checkoutMarketNote");
+const CHECKOUT_NOTICE_KEY = "ebook-market-checkout-notice";
 
 const state = {
   preferences: {
@@ -127,6 +128,7 @@ const COPY = {
     marketNoteGlobal: "Manual proof checkout is disabled for {country}. Return to cart or product page and use Stripe card checkout for global buyers.",
     manualDisabledAmount: "This buyer market uses Stripe card checkout instead of manual proof approval.",
     manualDisabledSubmit: "Manual proof checkout is not available for this buyer market.",
+    stripeFallbackNotice: "Stripe card checkout is temporarily unavailable right now, so you were redirected to manual proof checkout for this market.",
   },
   Hindi: {
     title: "Manual Checkout | E-Book Market",
@@ -181,6 +183,7 @@ const COPY = {
     marketNoteGlobal: "{country} ke liye manual proof checkout disabled hai. Cart ya product page par wapas jaakar global buyers ke liye Stripe card checkout use kijiye.",
     manualDisabledAmount: "Is buyer market me manual proof approval ke bajay Stripe card checkout use hota hai.",
     manualDisabledSubmit: "Is buyer market ke liye manual proof checkout available nahin hai.",
+    stripeFallbackNotice: "Stripe card checkout abhi temporarily unavailable hai, isliye aapko is market ke liye manual proof checkout par redirect kiya gaya hai.",
   },
 };
 
@@ -192,6 +195,7 @@ async function initCheckout() {
   await loadPreferences();
   await loadPaymentConfig();
   applyInterfaceLanguage(state.preferences.interfaceLanguage);
+  showCheckoutNotice();
   try {
     await loadBooksForCheckout();
     renderPaymentMethod();
@@ -591,6 +595,34 @@ function setStatus(message, tone = "") {
   statusEl.className = "status-message";
   if (tone) {
     statusEl.classList.add(tone);
+  }
+}
+
+function showCheckoutNotice() {
+  const stored = consumeCheckoutNotice();
+  if (stored?.message) {
+    setStatus(stored.message, stored.tone || "warning");
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const fallback = String(params.get("fallback") || "").trim().toLowerCase();
+  if (fallback.startsWith("stripe")) {
+    setStatus(t("stripeFallbackNotice"), "warning");
+  }
+}
+
+function consumeCheckoutNotice() {
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_NOTICE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    sessionStorage.removeItem(CHECKOUT_NOTICE_KEY);
+    return JSON.parse(raw || "{}");
+  } catch {
+    return null;
   }
 }
 

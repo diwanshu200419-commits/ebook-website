@@ -201,6 +201,7 @@ function initializePage() {
   updateRoyalty();
   updateProductTypeUI();
   setUploadAiProvider();
+  hydrateAiRuntime();
   if (loadLibraryCatalogBtn) {
     loadLibraryCatalog();
   }
@@ -1072,6 +1073,40 @@ function setUploadAiProvider(provider = "", model = "", context = "") {
   uploadAiProviderEl.dataset.provider = descriptor.state;
   uploadAiProviderEl.textContent = `AI provider: ${descriptor.label}`;
   uploadAiProviderMetaEl.textContent = descriptor.meta;
+}
+
+async function hydrateAiRuntime() {
+  try {
+    const response = await fetch(`${API_BASE}/api/ai/status`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to load AI status");
+    }
+
+    setUploadAiProvider(data.provider, data.model, "Studio boot");
+
+    if (data.provider === "openai") {
+      showStatus("AI studio is connected to hosted model tools for live suggestions and review checks.", "success");
+      return;
+    }
+
+    if (data.provider === "ollama") {
+      showStatus("AI studio is connected to your local Ollama model on this deployment.", "success");
+      return;
+    }
+
+    showStatus(
+      "AI studio is running in local fallback mode. Description and creator assist still work, but no hosted AI model is configured on this deployment.",
+      "info"
+    );
+  } catch (error) {
+    console.error("AI status load failed:", error);
+    setUploadAiProvider("local", "local-heuristic", "Studio boot");
+    showStatus(
+      "AI studio status could not be confirmed. You can still try the description and creator assist tools.",
+      "warning"
+    );
+  }
 }
 
 function updateButtonState(isLoading) {

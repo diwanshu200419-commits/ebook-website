@@ -54,6 +54,7 @@ const clearBtn = document.getElementById("clearBtn");
 const checkoutBtn = document.getElementById("checkoutBtn");
 const manualCheckoutBtn = document.getElementById("manualCheckoutBtn");
 const cartMessage = document.getElementById("cartMessage");
+const CHECKOUT_NOTICE_KEY = "ebook-market-checkout-notice";
 
 const state = {
   preferences: {
@@ -127,6 +128,7 @@ const COPY = {
     manualHelperDisabled: "Manual proof checkout is disabled for {country}. Use Stripe card checkout for this buyer market.",
     manualUnavailable: "Manual proof checkout is only enabled for India-first orders right now.",
     stripeUnavailable: "Stripe checkout is not configured yet.",
+    stripeFallbackRedirect: "Stripe card checkout is temporarily unavailable. Redirecting you to manual proof checkout for this order.",
   },
   Hindi: {
     title: "Cart | E-Book Market",
@@ -190,6 +192,7 @@ const COPY = {
     manualHelperDisabled: "{country} ke liye manual proof checkout disabled hai. Is buyer market ke liye Stripe card checkout use kijiye.",
     manualUnavailable: "Manual proof checkout abhi sirf India-first orders ke liye enabled hai.",
     stripeUnavailable: "Stripe checkout abhi configure nahin hai.",
+    stripeFallbackRedirect: "Stripe card checkout abhi unavailable hai. Is order ke liye aapko manual proof checkout par bheja ja raha hai.",
   },
 };
 
@@ -612,6 +615,12 @@ checkoutBtn?.addEventListener("click", async () => {
       throw new Error(data.message || t("checkoutFailedShort"));
     }
 
+    if (data.checkoutMode === "manual_fallback" && data.url) {
+      persistCheckoutNotice(data.message || t("stripeFallbackRedirect"), "warning");
+      window.location.href = data.url;
+      return;
+    }
+
     if (!data.url) {
       setStatus(data.message || t("noPayableItems"), "warning");
       return;
@@ -657,6 +666,17 @@ function getAuthHeaders(extra = {}) {
     ...extra,
     Authorization: `Bearer ${token}`,
   };
+}
+
+function persistCheckoutNotice(message, tone = "warning") {
+  try {
+    sessionStorage.setItem(CHECKOUT_NOTICE_KEY, JSON.stringify({
+      message: String(message || ""),
+      tone: String(tone || "warning"),
+    }));
+  } catch {
+    // Ignore storage failures and continue with the redirect.
+  }
 }
 
 function t(key) {

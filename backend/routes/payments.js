@@ -70,6 +70,67 @@ function buildFrontendPageUrl(pageName) {
   }
 }
 
+function buildManualCheckoutUrl({ bookId = "", reason = "stripe" } = {}) {
+  const checkoutUrl = buildFrontendPageUrl("checkout.html");
+  if (!checkoutUrl) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(checkoutUrl);
+    if (bookId) {
+      parsed.searchParams.set("bookId", String(bookId));
+    }
+    if (reason) {
+      parsed.searchParams.set("fallback", String(reason));
+    }
+    return parsed.toString();
+  } catch {
+    const params = [];
+    if (bookId) {
+      params.push(`bookId=${encodeURIComponent(String(bookId))}`);
+    }
+    if (reason) {
+      params.push(`fallback=${encodeURIComponent(String(reason))}`);
+    }
+    return params.length ? `${checkoutUrl}?${params.join("&")}` : checkoutUrl;
+  }
+}
+
+function buildManualFallbackPayload({
+  market,
+  bookId = "",
+  scope = "single",
+} = {}) {
+  if (!market?.manualCheckoutEnabled) {
+    return null;
+  }
+
+  const url = buildManualCheckoutUrl({
+    bookId,
+    reason: scope === "cart" ? "stripe_cart" : "stripe_single",
+  });
+  if (!url) {
+    return null;
+  }
+
+  return {
+    success: true,
+    checkoutMode: "manual_fallback",
+    fallback: {
+      type: "manual_checkout",
+      reason: "stripe_temporarily_unavailable",
+      marketCountry: market.countryCode || "IN",
+      marketCurrency: market.currency || "INR",
+    },
+    url,
+    message:
+      scope === "cart"
+        ? "Stripe card checkout is temporarily unavailable. Continue with manual proof checkout for this order."
+        : "Stripe card checkout is temporarily unavailable. Continue with manual proof checkout for this product.",
+  };
+}
+
 function createPaymentUploader() {
   return multer({
     storage: multer.diskStorage({
@@ -496,13 +557,6 @@ router.post("/create-checkout", protect, async (req, res) => {
   try {
     const { bookId, country, currency } = req.body;
 
-    if (!hasStripeEnabled()) {
-      return res.status(503).json({
-        success: false,
-        message: "Stripe checkout is not configured yet",
-      });
-    }
-
     if (!mongoose.Types.ObjectId.isValid(bookId)) {
       return res.status(400).json({ success: false, message: "Invalid bookId" });
     }
@@ -528,6 +582,22 @@ router.post("/create-checkout", protect, async (req, res) => {
     const successUrl = buildFrontendPageUrl("success.html");
     const cancelUrl = buildFrontendPageUrl("cancel.html");
     const checkoutAmount = buildCheckoutAmount(book.price, { country, currency });
+    const manualFallback = buildManualFallbackPayload({
+      market: checkoutAmount.market,
+      bookId: book._id,
+      scope: "single",
+    });
+
+    if (!hasStripeEnabled()) {
+      if (manualFallback) {
+        return res.json(manualFallback);
+      }
+
+      return res.status(503).json({
+        success: false,
+        message: "Stripe checkout is not configured yet",
+      });
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -562,6 +632,24 @@ router.post("/create-checkout", protect, async (req, res) => {
     return res.json({ success: true, url: session.url });
   } catch (error) {
     console.error("Stripe Checkout Error:", error.message);
+    const bookId = req.body?.bookId;
+    if (mongoose.Types.ObjectId.isValid(bookId)) {
+      const book = await Book.findById(bookId).select("_id price");
+      if (book) {
+        const checkoutAmount = buildCheckoutAmount(book.price, {
+          country: req.body?.country,
+          currency: req.body?.currency,
+        });
+        const manualFallback = buildManualFallbackPayload({
+          market: checkoutAmount.market,
+          bookId: book._id,
+          scope: "single",
+        });
+        if (manualFallback) {
+          return res.status(200).json(manualFallback);
+        }
+      }
+    }
     return res.status(500).json({ success: false, message: "Stripe checkout failed" });
   }
 });
@@ -571,13 +659,6 @@ router.post("/create-checkout", protect, async (req, res) => {
 ===================================== */
 router.post("/create-checkout-cart", protect, async (req, res) => {
   try {
-    if (!hasStripeEnabled()) {
-      return res.status(503).json({
-        success: false,
-        message: "Stripe checkout is not configured yet",
-      });
-    }
-
     const inputBookIds = Array.isArray(req.body.bookIds) ? req.body.bookIds : [];
     if (!inputBookIds.length) {
       return res.status(400).json({ success: false, message: "No books selected" });
@@ -616,6 +697,22 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
       currency: req.body?.currency,
     };
     const marketSnapshot = buildCheckoutAmount(payableBooks[0]?.price || 0, checkoutSelection).market;
+    const manualFallback = buildManualFallbackPayload({
+      market: marketSnapshot,
+      scope: "cart",
+    });
+
+    if (!hasStripeEnabled()) {
+      if (manualFallback) {
+        return res.json(manualFallback);
+      }
+
+      return res.status(503).json({
+        success: false,
+        message: "Stripe checkout is not configured yet",
+      });
+    }
+
     const lineItems = payableBooks.map((book) => {
       const amount = buildCheckoutAmount(book.price, checkoutSelection);
       return ({
@@ -659,6 +756,31 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
     return res.json({ success: true, url: session.url });
   } catch (error) {
     console.error("Stripe Cart Checkout Error:", error.message);
+    const fallbackBookIds = Array.isArray(req.body?.bookIds)
+      ? req.body.bookIds.filter((id) => mongoose.Types.ObjectId.isValid(id))
+      : [];
+    if (fallbackBookIds.length) {
+      const sampleBook = await Book.findOne({
+        _id: { $in: fallbackBookIds },
+        status: "Approved",
+        isPaid: true,
+        isArchived: { $ne: true },
+      }).select("price");
+
+      if (sampleBook) {
+        const marketSnapshot = buildCheckoutAmount(sampleBook.price || 0, {
+          country: req.body?.country,
+          currency: req.body?.currency,
+        }).market;
+        const manualFallback = buildManualFallbackPayload({
+          market: marketSnapshot,
+          scope: "cart",
+        });
+        if (manualFallback) {
+          return res.status(200).json(manualFallback);
+        }
+      }
+    }
     return res.status(500).json({ success: false, message: "Stripe checkout failed" });
   }
 });
