@@ -761,6 +761,16 @@ function renderReviews(payload = {}) {
 
 function renderFallback(message) {
   document.title = t("documentTitle");
+  if (typeof window.applySeo === "function") {
+    window.applySeo({
+      title: "Product unavailable | E-Book Market",
+      description: String(message || t("errorLoadingBook")),
+      path: `/book_view.html${window.location.search || ""}`,
+      type: "website",
+      noindex: true,
+      jsonLd: null,
+    });
+  }
   document.getElementById("bookTitle").textContent = t("productUnavailable");
   document.getElementById("bookMeta").textContent = t("marketplaceProduct");
   document.getElementById("bookPrice").textContent = "";
@@ -789,6 +799,41 @@ function renderFallback(message) {
 function renderManualBook() {
   const pdfPath = "assets/books/I-Tried-8-Different-AI-Side-Hustles-for-Students-Heres-Which-Ones-Actually-Pay.pdf";
   document.title = `Side Hustles for Students | E-Book Market`;
+  if (typeof window.applySeo === "function") {
+    window.applySeo({
+      title: "Side Hustles for Students | E-Book Market",
+      description: "Read the official free demo book on E-Book Market and experience the digital product preview flow.",
+      path: "/book_view.html",
+      type: "product",
+      image: "assets/covers/Ebook_AI.png",
+      keywords: [
+        "free ebook preview",
+        "student side hustle ebook",
+        "digital product demo",
+        "ebook marketplace preview",
+      ],
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "Book",
+        name: "Side Hustles for Students",
+        description: "Official free preview title for the E-Book Market storefront demo.",
+        image: [
+          typeof window.buildSeoAbsoluteUrl === "function"
+            ? window.buildSeoAbsoluteUrl("assets/covers/Ebook_AI.png")
+            : "assets/covers/Ebook_AI.png",
+        ],
+        url: typeof window.buildSeoAbsoluteUrl === "function"
+          ? window.buildSeoAbsoluteUrl("/book_view.html")
+          : "/book_view.html",
+        inLanguage: "en-IN",
+        isAccessibleForFree: true,
+        author: {
+          "@type": "Organization",
+          name: "E-Book Market",
+        },
+      },
+    });
+  }
   document.getElementById("bookTitle").textContent = "Side Hustles for Students";
   document.getElementById("bookMeta").textContent = t("demoMeta");
   document.getElementById("bookPrice").textContent = t("free");
@@ -1278,6 +1323,7 @@ async function loadBookView() {
       ? `${data.book.title} | E-Book Market`
       : t("documentTitle");
 
+    applyBookSeo(data.book);
     renderBook(data.book, data.access || {});
     await Promise.allSettled([
       loadReviews(bookId),
@@ -1335,6 +1381,94 @@ function persistCheckoutNotice(message, tone = "warning") {
   } catch {
     // Ignore storage failures and continue with the redirect.
   }
+}
+
+function formatSeoPrice(value) {
+  return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+function buildBookSeoDescription(book) {
+  const summary = String(book.description || "").trim();
+  if (summary) {
+    return summary;
+  }
+
+  const author = book.authorName || book.bookAuthor || "creator";
+  const category = book.category || "digital product";
+  const priceCopy = Number(book.price || 0) > 0
+    ? `Buy for ${formatSeoPrice(book.price)}.`
+    : "Free access available.";
+
+  return `${book.title || "Digital product"} by ${author} in ${category}. ${priceCopy}`;
+}
+
+function applyBookSeo(book) {
+  if (typeof window.applySeo !== "function" || !book) {
+    return;
+  }
+
+  const bookId = String(book._id || book.id || "").trim();
+  const canonicalPath = bookId
+    ? `/book_view.html?id=${encodeURIComponent(bookId)}`
+    : "/book_view.html";
+  const description = buildBookSeoDescription(book);
+  const cover = resolveAssetUrl(book.coverUrl || book.coverImage || "assets/covers/Ebook_AI.png");
+  const priceValue = Number(book.price || 0);
+  const isPaid = priceValue > 0;
+  const authorName = book.authorName || book.bookAuthor || "Creator";
+  const absoluteCanonical = typeof window.buildSeoAbsoluteUrl === "function"
+    ? window.buildSeoAbsoluteUrl(canonicalPath)
+    : canonicalPath;
+  const absoluteCover = typeof window.buildSeoAbsoluteUrl === "function"
+    ? window.buildSeoAbsoluteUrl(cover)
+    : cover;
+  const schemaType = String(book.type || "Book").toLowerCase() === "book" ? "Book" : "Product";
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": schemaType,
+    name: book.title || "Digital product",
+    description: description,
+    image: absoluteCover ? [absoluteCover] : undefined,
+    url: absoluteCanonical,
+    inLanguage: book.language || "en-IN",
+    genre: book.category || undefined,
+    author: {
+      "@type": "Person",
+      name: authorName,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "E-Book Market",
+    },
+  };
+
+  if (isPaid) {
+    jsonLd.offers = {
+      "@type": "Offer",
+      priceCurrency: "INR",
+      price: priceValue,
+      availability: "https://schema.org/InStock",
+      url: absoluteCanonical,
+    };
+  } else {
+    jsonLd.isAccessibleForFree = true;
+  }
+
+  window.applySeo({
+    title: `${book.title || "Digital product"} | E-Book Market`,
+    description: description,
+    path: canonicalPath,
+    type: "product",
+    image: cover,
+    keywords: [
+      book.category || "digital product",
+      book.type || "ebook",
+      authorName,
+      "creator marketplace",
+      "digital download",
+    ],
+    jsonLd: jsonLd,
+  });
 }
 
 function t(key) {

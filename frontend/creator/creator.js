@@ -71,6 +71,20 @@ async function initCreatorPage() {
   state.username = (queryUsername || state.currentUser?.username || "").trim().toLowerCase();
 
   if (!state.username) {
+    if (typeof window.applySeo === "function") {
+      window.applySeo({
+        title: "Creators | E-Book Market",
+        description: "Discover trending creators, knowledge sellers, and digital product publishers on E-Book Market.",
+        path: "/creator/creator.html",
+        type: "profile",
+        keywords: [
+          "creators marketplace",
+          "digital creators",
+          "knowledge sellers",
+          "student creators",
+        ],
+      });
+    }
     await loadTrendingCreators();
     if (elements.trendingCreators.children.length) {
       showState("Choose a creator", "Open any trending creator card below to explore a real profile with live books and analytics.");
@@ -168,6 +182,16 @@ async function loadCreatorProfile(username) {
     hideState();
   } catch (error) {
     console.error("Creator profile load failed:", error);
+    if (typeof window.applySeo === "function") {
+      window.applySeo({
+        title: "Creator profile unavailable | E-Book Market",
+        description: error.message || "We could not load this creator profile right now.",
+        path: `/creator/creator.html?username=${encodeURIComponent(username)}`,
+        type: "website",
+        noindex: true,
+        jsonLd: null,
+      });
+    }
     showState("Creator profile unavailable", error.message || "We could not load this creator right now.");
   }
 }
@@ -226,6 +250,7 @@ function renderProfile(payload) {
 
   elements.followersBadge.textContent = formatCompactNumber(analytics.followersCount || 0);
   elements.followingBadge.textContent = formatCompactNumber(analytics.followingCount || 0);
+  applyCreatorSeo(payload);
 }
 
 function renderProfileActions(creator, relationship) {
@@ -589,6 +614,73 @@ function animateCurrency(element, endValue) {
 
 function easeOut(value) {
   return 1 - Math.pow(1 - value, 3);
+}
+
+function applyCreatorSeo(payload) {
+  if (typeof window.applySeo !== "function") {
+    return;
+  }
+
+  const creator = payload?.creator || {};
+  const analytics = payload?.analytics || creator.stats || {};
+  const username = String(creator.username || state.username || "").trim();
+  const canonicalPath = username
+    ? `/creator/creator.html?username=${encodeURIComponent(username)}`
+    : "/creator/creator.html";
+  const description = String(
+    creator.bio ||
+    creator.about ||
+    `Explore ${creator.name || "this creator"} on E-Book Market and browse live digital products, sales proof, and creator metrics.`
+  ).trim();
+  const image = resolveAssetUrl(creator.avatarUrl || creator.avatar || FALLBACK_AVATAR, FALLBACK_AVATAR);
+  const absoluteCanonical = typeof window.buildSeoAbsoluteUrl === "function"
+    ? window.buildSeoAbsoluteUrl(canonicalPath)
+    : canonicalPath;
+  const absoluteImage = typeof window.buildSeoAbsoluteUrl === "function"
+    ? window.buildSeoAbsoluteUrl(image)
+    : image;
+  const sameAs = [];
+  const website = String(creator.website || "").trim();
+  if (/^https?:\/\//i.test(website)) {
+    sameAs.push(website);
+  }
+
+  Object.values(creator.socialLinks || {}).forEach((value) => {
+    var link = String(value || "").trim();
+    if (/^https?:\/\//i.test(link)) {
+      sameAs.push(link);
+    }
+  });
+
+  window.applySeo({
+    title: `${creator.name || "Creator"} | Creator on E-Book Market`,
+    description: description,
+    path: canonicalPath,
+    type: "profile",
+    image: image,
+    keywords: [
+      creator.badge || "creator",
+      creator.role || "digital creator",
+      creator.creatorCategories?.join(", ") || "knowledge products",
+      `${analytics.totalBooks || 0} books`,
+      "creator marketplace profile",
+    ],
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: creator.name || "Creator",
+      description: description,
+      url: absoluteCanonical,
+      image: absoluteImage || undefined,
+      identifier: username || undefined,
+      jobTitle: creator.badge || "Creator",
+      sameAs: sameAs.length ? sameAs : undefined,
+      worksFor: {
+        "@type": "Organization",
+        name: "E-Book Market",
+      },
+    },
+  });
 }
 
 function resolveAssetUrl(value, fallback = "") {

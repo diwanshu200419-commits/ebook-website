@@ -1,0 +1,21 @@
+{
+  "name": "E-Book Market",
+  "short_name": "E-Book Market",
+  "description": "AI-powered creator marketplace for ebooks, notes, prompts, templates, and digital products.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050816",
+  "theme_color": "#050816",
+  "icons": [
+    {
+      "src": "/assets/default-avatar.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/default-avatar.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

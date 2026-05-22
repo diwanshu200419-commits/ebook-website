@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /login.html
+Disallow: /register.html
+Disallow: /cancel.html
+Disallow: /success.html
+Disallow: /ai/login.html
+Disallow: /api/
+
+Sitemap: https://ebook-website-theta-nine.vercel.app/sitemap.xml
