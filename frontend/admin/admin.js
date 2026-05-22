@@ -9,6 +9,22 @@ const navLinks = document.querySelectorAll(".sidebar-nav a");
 const sections = document.querySelectorAll(".admin-section");
 const pageTitle = document.getElementById("pageTitle");
 const pageSub = document.getElementById("pageSub");
+const overviewStats = document.getElementById("overviewStats");
+const overviewOpsBoard = document.getElementById("overviewOpsBoard");
+const overviewLaunchBoard = document.getElementById("overviewLaunchBoard");
+const overviewActivityFeed = document.getElementById("overviewActivityFeed");
+const headerStatusBadge = document.getElementById("headerStatusBadge");
+const headerSyncTime = document.getElementById("headerSyncTime");
+const refreshAdminBtn = document.getElementById("refreshAdminBtn");
+const navReviewCount = document.getElementById("navReviewCount");
+const navCreatorsCount = document.getElementById("navCreatorsCount");
+const navPayoutsCount = document.getElementById("navPayoutsCount");
+const navAiCount = document.getElementById("navAiCount");
+const navReportsCount = document.getElementById("navReportsCount");
+const adminIdentityName = document.getElementById("adminIdentityName");
+const adminIdentityMeta = document.getElementById("adminIdentityMeta");
+const adminIdentityAvatar = document.querySelector(".identity-avatar");
+const jumpButtons = document.querySelectorAll("[data-jump-target]");
 const contentList = document.getElementById("contentList");
 const reviewReportList = document.getElementById("reviewReportList");
 const approvedList = document.getElementById("approvedList");
@@ -46,8 +62,24 @@ const crmLabStatus = document.getElementById("crmLabStatus");
 const crmLabPreview = document.getElementById("crmLabPreview");
 const crmLabRunResult = document.getElementById("crmLabRunResult");
 let lifecycleLabConfig = null;
+let activeSection = "overview";
+const adminState = {
+  lastSyncedAt: null,
+  flaggedBooksCount: 0,
+  reviewReportsCount: 0,
+  pendingPaymentGroupsCount: 0,
+  actionableWithdrawCount: 0,
+  pendingVerificationsCount: 0,
+  aiHighRiskCount: 0,
+  aiManualReviewCount: 0,
+  reportsHotCount: 0,
+};
 
 const HEADERS = {
+  overview: {
+    title: "Command Center",
+    sub: "Run moderation, creator growth, treasury, lifecycle experiments, and launch readiness from one founder-grade operating surface.",
+  },
   review: {
     title: "Pending Content Review",
     sub: "Review quality, originality & monetization potential",
@@ -79,37 +111,328 @@ const HEADERS = {
 };
 
 navLinks.forEach((link) => {
-  link.addEventListener("click", () => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
     const target = link.dataset.target;
-
-    navLinks.forEach((l) => l.classList.remove("active"));
-    link.classList.add("active");
-
-    sections.forEach((s) => s.classList.remove("active"));
-    const targetSection = document.getElementById(target);
-    if (targetSection) targetSection.classList.add("active");
-
-    pageTitle.textContent = HEADERS[target]?.title || "Admin";
-    pageSub.textContent = HEADERS[target]?.sub || "";
-
-    if (target === "review") {
-      loadPendingBooks();
-      loadReviewReports();
+    if (target) {
+      switchSection(target);
     }
-    if (target === "approved") loadApprovedBooks();
-    if (target === "creators") loadCreatorsHub();
-    if (target === "payouts") {
-      loadPendingPayments();
-      loadWithdrawRequests();
+  });
+});
+
+jumpButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = button.getAttribute("data-jump-target");
+    if (target) {
+      switchSection(target);
     }
-    if (target === "ai") loadAIOverview();
-    if (target === "reports") loadReportsOverview();
   });
 });
 
 crmLabPreviewBtn?.addEventListener("click", previewLifecycleExperiment);
 crmLabRunBtn?.addEventListener("click", runLifecycleExperiment);
 captureLifecycleSnapshotBtn?.addEventListener("click", captureLifecycleSnapshot);
+refreshAdminBtn?.addEventListener("click", refreshActiveSection);
+
+function parseStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.warn("Failed to parse stored user:", error.message);
+    return null;
+  }
+}
+
+function syncAdminIdentity() {
+  const user = parseStoredUser() || {};
+  const displayName = user.name || user.username || "Admin";
+  const secondary = user.email || user.role || "Marketplace operator";
+  const avatarSource = String(displayName || "A").trim().charAt(0).toUpperCase() || "A";
+
+  if (adminIdentityName) {
+    adminIdentityName.textContent = displayName;
+  }
+  if (adminIdentityMeta) {
+    adminIdentityMeta.textContent = secondary;
+  }
+  if (adminIdentityAvatar) {
+    adminIdentityAvatar.textContent = avatarSource;
+  }
+}
+
+function updateHeader(target) {
+  pageTitle.textContent = HEADERS[target]?.title || "Admin";
+  pageSub.textContent = HEADERS[target]?.sub || "";
+}
+
+function setActiveNav(target) {
+  navLinks.forEach((link) => {
+    link.classList.toggle("active", link.dataset.target === target);
+  });
+}
+
+function setActiveSection(target) {
+  sections.forEach((section) => {
+    section.classList.toggle("active", section.id === target);
+  });
+}
+
+function resolveInitialSection() {
+  const requested = String(window.location.hash || "").replace(/^#/, "").trim();
+  return requested && document.getElementById(requested) ? requested : "overview";
+}
+
+async function switchSection(target) {
+  const safeTarget = document.getElementById(target) ? target : "overview";
+  activeSection = safeTarget;
+  setActiveNav(safeTarget);
+  setActiveSection(safeTarget);
+  updateHeader(safeTarget);
+  if (window.location.hash !== `#${safeTarget}`) {
+    history.replaceState(null, "", `#${safeTarget}`);
+  }
+  await loadSectionData(safeTarget);
+}
+
+async function loadSectionData(target) {
+  if (target === "overview") {
+    await loadCommandCenter();
+    return;
+  }
+
+  if (target === "review") {
+    await Promise.all([loadPendingBooks(), loadReviewReports()]);
+    return;
+  }
+
+  if (target === "approved") {
+    await loadApprovedBooks();
+    return;
+  }
+
+  if (target === "creators") {
+    await loadCreatorsHub();
+    return;
+  }
+
+  if (target === "payouts") {
+    await Promise.all([loadPendingPayments(), loadWithdrawRequests()]);
+    return;
+  }
+
+  if (target === "ai") {
+    await loadAIOverview();
+    return;
+  }
+
+  if (target === "reports") {
+    await loadReportsOverview();
+  }
+}
+
+async function refreshActiveSection() {
+  if (refreshAdminBtn) {
+    refreshAdminBtn.disabled = true;
+    refreshAdminBtn.textContent = "Refreshing...";
+  }
+
+  try {
+    await loadSectionData(activeSection);
+  } finally {
+    if (refreshAdminBtn) {
+      refreshAdminBtn.disabled = false;
+      refreshAdminBtn.textContent = "Refresh Data";
+    }
+  }
+}
+
+function markAdminSynced() {
+  adminState.lastSyncedAt = new Date();
+  if (headerSyncTime) {
+    headerSyncTime.textContent = `Synced ${adminState.lastSyncedAt.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
+  }
+}
+
+function setHeaderStatus(label, tone = "live") {
+  if (!headerStatusBadge) {
+    return;
+  }
+
+  headerStatusBadge.textContent = label;
+  headerStatusBadge.className = `status-chip ${tone}`;
+}
+
+function updateNavCounts() {
+  if (navReviewCount) {
+    navReviewCount.textContent = String(adminState.flaggedBooksCount + adminState.reviewReportsCount);
+  }
+  if (navCreatorsCount) {
+    navCreatorsCount.textContent = String(adminState.pendingVerificationsCount);
+  }
+  if (navPayoutsCount) {
+    navPayoutsCount.textContent = String(adminState.pendingPaymentGroupsCount + adminState.actionableWithdrawCount);
+  }
+  if (navAiCount) {
+    navAiCount.textContent = String(adminState.aiHighRiskCount + adminState.aiManualReviewCount);
+  }
+  if (navReportsCount) {
+    navReportsCount.textContent = adminState.reportsHotCount > 0
+      ? String(adminState.reportsHotCount)
+      : "Live";
+  }
+}
+
+function updateGlobalHealthStatus(launchReadiness = {}) {
+  const launchBlockers = Number(launchReadiness.blockerCount || 0);
+  const launchWarnings = Number(launchReadiness.warningCount || 0);
+  const queuePressure = adminState.flaggedBooksCount
+    + adminState.reviewReportsCount
+    + adminState.pendingPaymentGroupsCount
+    + adminState.actionableWithdrawCount
+    + adminState.pendingVerificationsCount;
+  const aiPressure = adminState.aiHighRiskCount + adminState.aiManualReviewCount;
+
+  if (launchBlockers > 0 || aiPressure >= 10) {
+    setHeaderStatus("Blockers Live", "blocked");
+    return;
+  }
+
+  if (launchWarnings > 0 || queuePressure > 0 || aiPressure > 0) {
+    setHeaderStatus("Attention Needed", "warning");
+    return;
+  }
+
+  setHeaderStatus("Live Ops", "live");
+}
+
+async function adminFetchJson(path) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `Request failed: ${path}`);
+  }
+  return data;
+}
+
+function renderCommandCenterLoading() {
+  if (overviewStats) {
+    overviewStats.innerHTML = Array.from({ length: 6 }, () => `
+      <article class="stat-card">
+        <h3>Loading</h3>
+        <p>...</p>
+      </article>
+    `).join("");
+  }
+
+  if (overviewOpsBoard) {
+    overviewOpsBoard.innerHTML = Array.from({ length: 4 }, () => `
+      <article class="priority-card">
+        <div class="priority-meta">
+          <span class="priority-value">...</span>
+          <span class="priority-tone attention">Syncing</span>
+        </div>
+        <h3>Loading priority</h3>
+        <p>Pulling live admin queues and marketplace operations.</p>
+      </article>
+    `).join("");
+  }
+
+  if (overviewLaunchBoard) {
+    overviewLaunchBoard.innerHTML = `
+      <div class="empty-state">
+        <p>Loading launch readiness and deployment signals...</p>
+      </div>
+    `;
+  }
+
+  if (overviewActivityFeed) {
+    overviewActivityFeed.innerHTML = `
+      <div class="empty-state">
+        <p>Loading the latest marketplace activity...</p>
+      </div>
+    `;
+  }
+}
+
+async function loadCommandCenter() {
+  renderCommandCenterLoading();
+
+  const [
+    analyticsResult,
+    creatorsResult,
+    flaggedResult,
+    reportsResult,
+    paymentsResult,
+    withdrawalsResult,
+    aiResult,
+  ] = await Promise.allSettled([
+    adminFetchJson("/api/admin/analytics"),
+    adminFetchJson("/api/admin/creators/overview"),
+    adminFetchJson("/api/admin/books/flagged"),
+    adminFetchJson("/api/admin/review-reports"),
+    adminFetchJson("/api/payments/pending"),
+    adminFetchJson("/api/admin/withdrawals"),
+    adminFetchJson("/api/ai/admin/overview"),
+  ]);
+
+  const analyticsData = analyticsResult.status === "fulfilled" ? analyticsResult.value : {};
+  const creatorsData = creatorsResult.status === "fulfilled" ? creatorsResult.value : {};
+  const flaggedData = flaggedResult.status === "fulfilled" ? flaggedResult.value : {};
+  const reportsData = reportsResult.status === "fulfilled" ? reportsResult.value : {};
+  const paymentsData = paymentsResult.status === "fulfilled" ? paymentsResult.value : {};
+  const withdrawalsData = withdrawalsResult.status === "fulfilled" ? withdrawalsResult.value : {};
+  const aiData = aiResult.status === "fulfilled" ? aiResult.value : {};
+
+  const commandCenter = {
+    analytics: analyticsData.analytics || {},
+    launchReadiness: analyticsData.launchReadiness || {},
+    topProducts: analyticsData.topProducts || [],
+    campaignAnalytics: analyticsData.campaignAnalytics || {},
+    lifecycleStrategies: analyticsData.lifecycleStrategies || [],
+    lifecycleSnapshots: analyticsData.lifecycleSnapshots || [],
+    creatorsSummary: creatorsData.summary || {},
+    verificationRequests: creatorsData.verificationRequests || [],
+    topReferrers: creatorsData.topReferrers || [],
+    flaggedBooks: flaggedData.books || [],
+    reviewReports: reportsData.reports || [],
+    pendingPayments: paymentsData.payments || [],
+    paymentGroups: groupPendingPayments(paymentsData.payments || []),
+    withdrawals: withdrawalsData.withdrawals || [],
+    withdrawalSummary: withdrawalsData.summary || {},
+    aiSummary: aiData.summary || {},
+    aiFlagged: aiData.topFlagged || [],
+    fetchErrors: [
+      analyticsResult,
+      creatorsResult,
+      flaggedResult,
+      reportsResult,
+      paymentsResult,
+      withdrawalsResult,
+      aiResult,
+    ].filter((entry) => entry.status === "rejected").length,
+  };
+
+  adminState.flaggedBooksCount = commandCenter.flaggedBooks.length;
+  adminState.reviewReportsCount = commandCenter.reviewReports.length;
+  adminState.pendingPaymentGroupsCount = commandCenter.paymentGroups.length;
+  adminState.actionableWithdrawCount = commandCenter.withdrawals.filter((item) => ["pending", "approved"].includes(String(item.status || "").toLowerCase())).length;
+  adminState.pendingVerificationsCount = Number(commandCenter.creatorsSummary.pendingVerifications || 0);
+  adminState.aiHighRiskCount = Number(commandCenter.aiSummary.highRisk || 0);
+  adminState.aiManualReviewCount = Number(commandCenter.aiSummary.manualReview || 0);
+  adminState.reportsHotCount = Array.isArray(commandCenter.campaignAnalytics?.experimentInsights?.winners)
+    ? commandCenter.campaignAnalytics.experimentInsights.winners.length
+    : 0;
+
+  updateNavCounts();
+  updateGlobalHealthStatus(commandCenter.launchReadiness);
+  renderCommandCenter(commandCenter);
+  markAdminSynced();
+}
 
 async function loadPendingBooks() {
   try {
@@ -118,7 +441,11 @@ async function loadPendingBooks() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
-    renderPending(data.books || []);
+    const books = data.books || [];
+    adminState.flaggedBooksCount = books.length;
+    updateNavCounts();
+    renderPending(books);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     contentList.innerHTML = "<p>Failed to load pending books</p>";
@@ -133,6 +460,7 @@ async function loadApprovedBooks() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     renderApproved(data.books || []);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     approvedList.innerHTML = "<p>Failed to load approved books</p>";
@@ -146,7 +474,11 @@ async function loadReviewReports() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to load review reports");
-    renderReviewReports(data.reports || []);
+    const reports = data.reports || [];
+    adminState.reviewReportsCount = reports.length;
+    updateNavCounts();
+    renderReviewReports(reports);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     reviewReportList.innerHTML = "<p>Failed to load reported reviews</p>";
@@ -160,7 +492,11 @@ async function loadPendingPayments() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to load payments");
-    renderPendingPayments(data.payments || []);
+    const payments = data.payments || [];
+    adminState.pendingPaymentGroupsCount = groupPendingPayments(payments).length;
+    updateNavCounts();
+    renderPendingPayments(payments);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     paymentReviewList.innerHTML = "<p>Failed to load pending payments</p>";
@@ -174,7 +510,11 @@ async function loadWithdrawRequests() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to load withdrawals");
-    renderWithdrawRequests(data.withdrawals || []);
+    const withdrawals = data.withdrawals || [];
+    adminState.actionableWithdrawCount = withdrawals.filter((item) => ["pending", "approved"].includes(String(item.status || "").toLowerCase())).length;
+    updateNavCounts();
+    renderWithdrawRequests(withdrawals);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     withdrawRequestList.innerHTML = "<p>Failed to load withdrawal requests</p>";
@@ -188,9 +528,12 @@ async function loadCreatorsHub() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Failed to load creator operations");
+    adminState.pendingVerificationsCount = Number(data.summary?.pendingVerifications || 0);
+    updateNavCounts();
     renderCreatorOverview(data.summary || {});
     renderVerificationRequests(data.verificationRequests || []);
     renderReferralLeaderboard(data.topReferrers || []);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     creatorOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
@@ -217,6 +560,12 @@ async function loadReportsOverview() {
       data.lifecycleStrategies || [],
       data.lifecycleSnapshots || []
     );
+    adminState.reportsHotCount = Array.isArray(data.campaignAnalytics?.experimentInsights?.winners)
+      ? data.campaignAnalytics.experimentInsights.winners.length
+      : 0;
+    updateNavCounts();
+    updateGlobalHealthStatus(data.launchReadiness || {});
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     reportsOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
@@ -252,6 +601,290 @@ async function loadLifecycleExperimentConfig() {
   lifecycleLabConfig = data;
   renderLifecycleLabConfig(data);
   return lifecycleLabConfig;
+}
+
+function renderCommandCenter(commandCenter) {
+  renderOverviewStats(commandCenter);
+  renderOverviewPriorityBoard(commandCenter);
+  renderOverviewLaunchBoard(commandCenter);
+  renderOverviewActivityFeed(commandCenter);
+}
+
+function renderOverviewStats(commandCenter) {
+  if (!overviewStats) {
+    return;
+  }
+
+  const analytics = commandCenter.analytics || {};
+  const launchReadiness = commandCenter.launchReadiness || {};
+  const crmSummary = commandCenter.campaignAnalytics?.summary || {};
+  const actionQueues = adminState.flaggedBooksCount
+    + adminState.reviewReportsCount
+    + adminState.pendingPaymentGroupsCount
+    + adminState.actionableWithdrawCount
+    + adminState.pendingVerificationsCount;
+
+  overviewStats.innerHTML = [
+    { label: "Platform GMV", value: formatCurrency(analytics.totalGmv || 0) },
+    { label: "Platform Revenue", value: formatCurrency(analytics.totalRevenue || 0) },
+    { label: "Active Creators", value: Number(analytics.activeCreators || 0).toLocaleString("en-IN") },
+    { label: "Approved Catalog", value: Number(analytics.approvedBooks || 0).toLocaleString("en-IN") },
+    { label: "Action Queues", value: Number(actionQueues || 0).toLocaleString("en-IN") },
+    {
+      label: "Launch Health",
+      value: launchReadiness.overallStatus
+        ? formatReadinessStatus(launchReadiness.overallStatus)
+        : `${Number(crmSummary.conversionRate || 0).toFixed(1)}% CRM CVR`,
+    },
+  ].map((card) => `
+    <article class="stat-card">
+      <h3>${escapeHTML(card.label)}</h3>
+      <p>${escapeHTML(card.value)}</p>
+    </article>
+  `).join("");
+}
+
+function resolvePriorityTone(value, warningThreshold, criticalThreshold) {
+  const numericValue = Number(value || 0);
+  if (numericValue >= criticalThreshold) {
+    return "critical";
+  }
+  if (numericValue >= warningThreshold) {
+    return "attention";
+  }
+  return "healthy";
+}
+
+function renderOverviewPriorityBoard(commandCenter) {
+  if (!overviewOpsBoard) {
+    return;
+  }
+
+  const launchReadiness = commandCenter.launchReadiness || {};
+  const crmSummary = commandCenter.campaignAnalytics?.summary || {};
+  const priorityCards = [
+    {
+      title: "Moderation Queue",
+      value: adminState.flaggedBooksCount + adminState.reviewReportsCount,
+      tone: resolvePriorityTone(adminState.flaggedBooksCount + adminState.reviewReportsCount, 1, 6),
+      description: `${adminState.flaggedBooksCount} AI-flagged products and ${adminState.reviewReportsCount} reported reviews waiting for action.`,
+      actionLabel: "Open review",
+      target: "review",
+    },
+    {
+      title: "Payout Ops",
+      value: adminState.pendingPaymentGroupsCount + adminState.actionableWithdrawCount,
+      tone: resolvePriorityTone(adminState.pendingPaymentGroupsCount + adminState.actionableWithdrawCount, 1, 5),
+      description: `${adminState.pendingPaymentGroupsCount} buyer proofs and ${adminState.actionableWithdrawCount} creator treasury actions are still open.`,
+      actionLabel: "Resolve payouts",
+      target: "payouts",
+    },
+    {
+      title: "Creator Trust",
+      value: adminState.pendingVerificationsCount,
+      tone: resolvePriorityTone(adminState.pendingVerificationsCount, 1, 4),
+      description: `${adminState.pendingVerificationsCount} creators are waiting for verification review or follow-up.`,
+      actionLabel: "Review creators",
+      target: "creators",
+    },
+    {
+      title: "AI Risk",
+      value: adminState.aiHighRiskCount + adminState.aiManualReviewCount,
+      tone: resolvePriorityTone(adminState.aiHighRiskCount + adminState.aiManualReviewCount, 1, 6),
+      description: `${adminState.aiHighRiskCount} high-risk products and ${adminState.aiManualReviewCount} manual-review cases need monitoring.`,
+      actionLabel: "Inspect AI",
+      target: "ai",
+    },
+    {
+      title: "Growth Engine",
+      value: formatCurrency(crmSummary.recoveredGmv || 0),
+      tone: Number(crmSummary.conversionRate || 0) >= 4 ? "healthy" : "attention",
+      description: `CRM lifecycle loops are converting at ${Number(crmSummary.conversionRate || 0).toFixed(1)}% and recovering ${formatCurrency(crmSummary.recoveredGmv || 0)} in GMV.`,
+      actionLabel: "Open reports",
+      target: "reports",
+    },
+    {
+      title: "Launch Readiness",
+      value: Number(launchReadiness.readyCount || 0).toLocaleString("en-IN"),
+      tone: Number(launchReadiness.blockerCount || 0) > 0 ? "critical" : Number(launchReadiness.warningCount || 0) > 0 ? "attention" : "healthy",
+      description: `${Number(launchReadiness.warningCount || 0)} warnings and ${Number(launchReadiness.blockerCount || 0)} blockers across global payments, AI, storage, and deployment.`,
+      actionLabel: "Inspect readiness",
+      target: "reports",
+    },
+  ];
+
+  overviewOpsBoard.innerHTML = priorityCards.map((card) => `
+    <article class="priority-card">
+      <div class="priority-meta">
+        <span class="priority-value">${escapeHTML(String(card.value))}</span>
+        <span class="priority-tone ${escapeAttribute(card.tone)}">${escapeHTML(card.tone)}</span>
+      </div>
+      <h3>${escapeHTML(card.title)}</h3>
+      <p>${escapeHTML(card.description)}</p>
+      <button class="priority-action" type="button" data-jump-target="${escapeAttribute(card.target)}">${escapeHTML(card.actionLabel)}</button>
+    </article>
+  `).join("");
+
+  overviewOpsBoard.querySelectorAll("[data-jump-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.getAttribute("data-jump-target");
+      if (target) {
+        switchSection(target);
+      }
+    });
+  });
+}
+
+function renderOverviewLaunchBoard(commandCenter) {
+  if (!overviewLaunchBoard) {
+    return;
+  }
+
+  const launchReadiness = commandCenter.launchReadiness || {};
+  const checks = Array.isArray(launchReadiness.checks) ? launchReadiness.checks : [];
+  const supportedMarkets = Array.isArray(launchReadiness.supportedMarkets) ? launchReadiness.supportedMarkets : [];
+
+  if (!checks.length) {
+    overviewLaunchBoard.innerHTML = `
+      <div class="empty-state">
+        <p>Launch readiness data has not loaded yet. Open reports to inspect the full deployment board.</p>
+      </div>
+    `;
+    return;
+  }
+
+  overviewLaunchBoard.innerHTML = [
+    ...checks.slice(0, 4).map((check) => `
+      <article class="content-card compact-card readiness-card">
+        <div class="content-info readiness-meta">
+          <div>
+            <h3>${escapeHTML(check.label || "Launch check")}</h3>
+            <p>${escapeHTML(check.summary || "No launch summary available yet.")}</p>
+          </div>
+          <span class="readiness-pill ${escapeAttribute(String(check.status || "warning").toLowerCase())}">${escapeHTML(formatReadinessStatus(check.status || "warning"))}</span>
+        </div>
+      </article>
+    `),
+    `
+      <article class="content-card compact-card">
+        <div class="content-info">
+          <div>
+            <h3>Markets wired</h3>
+            <p>${supportedMarkets.length
+              ? escapeHTML(supportedMarkets.join(", "))
+              : "No regional market configuration detected yet."}</p>
+          </div>
+        </div>
+      </article>
+    `,
+  ].join("");
+}
+
+function buildOverviewActivityItems(commandCenter) {
+  const items = [];
+  const topProduct = Array.isArray(commandCenter.topProducts) ? commandCenter.topProducts[0] : null;
+  const topVerification = Array.isArray(commandCenter.verificationRequests) ? commandCenter.verificationRequests[0] : null;
+  const topPaymentGroup = Array.isArray(commandCenter.paymentGroups) ? commandCenter.paymentGroups[0] : null;
+  const topReviewReport = Array.isArray(commandCenter.reviewReports) ? commandCenter.reviewReports[0] : null;
+  const topAiFlag = Array.isArray(commandCenter.aiFlagged) ? commandCenter.aiFlagged[0] : null;
+  const topWinner = Array.isArray(commandCenter.campaignAnalytics?.experimentInsights?.winners)
+    ? commandCenter.campaignAnalytics.experimentInsights.winners[0]
+    : null;
+
+  if (topPaymentGroup) {
+    items.push({
+      title: "Buyer payment awaiting approval",
+      description: `${topPaymentGroup.buyerName} submitted ${topPaymentGroup.isBatch ? `${topPaymentGroup.items.length} products` : "a manual payment"} for ${formatCurrency(topPaymentGroup.totalAmount || 0)}.`,
+      meta: `Reference ${topPaymentGroup.paymentReference || "pending"} · ${Number(topPaymentGroup.submissionCount || 1)} submission(s)`,
+      target: "payouts",
+    });
+  }
+
+  if (topVerification) {
+    items.push({
+      title: "Creator verification waiting",
+      description: `${topVerification.name || topVerification.username || "Creator"} is waiting on trust review.`,
+      meta: `Role ${String(topVerification.role || "creator").toUpperCase()} · Submitted ${formatDate(topVerification.creatorVerification?.submittedAt || topVerification.createdAt)}`,
+      target: "creators",
+    });
+  }
+
+  if (topReviewReport) {
+    items.push({
+      title: "Community review report filed",
+      description: `${topReviewReport.book?.title || "A product"} has a reported review pending moderation.`,
+      meta: `Reporter ${topReviewReport.reporter?.name || topReviewReport.reporter?.email || "Member"} · ${formatDate(topReviewReport.createdAt)}`,
+      target: "review",
+    });
+  }
+
+  if (topAiFlag) {
+    items.push({
+      title: "AI moderation pressure",
+      description: `${topAiFlag.title || "Product"} is still carrying elevated risk and may need manual inspection.`,
+      meta: `Risk ${Number(topAiFlag.plagiarismScore || 0)}% · Status ${topAiFlag.aiStatus || "pending"}`,
+      target: "ai",
+    });
+  }
+
+  if (topWinner) {
+    items.push({
+      title: "Lifecycle winner detected",
+      description: `${topWinner.label || "Campaign"} is favoring ${topWinner.winningVariantLabel || formatVariantLabel(topWinner.winningVariant || "default")}.`,
+      meta: `Conversion ${Number(topWinner.conversionRate || 0).toFixed(1)}% · Sent ${Number(topWinner.sent || 0).toLocaleString("en-IN")}`,
+      target: "reports",
+    });
+  }
+
+  if (topProduct) {
+    items.push({
+      title: "Top product momentum",
+      description: `${topProduct.title || "Product"} is leading the approved catalog.`,
+      meta: `${topProduct.type || "Product"} · ${Number(topProduct.sales || 0).toLocaleString("en-IN")} sales · Creator ${formatCurrency(topProduct.creatorRevenue || 0)}`,
+      target: "approved",
+    });
+  }
+
+  return items.slice(0, 5);
+}
+
+function renderOverviewActivityFeed(commandCenter) {
+  if (!overviewActivityFeed) {
+    return;
+  }
+
+  const items = buildOverviewActivityItems(commandCenter);
+  if (!items.length) {
+    overviewActivityFeed.innerHTML = `
+      <div class="empty-state">
+        <p>The marketplace is calm right now. Fresh operational activity will appear here as queues, campaigns, and creator actions come in.</p>
+      </div>
+    `;
+    return;
+  }
+
+  overviewActivityFeed.innerHTML = items.map((item) => `
+    <article class="content-card compact-card">
+      <div class="content-info">
+        <div>
+          <h3>${escapeHTML(item.title)}</h3>
+          <p>${escapeHTML(item.description)}<br/>${escapeHTML(item.meta)}</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="changes" type="button" data-jump-target="${escapeAttribute(item.target)}">Open</button>
+      </div>
+    </article>
+  `).join("");
+
+  overviewActivityFeed.querySelectorAll("[data-jump-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.getAttribute("data-jump-target");
+      if (target) {
+        switchSection(target);
+      }
+    });
+  });
 }
 
 function renderCreatorOverview(summary) {
@@ -1705,7 +2338,11 @@ async function loadAIOverview() {
       throw new Error(data.message || "Failed to load AI overview");
     }
 
+    adminState.aiHighRiskCount = Number(data.summary?.highRisk || 0);
+    adminState.aiManualReviewCount = Number(data.summary?.manualReview || 0);
+    updateNavCounts();
     renderAiOverview(data.summary || {}, data.topFlagged || []);
+    markAdminSynced();
   } catch (err) {
     console.error(err);
     aiOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
@@ -2008,5 +2645,6 @@ async function rejectPayment(paymentId, isBatch = false) {
   }
 }
 
-loadPendingBooks();
-loadReviewReports();
+syncAdminIdentity();
+setHeaderStatus("Booting Ops", "warning");
+switchSection(resolveInitialSection());

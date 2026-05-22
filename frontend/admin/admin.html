@@ -2,276 +2,516 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Dashboard | E-Book Market</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-  <link rel="stylesheet" href="admin.css"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <title>Admin Command Center | E-Book Market</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Founder-grade admin command center for moderation, payouts, AI signals, creator verification, and marketplace growth operations." />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <div class="admin-page-glow glow-one"></div>
+  <div class="admin-page-glow glow-two"></div>
 
-<div class="admin-layout">
-
-  <!-- ================= SIDEBAR ================= -->
-  <aside class="admin-sidebar">
-    <h2>E-BOOK MARKET</h2>
-
-    <nav class="sidebar-nav">
-      <a data-target="review" class="active">Content Review</a>
-      <a data-target="approved">Approved Library</a>
-      <a data-target="creators">Creators</a>
-      <a data-target="payouts">Payouts</a>
-      <a data-target="ai">AI Signals</a>
-      <a data-target="reports">Reports</a>
-      <a data-target="settings">Settings</a>
-    </nav>
-
-    <button class="logout" onclick="logoutUser()">Logout</button>
-  </aside>
-
-  <!-- ================= MAIN ================= -->
-  <main class="admin-main">
-
-    <!-- ================= HEADER ================= -->
-    <header class="admin-top">
-      <div>
-        <h1 id="pageTitle">Pending Content Review</h1>
-        <p class="sub" id="pageSub">
-          Review quality, originality & monetization potential
-        </p>
-      </div>
-      <span class="badge">ADMIN</span>
-    </header>
-
-    <!-- ================= SECTIONS ================= -->
-
-    <!-- 🔍 CONTENT REVIEW -->
-    <section id="review" class="admin-section active">
-      <div class="filter-bar">
-        <select>
-          <option>All Types</option>
-          <option>E-Books</option>
-          <option>Notes</option>
-          <option>Study Packs</option>
-          <option>Prompts</option>
-          <option>Templates</option>
-          <option>Courses</option>
-          <option>AI Assets</option>
-          <option>Bundles</option>
-        </select>
-
-        <select>
-          <option>AI Score</option>
-          <option>Above 90%</option>
-          <option>70–90%</option>
-          <option>Below 70%</option>
-        </select>
-
-        <select>
-          <option>Sort By</option>
-          <option>Newest</option>
-          <option>Highest Revenue</option>
-          <option>High Risk</option>
-        </select>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">EB</div>
+        <div class="brand-copy">
+          <strong>E-Book Market</strong>
+          <span>Founder control plane</span>
+        </div>
       </div>
 
-      <div id="contentList" class="content-list">
-        <!-- injected by admin.js -->
-      </div>
+      <nav class="sidebar-nav">
+        <a data-target="overview" class="active">
+          <span>Command Center</span>
+          <strong class="nav-count live">Live</strong>
+        </a>
+        <a data-target="review">
+          <span>Content Review</span>
+          <strong id="navReviewCount" class="nav-count">0</strong>
+        </a>
+        <a data-target="approved">
+          <span>Approved Library</span>
+          <strong class="nav-count neutral">Live</strong>
+        </a>
+        <a data-target="creators">
+          <span>Creators</span>
+          <strong id="navCreatorsCount" class="nav-count">0</strong>
+        </a>
+        <a data-target="payouts">
+          <span>Payout Ops</span>
+          <strong id="navPayoutsCount" class="nav-count">0</strong>
+        </a>
+        <a data-target="ai">
+          <span>AI Signals</span>
+          <strong id="navAiCount" class="nav-count">0</strong>
+        </a>
+        <a data-target="reports">
+          <span>Reports</span>
+          <strong id="navReportsCount" class="nav-count">Live</strong>
+        </a>
+        <a data-target="settings">
+          <span>Settings</span>
+          <strong class="nav-count neutral">Ops</strong>
+        </a>
+      </nav>
 
-      <div class="section-stack">
-        <div class="section-block">
-          <h3>Reported Reviews</h3>
+      <div class="sidebar-footer">
+        <div class="admin-identity">
+          <div class="identity-avatar">A</div>
+          <div class="identity-copy">
+            <strong id="adminIdentityName">Admin</strong>
+            <span id="adminIdentityMeta">Marketplace operator</span>
+          </div>
+        </div>
+        <button class="logout" onclick="logoutUser()">Logout</button>
+      </div>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-top">
+        <div class="top-copy">
+          <p class="top-kicker">Founder cockpit</p>
+          <h1 id="pageTitle">Command Center</h1>
+          <p class="sub" id="pageSub">Run revenue, trust, moderation, payouts, and launch readiness from one startup-grade control surface.</p>
+        </div>
+        <div class="top-actions">
+          <div class="status-cluster">
+            <span id="headerStatusBadge" class="status-chip live">Live Ops</span>
+            <small id="headerSyncTime">Waiting for first sync</small>
+          </div>
+          <button id="refreshAdminBtn" class="toolbar-btn" type="button">Refresh Data</button>
+        </div>
+      </header>
+
+      <section id="overview" class="admin-section active">
+        <div class="overview-shell">
+          <section class="surface-panel hero-panel">
+            <div class="hero-panel-copy">
+              <span class="hero-eyebrow">Marketplace command center</span>
+              <h2>See the queues that matter before they become problems.</h2>
+              <p>
+                This is the founder view across revenue, approvals, AI risk, creator trust, lifecycle experiments, and deployment readiness.
+              </p>
+              <div class="hero-action-row">
+                <button class="hero-action primary" type="button" data-jump-target="review">Open Review Queue</button>
+                <button class="hero-action" type="button" data-jump-target="payouts">Open Payout Ops</button>
+                <button class="hero-action" type="button" data-jump-target="reports">Open Growth Reports</button>
+              </div>
+            </div>
+            <div id="overviewStats" class="admin-stats founder-stats"></div>
+          </section>
+
+          <section class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Priority board</p>
+                <h3>What needs attention now</h3>
+              </div>
+            </div>
+            <div id="overviewOpsBoard" class="priority-grid"></div>
+          </section>
+
+          <div class="overview-columns">
+            <section class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Launch readiness</p>
+                  <h3>Global startup health</h3>
+                </div>
+              </div>
+              <div id="overviewLaunchBoard" class="content-list"></div>
+            </section>
+
+            <section class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Live activity</p>
+                  <h3>Operational pulse</h3>
+                </div>
+              </div>
+              <div id="overviewActivityFeed" class="content-list"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="review" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Moderation engine</p>
+              <h2>Content Review</h2>
+            </div>
+          </div>
+
+          <div class="filter-bar">
+            <select>
+              <option>All Types</option>
+              <option>E-Books</option>
+              <option>Notes</option>
+              <option>Study Packs</option>
+              <option>Prompts</option>
+              <option>Templates</option>
+              <option>Courses</option>
+              <option>AI Assets</option>
+              <option>Bundles</option>
+            </select>
+            <select>
+              <option>AI Score</option>
+              <option>Above 90%</option>
+              <option>70-90%</option>
+              <option>Below 70%</option>
+            </select>
+            <select>
+              <option>Sort By</option>
+              <option>Newest</option>
+              <option>Highest Revenue</option>
+              <option>High Risk</option>
+            </select>
+          </div>
+
+          <div id="contentList" class="content-list"></div>
+        </div>
+
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Trust & safety</p>
+              <h3>Reported Reviews</h3>
+            </div>
+          </div>
           <div id="reviewReportList" class="content-list"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- .aprroved section -->
-    <section id="approved" class="admin-section">
-  <h2>Approved Library</h2>
-
-  <div id="approvedList" class="content-list">
-    <!-- approved content injected by admin.js -->
-  </div>
-</section>
-
-
-    <!-- 👤 CREATORS -->
-    <section id="creators" class="admin-section">
-      <h2>Creators</h2>
-      <p>Verification queue, referral momentum, and creator trust operations.</p>
-      <div id="creatorOverview" class="admin-stats"></div>
-
-      <div class="section-stack">
-        <div class="section-block">
-          <h3>Verification requests</h3>
-          <div id="verificationRequestList" class="content-list"></div>
-        </div>
-
-        <div class="section-block">
-          <h3>Top referral partners</h3>
-          <div id="referralLeaderboardList" class="content-list"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 💰 PAYOUTS -->
-    <section id="payouts" class="admin-section">
-      <h2>Payouts</h2>
-      <p>Approve buyer payment proofs and process creator withdrawal requests.</p>
-      <h3>Pending Buyer Payments</h3>
-      <div id="paymentReviewList" class="content-list"></div>
-      <h3>Creator Withdrawal Requests</h3>
-      <div id="withdrawRequestList" class="content-list"></div>
-    </section>
-
-    <!-- 🤖 AI SIGNALS -->
-    <section id="ai" class="admin-section">
-      <h2>AI Signals</h2>
-      <p>Real moderation activity, processing health, and highest-risk uploads.</p>
-      <div id="aiOverview" class="admin-stats"></div>
-      <div id="aiFlaggedList" class="content-list"></div>
-    </section>
-
-    <!-- 📊 REPORTS -->
-    <section id="reports" class="admin-section">
-      <h2>Reports</h2>
-      <p>Revenue, growth & platform analytics.</p>
-      <div id="reportsOverview" class="admin-stats"></div>
-      <div class="section-stack">
-        <div class="section-block">
-          <h3>Global Launch Readiness</h3>
-          <div id="reportsLaunchOverview" class="admin-stats"></div>
-          <div id="reportsLaunchChecks" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Top Product Types</h3>
-          <div id="reportsTypeBreakdown" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Delivery Modes</h3>
-          <div id="reportsDeliveryBreakdown" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Top Performing Products</h3>
-          <div id="reportsTopProducts" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Lifecycle CRM Overview</h3>
-          <div id="reportsCampaignOverview" class="admin-stats"></div>
-        </div>
-        <div class="section-block">
-          <h3>Experiment Winners</h3>
-          <div id="reportsExperimentWinners" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Experiment Intelligence</h3>
-          <div id="reportsExperimentRecommendations" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Lifecycle Strategy Controls</h3>
-          <div id="reportsLifecycleStrategies" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Winner Snapshots</h3>
-          <div class="crm-lab-actions">
-            <button id="captureLifecycleSnapshotBtn" class="changes" type="button">Capture Snapshot</button>
-            <span class="crm-lab-status">Save a point-in-time record of active variants, strategy mode, and current winners.</span>
+      <section id="approved" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Live catalog</p>
+              <h2>Approved Library</h2>
+            </div>
           </div>
-          <div id="reportsLifecycleSnapshots" class="content-list"></div>
+          <div id="approvedList" class="content-list"></div>
         </div>
-        <div class="section-block">
-          <h3>CRM Experiment Lab</h3>
-          <div class="crm-lab-card">
-            <div class="crm-lab-grid">
-              <label class="crm-lab-field">
-                <span>Campaign</span>
-                <select id="crmLabMode">
-                  <option value="cart">Abandoned Cart</option>
-                  <option value="upsell">Post-Purchase Upsell</option>
-                  <option value="creator">Creator Launch Sequence</option>
-                  <option value="referral">Referral Prompt</option>
-                </select>
-              </label>
-              <label class="crm-lab-field">
-                <span>Variant</span>
-                <select id="crmLabVariant">
-                  <option value="default">Default</option>
-                  <option value="urgency">Urgency</option>
-                  <option value="social_proof">Social Proof</option>
-                  <option value="value">Value</option>
-                </select>
-              </label>
-              <label class="crm-lab-field">
-                <span>Cohort Role</span>
-                <select id="crmLabRole">
-                  <option value="all">All</option>
-                  <option value="reader">Readers</option>
-                  <option value="creator">Creators</option>
-                </select>
-              </label>
-              <label class="crm-lab-field">
-                <span>Language</span>
-                <select id="crmLabLanguage">
-                  <option value="all">All</option>
-                  <option value="english">English</option>
-                  <option value="hindi">Hindi</option>
-                </select>
-              </label>
-              <label class="crm-lab-field">
-                <span>Limit</span>
-                <input id="crmLabLimit" type="number" min="1" max="100" value="20" />
-              </label>
-              <label class="crm-lab-check">
-                <input id="crmLabForce" type="checkbox" />
-                <span>Bypass cooldowns</span>
-              </label>
+      </section>
+
+      <section id="creators" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Creator ops</p>
+              <h2>Creators</h2>
+              <p>Verification queue, referral momentum, and creator trust operations.</p>
+            </div>
+          </div>
+          <div id="creatorOverview" class="admin-stats"></div>
+        </div>
+
+        <div class="overview-columns">
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Verification</p>
+                <h3>Verification requests</h3>
+              </div>
+            </div>
+            <div id="verificationRequestList" class="content-list"></div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Growth</p>
+                <h3>Top referral partners</h3>
+              </div>
+            </div>
+            <div id="referralLeaderboardList" class="content-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="payouts" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Buyer proof queue</p>
+              <h2>Pending Buyer Payments</h2>
+            </div>
+          </div>
+          <div id="paymentReviewList" class="content-list"></div>
+        </div>
+
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Creator treasury</p>
+              <h2>Creator Withdrawal Requests</h2>
+            </div>
+          </div>
+          <div id="withdrawRequestList" class="content-list"></div>
+        </div>
+      </section>
+
+      <section id="ai" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Moderation intelligence</p>
+              <h2>AI Signals</h2>
+              <p>Real moderation activity, processing health, and highest-risk uploads.</p>
+            </div>
+          </div>
+          <div id="aiOverview" class="admin-stats"></div>
+        </div>
+
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Risk queue</p>
+              <h3>Highest-risk products</h3>
+            </div>
+          </div>
+          <div id="aiFlaggedList" class="content-list"></div>
+        </div>
+      </section>
+
+      <section id="reports" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Revenue + growth</p>
+              <h2>Reports</h2>
+            </div>
+          </div>
+          <div id="reportsOverview" class="admin-stats"></div>
+        </div>
+
+        <div class="section-stack">
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Deployment</p>
+                <h3>Global Launch Readiness</h3>
+              </div>
+            </div>
+            <div id="reportsLaunchOverview" class="admin-stats"></div>
+            <div id="reportsLaunchChecks" class="content-list"></div>
+          </div>
+
+          <div class="overview-columns">
+            <div class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Catalog</p>
+                  <h3>Top Product Types</h3>
+                </div>
+              </div>
+              <div id="reportsTypeBreakdown" class="content-list"></div>
+            </div>
+
+            <div class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Delivery</p>
+                  <h3>Delivery Modes</h3>
+                </div>
+              </div>
+              <div id="reportsDeliveryBreakdown" class="content-list"></div>
+            </div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Revenue</p>
+                <h3>Top Performing Products</h3>
+              </div>
+            </div>
+            <div id="reportsTopProducts" class="content-list"></div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Lifecycle CRM</p>
+                <h3>Lifecycle CRM Overview</h3>
+              </div>
+            </div>
+            <div id="reportsCampaignOverview" class="admin-stats"></div>
+          </div>
+
+          <div class="overview-columns">
+            <div class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Experiments</p>
+                  <h3>Experiment Winners</h3>
+                </div>
+              </div>
+              <div id="reportsExperimentWinners" class="content-list"></div>
+            </div>
+
+            <div class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Recommendations</p>
+                  <h3>Experiment Intelligence</h3>
+                </div>
+              </div>
+              <div id="reportsExperimentRecommendations" class="content-list"></div>
+            </div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Control plane</p>
+                <h3>Lifecycle Strategy Controls</h3>
+              </div>
+            </div>
+            <div id="reportsLifecycleStrategies" class="content-list"></div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Snapshots</p>
+                <h3>Winner Snapshots</h3>
+              </div>
             </div>
             <div class="crm-lab-actions">
-              <button id="crmLabPreviewBtn" class="changes" type="button">Preview Cohort</button>
-              <button id="crmLabRunBtn" class="approve" type="button">Run Experiment</button>
-              <span id="crmLabStatus" class="crm-lab-status">Ready to preview a lifecycle test.</span>
+              <button id="captureLifecycleSnapshotBtn" class="changes" type="button">Capture Snapshot</button>
+              <span class="crm-lab-status">Save a point-in-time record of active variants, strategy mode, and current winners.</span>
             </div>
-            <div id="crmLabPreview" class="crm-lab-output">
-              <p class="crm-lab-empty">Preview results will appear here before anything is sent.</p>
+            <div id="reportsLifecycleSnapshots" class="content-list"></div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Manual testing</p>
+                <h3>CRM Experiment Lab</h3>
+              </div>
             </div>
-            <div id="crmLabRunResult" class="crm-lab-output">
-              <p class="crm-lab-empty">Run results will appear here after a manual experiment trigger.</p>
+            <div class="crm-lab-card">
+              <div class="crm-lab-grid">
+                <label class="crm-lab-field">
+                  <span>Campaign</span>
+                  <select id="crmLabMode">
+                    <option value="cart">Abandoned Cart</option>
+                    <option value="upsell">Post-Purchase Upsell</option>
+                    <option value="creator">Creator Launch Sequence</option>
+                    <option value="referral">Referral Prompt</option>
+                  </select>
+                </label>
+                <label class="crm-lab-field">
+                  <span>Variant</span>
+                  <select id="crmLabVariant">
+                    <option value="default">Default</option>
+                    <option value="urgency">Urgency</option>
+                    <option value="social_proof">Social Proof</option>
+                    <option value="value">Value</option>
+                  </select>
+                </label>
+                <label class="crm-lab-field">
+                  <span>Cohort Role</span>
+                  <select id="crmLabRole">
+                    <option value="all">All</option>
+                    <option value="reader">Readers</option>
+                    <option value="creator">Creators</option>
+                  </select>
+                </label>
+                <label class="crm-lab-field">
+                  <span>Language</span>
+                  <select id="crmLabLanguage">
+                    <option value="all">All</option>
+                    <option value="english">English</option>
+                    <option value="hindi">Hindi</option>
+                  </select>
+                </label>
+                <label class="crm-lab-field">
+                  <span>Limit</span>
+                  <input id="crmLabLimit" type="number" min="1" max="100" value="20" />
+                </label>
+                <label class="crm-lab-check">
+                  <input id="crmLabForce" type="checkbox" />
+                  <span>Bypass cooldowns</span>
+                </label>
+              </div>
+              <div class="crm-lab-actions">
+                <button id="crmLabPreviewBtn" class="changes" type="button">Preview Cohort</button>
+                <button id="crmLabRunBtn" class="approve" type="button">Run Experiment</button>
+                <span id="crmLabStatus" class="crm-lab-status">Ready to preview a lifecycle test.</span>
+              </div>
+              <div id="crmLabPreview" class="crm-lab-output">
+                <p class="crm-lab-empty">Preview results will appear here before anything is sent.</p>
+              </div>
+              <div id="crmLabRunResult" class="crm-lab-output">
+                <p class="crm-lab-empty">Run results will appear here after a manual experiment trigger.</p>
+              </div>
             </div>
           </div>
+
+          <div class="overview-columns">
+            <div class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Breakdown</p>
+                  <h3>Campaign Breakdown</h3>
+                </div>
+              </div>
+              <div id="reportsCampaignBreakdown" class="content-list"></div>
+            </div>
+
+            <div class="surface-panel">
+              <div class="panel-header">
+                <div>
+                  <p class="panel-kicker">Variants</p>
+                  <h3>Variant Performance</h3>
+                </div>
+              </div>
+              <div id="reportsCampaignVariants" class="content-list"></div>
+            </div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">History</p>
+                <h3>Recent Campaign Deliveries</h3>
+              </div>
+            </div>
+            <div id="reportsCampaignHistory" class="content-list"></div>
+          </div>
         </div>
-        <div class="section-block">
-          <h3>Campaign Breakdown</h3>
-          <div id="reportsCampaignBreakdown" class="content-list"></div>
+      </section>
+
+      <section id="settings" class="admin-section">
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Admin settings</p>
+              <h2>Settings</h2>
+            </div>
+          </div>
+          <div class="empty-state">
+            <p>Platform rules, commission controls, and admin-level system settings can be expanded here next.</p>
+          </div>
         </div>
-        <div class="section-block">
-          <h3>Variant Performance</h3>
-          <div id="reportsCampaignVariants" class="content-list"></div>
-        </div>
-        <div class="section-block">
-          <h3>Recent Campaign Deliveries</h3>
-          <div id="reportsCampaignHistory" class="content-list"></div>
-        </div>
-      </div>
-    </section>
+      </section>
+    </main>
+  </div>
 
-    <!-- ⚙ SETTINGS -->
-    <section id="settings" class="admin-section">
-      <h2>Settings</h2>
-      <p>Platform rules, commission & admin config.</p>
-    </section>
-
-  </main>
-</div>
-
-<script src="../config.js"></script>
-<script src="../auth.js"></script>
-<script src="admin.js"></script>
-
-<script>
-  protectPage(["admin"]);
-</script>
-
+  <script src="../config.js"></script>
+  <script src="../auth.js"></script>
+  <script src="admin.js"></script>
+  <script>
+    protectPage(["admin"]);
+  </script>
 </body>
 </html>
