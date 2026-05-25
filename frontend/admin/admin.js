@@ -222,6 +222,32 @@ function sortByCreatedAtDesc(left, right) {
   return new Date(right?.createdAt || 0).getTime() - new Date(left?.createdAt || 0).getTime();
 }
 
+function formatSupportedMarketLabel(market) {
+  if (!market) {
+    return "";
+  }
+
+  if (typeof market === "string") {
+    return market;
+  }
+
+  const country = String(market.countryName || market.countryCode || "").trim();
+  const currency = String(market.currency || "").trim();
+
+  if (country && currency) {
+    return `${country} (${currency})`;
+  }
+
+  return country || currency || "";
+}
+
+function formatSupportedMarkets(markets = []) {
+  return markets
+    .map((market) => formatSupportedMarketLabel(market))
+    .filter(Boolean)
+    .join(", ");
+}
+
 function resolveInitialSection() {
   const requested = String(window.location.hash || "").replace(/^#/, "").trim();
   return requested && document.getElementById(requested) ? requested : "overview";
@@ -999,7 +1025,7 @@ function renderOverviewLaunchBoard(commandCenter) {
           <div>
             <h3>Markets wired</h3>
             <p>${supportedMarkets.length
-              ? escapeHTML(supportedMarkets.join(", "))
+              ? escapeHTML(formatSupportedMarkets(supportedMarkets))
               : "No regional market configuration detected yet."}</p>
           </div>
         </div>
@@ -1023,7 +1049,7 @@ function buildOverviewActivityItems(commandCenter) {
     items.push({
       title: "Buyer payment awaiting approval",
       description: `${topPaymentGroup.buyerName} submitted ${topPaymentGroup.isBatch ? `${topPaymentGroup.items.length} products` : "a manual payment"} for ${formatCurrency(topPaymentGroup.totalAmount || 0)}.`,
-      meta: `Reference ${topPaymentGroup.paymentReference || "pending"} · ${Number(topPaymentGroup.submissionCount || 1)} submission(s)`,
+      meta: `Reference ${topPaymentGroup.paymentReference || "pending"} - ${Number(topPaymentGroup.submissionCount || 1)} submission(s)`,
       target: "payouts",
     });
   }
@@ -1032,7 +1058,7 @@ function buildOverviewActivityItems(commandCenter) {
     items.push({
       title: "Creator verification waiting",
       description: `${topVerification.name || topVerification.username || "Creator"} is waiting on trust review.`,
-      meta: `Role ${String(topVerification.role || "creator").toUpperCase()} · Submitted ${formatDate(topVerification.creatorVerification?.submittedAt || topVerification.createdAt)}`,
+      meta: `Role ${String(topVerification.role || "creator").toUpperCase()} - Submitted ${formatDate(topVerification.creatorVerification?.submittedAt || topVerification.createdAt)}`,
       target: "creators",
     });
   }
@@ -1041,7 +1067,7 @@ function buildOverviewActivityItems(commandCenter) {
     items.push({
       title: "Community review report filed",
       description: `${topReviewReport.book?.title || "A product"} has a reported review pending moderation.`,
-      meta: `Reporter ${topReviewReport.reporter?.name || topReviewReport.reporter?.email || "Member"} · ${formatDate(topReviewReport.createdAt)}`,
+      meta: `Reporter ${topReviewReport.reporter?.name || topReviewReport.reporter?.email || "Member"} - ${formatDate(topReviewReport.createdAt)}`,
       target: "review",
     });
   }
@@ -1050,7 +1076,7 @@ function buildOverviewActivityItems(commandCenter) {
     items.push({
       title: "AI moderation pressure",
       description: `${topAiFlag.title || "Product"} is still carrying elevated risk and may need manual inspection.`,
-      meta: `Risk ${Number(topAiFlag.plagiarismScore || 0)}% · Status ${topAiFlag.aiStatus || "pending"}`,
+      meta: `Risk ${Number(topAiFlag.plagiarismScore || 0)}% - Status ${topAiFlag.aiStatus || "pending"}`,
       target: "ai",
     });
   }
@@ -1059,7 +1085,7 @@ function buildOverviewActivityItems(commandCenter) {
     items.push({
       title: "Lifecycle winner detected",
       description: `${topWinner.label || "Campaign"} is favoring ${topWinner.winningVariantLabel || formatVariantLabel(topWinner.winningVariant || "default")}.`,
-      meta: `Conversion ${Number(topWinner.conversionRate || 0).toFixed(1)}% · Sent ${Number(topWinner.sent || 0).toLocaleString("en-IN")}`,
+      meta: `Conversion ${Number(topWinner.conversionRate || 0).toFixed(1)}% - Sent ${Number(topWinner.sent || 0).toLocaleString("en-IN")}`,
       target: "reports",
     });
   }
@@ -1068,7 +1094,7 @@ function buildOverviewActivityItems(commandCenter) {
     items.push({
       title: "Top product momentum",
       description: `${topProduct.title || "Product"} is leading the approved catalog.`,
-      meta: `${topProduct.type || "Product"} · ${Number(topProduct.sales || 0).toLocaleString("en-IN")} sales · Creator ${formatCurrency(topProduct.creatorRevenue || 0)}`,
+      meta: `${topProduct.type || "Product"} - ${Number(topProduct.sales || 0).toLocaleString("en-IN")} sales - Creator ${formatCurrency(topProduct.creatorRevenue || 0)}`,
       target: "approved",
     });
   }
@@ -1271,8 +1297,8 @@ function renderReportsOverview(summary, launchReadiness, typeBreakdown, delivery
           <div>
             <h3>${escapeHTML(entry.type || "Product")}</h3>
             <p>
-              Products: ${Number(entry.products || 0).toLocaleString("en-IN")} Â· Sales: ${Number(entry.sales || 0).toLocaleString("en-IN")}<br/>
-              GMV: ${escapeHTML(formatCurrency(entry.gmv || 0))} Â· Creator: ${escapeHTML(formatCurrency(entry.creatorRevenue || 0))} Â· Platform: ${escapeHTML(formatCurrency(entry.platformRevenue || 0))}
+              Products: ${Number(entry.products || 0).toLocaleString("en-IN")} - Sales: ${Number(entry.sales || 0).toLocaleString("en-IN")}<br/>
+              GMV: ${escapeHTML(formatCurrency(entry.gmv || 0))} - Creator: ${escapeHTML(formatCurrency(entry.creatorRevenue || 0))} - Platform: ${escapeHTML(formatCurrency(entry.platformRevenue || 0))}
             </p>
           </div>
         </div>
@@ -1286,7 +1312,7 @@ function renderReportsOverview(summary, launchReadiness, typeBreakdown, delivery
         <div class="content-info">
           <div>
             <h3>${escapeHTML(String(entry.mode || "file").toUpperCase())}</h3>
-            <p>Products: ${Number(entry.products || 0).toLocaleString("en-IN")} Â· Sales influenced: ${Number(entry.sales || 0).toLocaleString("en-IN")}</p>
+            <p>Products: ${Number(entry.products || 0).toLocaleString("en-IN")} - Sales influenced: ${Number(entry.sales || 0).toLocaleString("en-IN")}</p>
           </div>
         </div>
       </article>
@@ -1300,8 +1326,8 @@ function renderReportsOverview(summary, launchReadiness, typeBreakdown, delivery
           <div>
             <h3>${escapeHTML(product.title || "Product")}</h3>
             <p>
-              ${escapeHTML(product.type || "Product")} Â· ${escapeHTML(product.category || "Other")} Â· ${escapeHTML(String(product.deliveryMode || "file").toUpperCase())}<br/>
-              Sales: ${Number(product.sales || 0).toLocaleString("en-IN")} Â· Creator: ${escapeHTML(formatCurrency(product.creatorRevenue || 0))} Â· Platform: ${escapeHTML(formatCurrency(product.platformRevenue || 0))}
+              ${escapeHTML(product.type || "Product")} - ${escapeHTML(product.category || "Other")} - ${escapeHTML(String(product.deliveryMode || "file").toUpperCase())}<br/>
+              Sales: ${Number(product.sales || 0).toLocaleString("en-IN")} - Creator: ${escapeHTML(formatCurrency(product.creatorRevenue || 0))} - Platform: ${escapeHTML(formatCurrency(product.platformRevenue || 0))}
             </p>
           </div>
         </div>
@@ -1698,11 +1724,11 @@ function renderVerificationRequests(requests) {
     card.innerHTML = `
       <div class="content-info">
         <div>
-          <h3>${escapeHTML(creator.name || "Creator")} · @${escapeHTML(creator.username || "creator")}</h3>
+          <h3>${escapeHTML(creator.name || "Creator")} - @${escapeHTML(creator.username || "creator")}</h3>
           <p>
-            ${escapeHTML(String(creator.role || "creator").toUpperCase())} · ${escapeHTML(creator.email || "No email")}<br/>
-            Status: <strong>${status}</strong> · Submitted: ${escapeHTML(formatDate(request.submittedAt || creator.createdAt))}<br/>
-            Followers: ${Number(creator.creatorStats?.followersCount || 0).toLocaleString("en-IN")} · Sales: ${Number(creator.creatorStats?.totalSales || 0).toLocaleString("en-IN")}<br/>
+            ${escapeHTML(String(creator.role || "creator").toUpperCase())} - ${escapeHTML(creator.email || "No email")}<br/>
+            Status: <strong>${status}</strong> - Submitted: ${escapeHTML(formatDate(request.submittedAt || creator.createdAt))}<br/>
+            Followers: ${Number(creator.creatorStats?.followersCount || 0).toLocaleString("en-IN")} - Sales: ${Number(creator.creatorStats?.totalSales || 0).toLocaleString("en-IN")}<br/>
             ${request.portfolioUrl ? `Portfolio: ${escapeHTML(request.portfolioUrl)}<br/>` : ""}
             ${request.proofUrl ? `Proof: ${escapeHTML(request.proofUrl)}<br/>` : ""}
             ${request.note ? `Note: ${escapeHTML(request.note)}` : "No verification note added yet."}
@@ -1737,12 +1763,12 @@ function renderReferralLeaderboard(referrers) {
     card.innerHTML = `
       <div class="content-info">
         <div>
-          <h3>${escapeHTML(user.name || "Member")} · @${escapeHTML(user.username || "member")}</h3>
+          <h3>${escapeHTML(user.name || "Member")} - @${escapeHTML(user.username || "member")}</h3>
           <p>
             Code: <strong>${escapeHTML(user.referralCode || "Pending")}</strong><br/>
-            Signups: ${Number(user.referralStats?.signupsCount || 0).toLocaleString("en-IN")} · Activated creators: ${Number(user.referralStats?.creatorsCount || 0).toLocaleString("en-IN")}<br/>
-            Rewarded purchases: ${Number(user.referralStats?.rewardedPurchasesCount || 0).toLocaleString("en-IN")} · Rewards: ₹${Number(user.referralStats?.totalRewardAmount || 0).toLocaleString("en-IN")}<br/>
-            Role: ${escapeHTML(String(user.role || "reader").toUpperCase())}${user.verified ? " · Verified" : ""}
+            Signups: ${Number(user.referralStats?.signupsCount || 0).toLocaleString("en-IN")} - Activated creators: ${Number(user.referralStats?.creatorsCount || 0).toLocaleString("en-IN")}<br/>
+            Rewarded purchases: ${Number(user.referralStats?.rewardedPurchasesCount || 0).toLocaleString("en-IN")} - Rewards: ₹${Number(user.referralStats?.totalRewardAmount || 0).toLocaleString("en-IN")}<br/>
+            Role: ${escapeHTML(String(user.role || "reader").toUpperCase())}${user.verified ? " - Verified" : ""}
           </p>
         </div>
       </div>
@@ -2162,7 +2188,7 @@ function buildDeliverySummary(delivery = {}) {
     pieces.push("Downloadable asset");
   }
 
-  return pieces.join(" · ");
+  return pieces.join(" - ");
 }
 
 function enhanceBookModerationCard(card, book, options = {}) {
@@ -2173,7 +2199,7 @@ function enhanceBookModerationCard(card, book, options = {}) {
   const infoBlock = card.querySelector(".content-info div");
   if (infoBlock) {
     const detail = document.createElement("p");
-    detail.textContent = `${String(book.type || "Product").toUpperCase()} Â· ${buildDeliverySummary(book.delivery || {})}`;
+    detail.textContent = `${String(book.type || "Product").toUpperCase()} - ${buildDeliverySummary(book.delivery || {})}`;
     infoBlock.appendChild(detail);
 
     if (book.delivery?.previewText) {
@@ -2333,7 +2359,7 @@ function buildStrategyHistoryMarkup(history = []) {
       ${history.slice(0, 3).map((entry) => `
         <p>
           ${escapeHTML(formatDateTime(entry.updatedAt))} | ${escapeHTML(entry.updatedBy?.name || entry.updatedBy?.username || "Admin")}<br/>
-          ${escapeHTML(formatStrategyMode(entry.resolutionMode || "auto"))} · Manual ${escapeHTML(entry.manualVariantLabel || formatVariantLabel(entry.manualVariant || "default"))} · Fallback ${escapeHTML(entry.fallbackVariantLabel || formatVariantLabel(entry.fallbackVariant || "default"))}<br/>
+          ${escapeHTML(formatStrategyMode(entry.resolutionMode || "auto"))} - Manual ${escapeHTML(entry.manualVariantLabel || formatVariantLabel(entry.manualVariant || "default"))} - Fallback ${escapeHTML(entry.fallbackVariantLabel || formatVariantLabel(entry.fallbackVariant || "default"))}<br/>
           ${escapeHTML(entry.reason || entry.notes || "Strategy updated.")}
         </p>
       `).join("")}
@@ -2348,7 +2374,7 @@ function renderEmbeddedCopyPreview(copyPreview = {}) {
       <p>
         Recipient: ${escapeHTML(copyPreview.recipient?.name || copyPreview.recipient?.email || "Matched member")}<br/>
         Subject: ${escapeHTML(copyPreview.subject || copyPreview.title || "Lifecycle message")}<br/>
-        CTA: ${escapeHTML(copyPreview.actionLabel || "Open workflow")} → ${escapeHTML(copyPreview.actionLink || "")}
+        CTA: ${escapeHTML(copyPreview.actionLabel || "Open workflow")} -> ${escapeHTML(copyPreview.actionLink || "")}
       </p>
       <p>${escapeHTML(copyPreview.message || "")}</p>
     </div>
@@ -2366,7 +2392,7 @@ function renderInlineCopyPreview(copyPreview = {}, variantSource = "manual") {
       <p>
         Strategy: ${escapeHTML(formatVariantSource(variantSource))} | Recipient: ${escapeHTML(copyPreview.recipient?.name || copyPreview.recipient?.email || "Matched member")}<br/>
         Subject: ${escapeHTML(copyPreview.subject || copyPreview.title || "")}<br/>
-        CTA: ${escapeHTML(copyPreview.actionLabel || "Open workflow")} → ${escapeHTML(copyPreview.actionLink || "")}
+        CTA: ${escapeHTML(copyPreview.actionLabel || "Open workflow")} -> ${escapeHTML(copyPreview.actionLink || "")}
       </p>
       <p>${escapeHTML(copyPreview.message || "")}</p>
     </div>
@@ -2415,11 +2441,11 @@ function renderReviewReports(reports) {
     card.innerHTML = `
       <div class="content-info">
         <div>
-          <h3>${escapeHTML(report.book?.title || "Book review")} · ${escapeHTML(String(report.reason || "other").toUpperCase())}</h3>
+          <h3>${escapeHTML(report.book?.title || "Book review")} - ${escapeHTML(String(report.reason || "other").toUpperCase())}</h3>
           <p>
             Review by: <strong>${escapeHTML(reviewOwner.username ? `@${reviewOwner.username}` : reviewOwner.name || "Reviewer")}</strong><br/>
             Reported by: <strong>${escapeHTML(reporter.username ? `@${reporter.username}` : reporter.name || "Member")}</strong><br/>
-            Rating: ${Number(review.rating || 0)}/5 · Submitted: ${escapeHTML(formatDate(report.createdAt))}<br/>
+            Rating: ${Number(review.rating || 0)}/5 - Submitted: ${escapeHTML(formatDate(report.createdAt))}<br/>
             ${review.comment ? `Review: ${escapeHTML(review.comment)}<br/>` : ""}
             ${report.details ? `Report note: ${escapeHTML(report.details)}` : "No extra report note added."}
           </p>
@@ -2833,11 +2859,11 @@ function buildCompactMap(map) {
 
 function buildPayoutLabel(payout) {
   if (payout?.upiId) {
-    return `UPI · ${payout.upiId}`;
+    return `UPI - ${payout.upiId}`;
   }
 
   if (payout?.bankAccount) {
-    return `Bank · ${payout.bankAccount}${payout.ifscCode ? ` (${payout.ifscCode})` : ""}`;
+    return `Bank - ${payout.bankAccount}${payout.ifscCode ? ` (${payout.ifscCode})` : ""}`;
   }
 
   return "No payout details saved";
