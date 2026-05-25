@@ -1,6 +1,12 @@
 const API_BASE = window.API_BASE || "";
 
 let dashboardChart = null;
+const dashboardState = {
+  token: "",
+  notice: "",
+  noticeType: "success",
+  activatingCreator: false,
+};
 
 document.addEventListener("DOMContentLoaded", initDashboard);
 
@@ -10,30 +16,37 @@ async function initDashboard() {
     return logoutAndRedirect();
   }
 
+  dashboardState.token = token;
   setupLogout();
   setupUnlockModal();
 
   try {
-    const response = await fetch(`${API_BASE}/api/dashboard/user`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    if (response.status === 401) {
-      return logoutAndRedirect();
-    }
-
-    const data = await response.json();
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || "Failed to load dashboard");
-    }
-
+    const data = await fetchDashboardData(token);
     renderDashboard(data, token);
   } catch (error) {
     console.error("Dashboard load failed:", error);
     renderFatalState(error.message || "Unable to load dashboard");
   }
+}
+
+async function fetchDashboardData(token) {
+  const response = await fetch(`${API_BASE}/api/dashboard/user`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (response.status === 401) {
+    logoutAndRedirect();
+    throw new Error("Session expired");
+  }
+
+  const data = await response.json();
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Failed to load dashboard");
+  }
+
+  return data;
 }
 
 function getToken() {
@@ -148,6 +161,8 @@ function renderHero(viewer, data) {
       "dashboardSubtitle",
       "Track real earnings, product approvals, AI signals, and marketplace momentum from one place."
     );
+    renderHeroActions(viewer);
+    renderDashboardNotice();
     return;
   }
 
@@ -155,8 +170,103 @@ function renderHero(viewer, data) {
   setText("dashboardTitle", `${profile.name || "Reader"}, your unlocks are live.`);
   setText(
     "dashboardSubtitle",
-    "See what you purchased, what unlocks instantly, and every payment status tied to your account."
+    "See what you purchased, what unlocks instantly, and switch on creator mode whenever you are ready to sell your own books, notes, and digital products."
   );
+  renderHeroActions(viewer);
+  renderDashboardNotice();
+}
+
+function renderHeroActions(viewer) {
+  const heroActions = document.getElementById("heroActions");
+  if (!heroActions) {
+    return;
+  }
+
+  if (viewer === "creator") {
+    heroActions.innerHTML = `
+      <a class="solid-btn hero-action-btn" href="upload.html">Upload a product</a>
+      <a class="ghost-link hero-action-btn" href="analytics.html">Open analytics</a>
+    `;
+    return;
+  }
+
+  heroActions.innerHTML = `
+    <button class="solid-btn hero-action-btn" id="activateCreatorDashboardBtn" type="button">
+      ${dashboardState.activatingCreator ? "Enabling creator mode..." : "Become creator"}
+    </button>
+    <a class="ghost-link hero-action-btn" href="setting.html">Creator settings</a>
+  `;
+
+  const activateBtn = document.getElementById("activateCreatorDashboardBtn");
+  if (activateBtn) {
+    activateBtn.disabled = dashboardState.activatingCreator;
+    activateBtn.addEventListener("click", activateCreatorModeFromDashboard);
+  }
+}
+
+function renderDashboardNotice() {
+  const notice = document.getElementById("dashboardNotice");
+  if (!notice) {
+    return;
+  }
+
+  if (!dashboardState.notice) {
+    notice.className = "dashboard-notice hidden";
+    notice.textContent = "";
+    return;
+  }
+
+  notice.className = `dashboard-notice ${dashboardState.noticeType || "success"}`;
+  notice.textContent = dashboardState.notice;
+}
+
+async function activateCreatorModeFromDashboard() {
+  if (dashboardState.activatingCreator || !dashboardState.token) {
+    return;
+  }
+
+  dashboardState.activatingCreator = true;
+  dashboardState.notice = "";
+  renderHeroActions("reader");
+  renderDashboardNotice();
+
+  try {
+    const response = await fetch(`${API_BASE}/api/creator/activate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${dashboardState.token}`
+      }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message || "Unable to activate creator mode");
+    }
+
+    const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    localStorage.setItem("user", JSON.stringify({
+      ...currentUser,
+      role: payload.role || "creator"
+    }));
+
+    dashboardState.notice = "Creator mode is active. Your dashboard has been upgraded and you can now upload products.";
+    dashboardState.noticeType = "success";
+    const refreshed = await fetchDashboardData(dashboardState.token);
+    renderDashboard(refreshed, dashboardState.token);
+  } catch (error) {
+    dashboardState.notice = error.message || "Unable to activate creator mode right now.";
+    dashboardState.noticeType = "error";
+    renderDashboardNotice();
+  } finally {
+    dashboardState.activatingCreator = false;
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    renderHeroActions(
+      String(user.role || "").toLowerCase() === "creator" || String(user.role || "").toLowerCase() === "author"
+        ? "creator"
+        : "reader"
+    );
+    renderDashboardNotice();
+  }
 }
 
 function renderSummary(viewer, data) {
