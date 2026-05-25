@@ -32,7 +32,7 @@ const uploadAiProviderMetaEl = document.getElementById("uploadAiProviderMeta");
 const statusMessage = document.getElementById("statusMessage");
 const descriptionEl = document.getElementById("description");
 const descCount = document.getElementById("descCount");
-const submitBtn = document.querySelector(".btn.primary");
+const submitBtn = form?.querySelector(".btn.primary");
 const generateDescriptionBtn = document.getElementById("generateDescriptionBtn");
 const runCreatorAssistBtn = document.getElementById("runCreatorAssistBtn");
 const applySuggestedCategoryBtn = document.getElementById("applySuggestedCategoryBtn");
@@ -53,6 +53,13 @@ const primaryFileMeta = document.getElementById("primaryFileMeta");
 const fileDropLabel = document.getElementById("fileDropLabel");
 const fileHelperText = document.getElementById("fileHelperText");
 const importProjectSection = document.getElementById("importProjectSection");
+const creatorActivationGate = document.getElementById("creatorActivationGate");
+const creatorActivationMessage = document.getElementById("creatorActivationMessage");
+const activateCreatorNowBtn = document.getElementById("activateCreatorNowBtn");
+const chooseThumbnailBtn = document.getElementById("chooseThumbnailBtn");
+const clearThumbnailBtn = document.getElementById("clearThumbnailBtn");
+const chooseFileBtn = document.getElementById("chooseFileBtn");
+const clearFileBtn = document.getElementById("clearFileBtn");
 
 let tags = [];
 let isUploading = false;
@@ -61,6 +68,7 @@ let selectedCoverFile = null;
 let isInitialized = false;
 let libraryCatalog = [];
 let latestCreatorAssist = null;
+let creatorGateBound = false;
 
 const TYPE_OPTIONS = [
   { value: "Book", label: "E-Book" },
@@ -166,13 +174,20 @@ if (document.readyState === "loading") {
 }
 
 async function bootstrapUploadPage() {
+  bindCreatorActivation();
+
   if (!token || token === "null" || token === "undefined") {
     redirectToLogin();
     return;
   }
 
-  const allowed = await protectPage(["creator", "author", "admin"]);
-  if (!allowed) {
+  const authenticated = await protectPage();
+  if (!authenticated) {
+    return;
+  }
+
+  if (!canUploadProducts(getCurrentUser()?.role)) {
+    showCreatorActivationGate();
     return;
   }
 
@@ -184,6 +199,7 @@ function initializePage() {
     return;
   }
 
+  hideCreatorActivationGate();
   isInitialized = true;
   hydrateTypeSelect();
   restoreDraft();
@@ -204,6 +220,85 @@ function initializePage() {
   hydrateAiRuntime();
   if (loadLibraryCatalogBtn) {
     loadLibraryCatalog();
+  }
+}
+
+function bindCreatorActivation() {
+  if (creatorGateBound || !activateCreatorNowBtn) {
+    return;
+  }
+
+  activateCreatorNowBtn.addEventListener("click", activateCreatorModeForUpload);
+  creatorGateBound = true;
+}
+
+function canUploadProducts(role) {
+  return ["creator", "author", "admin"].includes(String(role || "").toLowerCase());
+}
+
+function showCreatorActivationGate() {
+  if (creatorActivationGate) {
+    creatorActivationGate.hidden = false;
+  }
+  if (form) {
+    form.hidden = true;
+  }
+  if (creatorActivationMessage) {
+    creatorActivationMessage.textContent = "Your account is logged in, but publishing is only enabled for creators. Turn on creator mode once and the full upload studio will unlock immediately.";
+  }
+  if (statusMessage) {
+    statusMessage.className = "status-message";
+    statusMessage.textContent = "";
+  }
+}
+
+function hideCreatorActivationGate() {
+  if (creatorActivationGate) {
+    creatorActivationGate.hidden = true;
+  }
+  if (form) {
+    form.hidden = false;
+  }
+}
+
+async function activateCreatorModeForUpload() {
+  if (!activateCreatorNowBtn) {
+    return;
+  }
+
+  const originalLabel = activateCreatorNowBtn.textContent;
+  activateCreatorNowBtn.disabled = true;
+  activateCreatorNowBtn.textContent = "Enabling...";
+
+  try {
+    const response = await fetch(`${API_BASE}/api/creator/activate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to enable creator mode");
+    }
+
+    const currentUser = getCurrentUser();
+    localStorage.setItem("user", JSON.stringify({
+      ...currentUser,
+      role: data.role || "creator",
+    }));
+
+    hideCreatorActivationGate();
+    initializePage();
+    showStatus("Creator mode is active. You can now upload and publish products.", "success");
+    showToast("Creator mode enabled", "success");
+  } catch (error) {
+    showStatus(error.message || "Unable to enable creator mode right now", "error");
+    showToast(error.message || "Unable to enable creator mode", "error");
+  } finally {
+    activateCreatorNowBtn.disabled = false;
+    activateCreatorNowBtn.textContent = originalLabel;
   }
 }
 
@@ -338,18 +433,44 @@ function renderTags() {
   tagContainer.appendChild(tagInput);
 }
 
+function renderThumbnailPlaceholder() {
+  thumbnailBox.innerHTML = `
+    <div class="upload-icon">IMG</div>
+    <span>Upload Thumbnail</span>
+    <small>PNG / JPG</small>
+  `;
+}
+
+function syncUploadActionButtons() {
+  if (clearThumbnailBtn) {
+    clearThumbnailBtn.disabled = !selectedCoverFile;
+  }
+
+  if (clearFileBtn) {
+    clearFileBtn.disabled = !selectedProductFile;
+  }
+}
+
 function bindThumbnail() {
   thumbnailBox?.addEventListener("click", () => thumbnailInput.click());
+  thumbnailBox?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      thumbnailInput.click();
+    }
+  });
+  chooseThumbnailBtn?.addEventListener("click", () => thumbnailInput.click());
+  clearThumbnailBtn?.addEventListener("click", clearThumbnailSelection);
   thumbnailInput?.addEventListener("change", () => {
     const file = thumbnailInput.files?.[0];
     if (!file) {
+      clearThumbnailSelection();
       return;
     }
 
     if (!file.type.startsWith("image/")) {
       showToast("Only image files allowed", "error");
-      thumbnailInput.value = "";
-      selectedCoverFile = null;
+      clearThumbnailSelection();
       return;
     }
 
@@ -357,14 +478,33 @@ function bindThumbnail() {
     const reader = new FileReader();
     reader.onload = (event) => {
       thumbnailBox.innerHTML = `<img src="${event.target.result}" class="thumbnail-preview" alt="Selected cover preview">`;
+      syncUploadActionButtons();
     };
     reader.readAsDataURL(file);
   });
+  syncUploadActionButtons();
+}
+
+function clearThumbnailSelection() {
+  selectedCoverFile = null;
+  if (thumbnailInput) {
+    thumbnailInput.value = "";
+  }
+  renderThumbnailPlaceholder();
+  syncUploadActionButtons();
 }
 
 function bindDropZone() {
   syncFileInput();
   dropZone?.addEventListener("click", () => fileInput.click());
+  dropZone?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      fileInput.click();
+    }
+  });
+  chooseFileBtn?.addEventListener("click", () => fileInput.click());
+  clearFileBtn?.addEventListener("click", clearProductFileSelection);
   dropZone?.addEventListener("dragover", (event) => {
     event.preventDefault();
     dropZone.classList.add("dragging");
@@ -386,10 +526,15 @@ function syncFileInput() {
     fileInput.setAttribute("accept", getFileAcceptValue());
   }
   fileInput?.addEventListener("change", handleProductFileInputChange);
+  syncUploadActionButtons();
 }
 
 function handleProductFileInputChange() {
   const file = fileInput.files?.[0];
+  if (!file) {
+    clearProductFileSelection();
+    return;
+  }
   validateAndSetProductFile(file);
 }
 
@@ -415,22 +560,19 @@ function validateAndSetProductFile(file) {
 
   if (PDF_REQUIRED_TYPES.has(type) && extension !== ".pdf") {
     showToast("This product type requires a PDF file", "error");
-    fileInput.value = "";
-    selectedProductFile = null;
+    clearProductFileSelection();
     return false;
   }
 
   if (!PDF_REQUIRED_TYPES.has(type) && !SUPPORTED_FILE_EXTENSIONS.has(extension)) {
     showToast("That file type is not supported for marketplace delivery", "error");
-    fileInput.value = "";
-    selectedProductFile = null;
+    clearProductFileSelection();
     return false;
   }
 
   if (file.size > MAX_FILE_SIZE) {
     showToast("Max file size is 50MB", "error");
-    fileInput.value = "";
-    selectedProductFile = null;
+    clearProductFileSelection();
     return false;
   }
 
@@ -451,6 +593,15 @@ function renderSelectedProductState(file) {
   syncFileInput();
 }
 
+function clearProductFileSelection() {
+  selectedProductFile = null;
+  renderDropZonePlaceholder();
+  if (fileInput) {
+    fileInput.value = "";
+  }
+  syncUploadActionButtons();
+}
+
 function bindRoyaltyCalculator() {
   priceInput?.addEventListener("input", updateRoyalty);
 }
@@ -464,6 +615,11 @@ function bindProductType() {
     updateProductTypeUI();
     if (!selectedProductFile) {
       renderDropZonePlaceholder();
+      return;
+    }
+
+    if (!validateAndSetProductFile(selectedProductFile)) {
+      showStatus("The previous file is not valid for this product type. Please choose a new file.", "info");
     }
   });
 }
@@ -1222,11 +1378,7 @@ function resetForm(options = {}) {
   hydrateTypeSelect();
   updateProductTypeUI();
   renderDropZonePlaceholder();
-  thumbnailBox.innerHTML = `
-    <div class="upload-icon">IMG</div>
-    <span>Upload Thumbnail</span>
-    <small>PNG / JPG</small>
-  `;
+  renderThumbnailPlaceholder();
   if (fileInput) {
     fileInput.value = "";
   }
@@ -1246,6 +1398,7 @@ function resetForm(options = {}) {
   if (!options.preserveProvider) {
     setUploadAiProvider();
   }
+  syncUploadActionButtons();
 }
 
 function redirectToLogin() {

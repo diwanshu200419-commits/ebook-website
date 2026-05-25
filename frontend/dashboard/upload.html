@@ -18,7 +18,7 @@ Upload Content | E-Book Market
 
 <link
   rel="stylesheet"
-  href="upload.css"
+  href="upload.css?v=20260525-dashboard-fix1"
 />
 
 <!-- GOOGLE FONT -->
@@ -138,6 +138,34 @@ UPLOAD CARD
 ========================= -->
 
 <div class="upload-card">
+
+<section id="creatorActivationGate" class="creator-activation-gate" hidden>
+
+<span class="creator-activation-eyebrow">
+Creator access
+</span>
+
+<h2>
+Turn on creator mode to start selling
+</h2>
+
+<p id="creatorActivationMessage">
+Your account is active, but publishing is only available in creator mode. Enable it once and you can upload books, prompts, templates, and paid study resources.
+</p>
+
+<div class="creator-activation-actions">
+
+<button type="button" class="btn primary" id="activateCreatorNowBtn">
+Enable Creator Mode
+</button>
+
+<a class="btn secondary" href="setting.html">
+Open Settings
+</a>
+
+</div>
+
+</section>
 
 <form
   id="uploadForm"
@@ -515,6 +543,8 @@ Recommended:
 <div
   class="thumbnail-box"
   id="thumbnailBox"
+  role="button"
+  tabindex="0"
 >
 
 <div class="upload-icon">
@@ -528,6 +558,18 @@ Upload Thumbnail
 <small>
 PNG / JPG
 </small>
+
+</div>
+
+<div class="upload-actions">
+
+<button type="button" class="upload-action-btn" id="chooseThumbnailBtn">
+Choose thumbnail
+</button>
+
+<button type="button" class="upload-action-btn secondary" id="clearThumbnailBtn" disabled>
+Clear
+</button>
 
 </div>
 
@@ -548,6 +590,8 @@ Upload the main file buyers will unlock after purchase.
 <div
   class="drop-zone"
   id="dropZone"
+  role="button"
+  tabindex="0"
 >
 
 <div class="upload-icon">
@@ -568,6 +612,18 @@ PDF, ZIP, TXT, JSON, DOCX, PPTX, XLSX, PNG, JPG, WEBP - Max 50MB
   accept=".pdf,.zip,.txt,.md,.json,.csv,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
   hidden
 />
+
+</div>
+
+<div class="upload-actions">
+
+<button type="button" class="upload-action-btn" id="chooseFileBtn">
+Choose file
+</button>
+
+<button type="button" class="upload-action-btn secondary" id="clearFileBtn" disabled>
+Clear
+</button>
 
 </div>
 
@@ -994,9 +1050,9 @@ BACK
 
 <script src="../config.js"></script>
 
-<script src="../auth.js"></script>
+<script src="../auth.js?v=20260525-dashboard-fix1"></script>
 
-<script src="upload.js"></script>
+<script src="upload.js?v=20260525-dashboard-fix1"></script>
 
 </body>
 

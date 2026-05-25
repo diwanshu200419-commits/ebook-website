@@ -3,7 +3,11 @@ GLOBAL AUTH SYSTEM
 E-BOOK MARKET STARTUP
 ========================= */
 
-const API_BASE = window.API_BASE || "";
+window.__AUTH_API_BASE__ = window.__AUTH_API_BASE__ || window.API_BASE || "";
+
+function getAuthApiBase() {
+  return window.__AUTH_API_BASE__ || window.API_BASE || "";
+}
 
 function buildFrontendPath(pathname, fallbackRelative) {
   if (typeof window.getFrontendReturnUrl === "function") {
@@ -14,7 +18,7 @@ function buildFrontendPath(pathname, fallbackRelative) {
 }
 
 function notifyServerLogout() {
-  return fetch(`${API_BASE}/api/auth/logout`, {
+  return fetch(`${getAuthApiBase()}/api/auth/logout`, {
     method: "POST",
     credentials: "include",
     keepalive: true
@@ -36,7 +40,7 @@ async function protectPage(allowedRoles = []) {
   }
 
   try {
-    const res = await fetch(`${API_BASE}/api/user/profile`, {
+    const res = await fetch(`${getAuthApiBase()}/api/user/profile`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
