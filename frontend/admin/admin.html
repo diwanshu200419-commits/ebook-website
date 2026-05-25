@@ -5,7 +5,7 @@
   <title>Admin Command Center | E-Book Market</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Founder-grade admin command center for moderation, payouts, AI signals, creator verification, and marketplace growth operations." />
-  <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="admin.css?v=20260525-admin2" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
@@ -149,7 +149,8 @@
           </div>
 
           <div class="filter-bar">
-            <select>
+            <input id="contentSearchInput" type="search" placeholder="Search title, creator, category, or product type" />
+            <select id="contentTypeFilter">
               <option>All Types</option>
               <option>E-Books</option>
               <option>Notes</option>
@@ -160,13 +161,13 @@
               <option>AI Assets</option>
               <option>Bundles</option>
             </select>
-            <select>
+            <select id="contentAiFilter">
               <option>AI Score</option>
               <option>Above 90%</option>
               <option>70-90%</option>
               <option>Below 70%</option>
             </select>
-            <select>
+            <select id="contentSortFilter">
               <option>Sort By</option>
               <option>Newest</option>
               <option>Highest Revenue</option>
@@ -195,6 +196,15 @@
               <p class="panel-kicker">Live catalog</p>
               <h2>Approved Library</h2>
             </div>
+          </div>
+          <div class="filter-bar">
+            <input id="approvedSearchInput" type="search" placeholder="Search approved products, creator, category, or product type" />
+            <select id="approvedSortFilter">
+              <option>Newest</option>
+              <option>Highest Revenue</option>
+              <option>Top Sales</option>
+              <option>A-Z</option>
+            </select>
           </div>
           <div id="approvedList" class="content-list"></div>
         </div>
@@ -497,21 +507,39 @@
             <div>
               <p class="panel-kicker">Admin settings</p>
               <h2>Settings</h2>
+              <p>Live system health, runtime configuration, and founder operating shortcuts.</p>
             </div>
           </div>
-          <div class="empty-state">
-            <p>Platform rules, commission controls, and admin-level system settings can be expanded here next.</p>
+          <div id="settingsOverviewStats" class="admin-stats"></div>
+        </div>
+
+        <div class="overview-columns">
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Runtime</p>
+                <h3>Platform Runtime</h3>
+              </div>
+            </div>
+            <div id="settingsRuntimeList" class="content-list"></div>
+          </div>
+
+          <div class="surface-panel">
+            <div class="panel-header">
+              <div>
+                <p class="panel-kicker">Ops shortcuts</p>
+                <h3>Founder Actions</h3>
+              </div>
+            </div>
+            <div id="settingsOpsList" class="content-list"></div>
           </div>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="../config.js"></script>
-  <script src="../auth.js"></script>
-  <script src="admin.js"></script>
-  <script>
-    protectPage(["admin"]);
-  </script>
+  <script src="../config.js?v=20260525-admin2"></script>
+  <script src="../auth.js?v=20260525-admin2"></script>
+  <script src="admin.js?v=20260525-admin2"></script>
 </body>
 </html>

@@ -27,8 +27,14 @@ const adminIdentityMeta = document.getElementById("adminIdentityMeta");
 const adminIdentityAvatar = document.querySelector(".identity-avatar");
 const jumpButtons = document.querySelectorAll("[data-jump-target]");
 const contentList = document.getElementById("contentList");
+const contentSearchInput = document.getElementById("contentSearchInput");
+const contentTypeFilter = document.getElementById("contentTypeFilter");
+const contentAiFilter = document.getElementById("contentAiFilter");
+const contentSortFilter = document.getElementById("contentSortFilter");
 const reviewReportList = document.getElementById("reviewReportList");
 const approvedList = document.getElementById("approvedList");
+const approvedSearchInput = document.getElementById("approvedSearchInput");
+const approvedSortFilter = document.getElementById("approvedSortFilter");
 const paymentReviewList = document.getElementById("paymentReviewList");
 const withdrawRequestList = document.getElementById("withdrawRequestList");
 const aiOverview = document.getElementById("aiOverview");
@@ -62,8 +68,12 @@ const crmLabRunBtn = document.getElementById("crmLabRunBtn");
 const crmLabStatus = document.getElementById("crmLabStatus");
 const crmLabPreview = document.getElementById("crmLabPreview");
 const crmLabRunResult = document.getElementById("crmLabRunResult");
+const settingsOverviewStats = document.getElementById("settingsOverviewStats");
+const settingsRuntimeList = document.getElementById("settingsRuntimeList");
+const settingsOpsList = document.getElementById("settingsOpsList");
 let lifecycleLabConfig = null;
 let activeSection = "overview";
+let sectionChangeNonce = 0;
 const adminState = {
   lastSyncedAt: null,
   flaggedBooksCount: 0,
@@ -74,6 +84,16 @@ const adminState = {
   aiHighRiskCount: 0,
   aiManualReviewCount: 0,
   reportsHotCount: 0,
+};
+const adminCollections = {
+  pendingBooks: [],
+  approvedBooks: [],
+  reviewReports: [],
+  pendingPayments: [],
+  withdrawals: [],
+  creatorOverview: null,
+  settingsHealth: null,
+  settingsAi: null,
 };
 
 const HEADERS = {
@@ -134,6 +154,18 @@ crmLabPreviewBtn?.addEventListener("click", previewLifecycleExperiment);
 crmLabRunBtn?.addEventListener("click", runLifecycleExperiment);
 captureLifecycleSnapshotBtn?.addEventListener("click", captureLifecycleSnapshot);
 refreshAdminBtn?.addEventListener("click", refreshActiveSection);
+contentSearchInput?.addEventListener("input", applyPendingBookFilters);
+contentTypeFilter?.addEventListener("change", applyPendingBookFilters);
+contentAiFilter?.addEventListener("change", applyPendingBookFilters);
+contentSortFilter?.addEventListener("change", applyPendingBookFilters);
+approvedSearchInput?.addEventListener("input", applyApprovedBookFilters);
+approvedSortFilter?.addEventListener("change", applyApprovedBookFilters);
+window.addEventListener("hashchange", () => {
+  const target = resolveInitialSection();
+  if (target !== activeSection) {
+    void switchSection(target);
+  }
+});
 
 function parseStoredUser() {
   try {
@@ -178,6 +210,18 @@ function setActiveSection(target) {
   });
 }
 
+function getSelectedText(selectElement, fallback = "") {
+  if (!selectElement || selectElement.selectedIndex < 0) {
+    return fallback;
+  }
+
+  return String(selectElement.options[selectElement.selectedIndex]?.text || fallback).trim();
+}
+
+function sortByCreatedAtDesc(left, right) {
+  return new Date(right?.createdAt || 0).getTime() - new Date(left?.createdAt || 0).getTime();
+}
+
 function resolveInitialSection() {
   const requested = String(window.location.hash || "").replace(/^#/, "").trim();
   return requested && document.getElementById(requested) ? requested : "overview";
@@ -185,6 +229,7 @@ function resolveInitialSection() {
 
 async function switchSection(target) {
   const safeTarget = document.getElementById(target) ? target : "overview";
+  const switchNonce = ++sectionChangeNonce;
   activeSection = safeTarget;
   setActiveNav(safeTarget);
   setActiveSection(safeTarget);
@@ -192,7 +237,25 @@ async function switchSection(target) {
   if (window.location.hash !== `#${safeTarget}`) {
     history.replaceState(null, "", `#${safeTarget}`);
   }
-  await loadSectionData(safeTarget);
+
+  if (headerSyncTime) {
+    headerSyncTime.textContent = `Loading ${HEADERS[safeTarget]?.title || "section"}...`;
+  }
+
+  try {
+    await loadSectionData(safeTarget);
+  } catch (error) {
+    if (switchNonce !== sectionChangeNonce) {
+      return;
+    }
+
+    console.error(`Admin section load failed for ${safeTarget}:`, error);
+    setHeaderStatus("Section Error", "blocked");
+    if (headerSyncTime) {
+      headerSyncTime.textContent = error?.message || "Section failed to load";
+    }
+    renderSectionFailure(safeTarget, error);
+  }
 }
 
 async function loadSectionData(target) {
@@ -228,6 +291,68 @@ async function loadSectionData(target) {
 
   if (target === "reports") {
     await loadReportsOverview();
+    return;
+  }
+
+  if (target === "settings") {
+    await loadSettingsOverview();
+  }
+}
+
+function renderSectionFailure(target, error) {
+  const message = escapeHTML(error?.message || "Unable to load this admin section right now.");
+
+  if (target === "review") {
+    if (contentList) {
+      contentList.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    }
+    if (reviewReportList) {
+      reviewReportList.innerHTML = `<div class="empty-state"><p>Review reports are temporarily unavailable.</p></div>`;
+    }
+    return;
+  }
+
+  if (target === "approved" && approvedList) {
+    approvedList.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    return;
+  }
+
+  if (target === "creators") {
+    creatorOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
+    verificationRequestList.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    referralLeaderboardList.innerHTML = `<div class="empty-state"><p>Referral leaderboard unavailable right now.</p></div>`;
+    return;
+  }
+
+  if (target === "payouts") {
+    paymentReviewList.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    withdrawRequestList.innerHTML = `<div class="empty-state"><p>Creator payout data is temporarily unavailable.</p></div>`;
+    return;
+  }
+
+  if (target === "ai") {
+    aiOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
+    aiFlaggedList.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    return;
+  }
+
+  if (target === "reports") {
+    reportsOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
+    reportsLaunchOverview.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
+    reportsLaunchChecks.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    return;
+  }
+
+  if (target === "settings") {
+    if (settingsOverviewStats) {
+      settingsOverviewStats.innerHTML = "<article class='stat-card'><h3>Status</h3><p>Offline</p></article>";
+    }
+    if (settingsRuntimeList) {
+      settingsRuntimeList.innerHTML = `<div class="empty-state"><p>${message}</p></div>`;
+    }
+    if (settingsOpsList) {
+      settingsOpsList.innerHTML = `<div class="empty-state"><p>Ops shortcuts are temporarily unavailable.</p></div>`;
+    }
   }
 }
 
@@ -239,6 +364,12 @@ async function refreshActiveSection() {
 
   try {
     await loadSectionData(activeSection);
+  } catch (error) {
+    console.error("Admin refresh failed:", error);
+    setHeaderStatus("Refresh Failed", "blocked");
+    if (headerSyncTime) {
+      headerSyncTime.textContent = error?.message || "Unable to refresh dashboard";
+    }
   } finally {
     if (refreshAdminBtn) {
       refreshAdminBtn.disabled = false;
@@ -437,98 +568,80 @@ async function loadCommandCenter() {
 
 async function loadPendingBooks() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/books/flagged`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-    const books = data.books || [];
+    const data = await adminFetchJson("/api/admin/books/flagged");
+    const books = Array.isArray(data.books) ? data.books : [];
+    adminCollections.pendingBooks = books;
     adminState.flaggedBooksCount = books.length;
     updateNavCounts();
-    renderPending(books);
+    applyPendingBookFilters();
     markAdminSynced();
   } catch (err) {
     console.error(err);
-    contentList.innerHTML = "<p>Failed to load pending books</p>";
+    contentList.innerHTML = "<div class='empty-state'><p>Failed to load pending books</p></div>";
   }
 }
 
 async function loadApprovedBooks() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/books?status=Approved`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
-    renderApproved(data.books || []);
+    const data = await adminFetchJson("/api/admin/books?status=Approved");
+    adminCollections.approvedBooks = Array.isArray(data.books) ? data.books : [];
+    applyApprovedBookFilters();
     markAdminSynced();
   } catch (err) {
     console.error(err);
-    approvedList.innerHTML = "<p>Failed to load approved books</p>";
+    approvedList.innerHTML = "<div class='empty-state'><p>Failed to load approved books</p></div>";
   }
 }
 
 async function loadReviewReports() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/review-reports`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to load review reports");
-    const reports = data.reports || [];
+    const data = await adminFetchJson("/api/admin/review-reports");
+    const reports = Array.isArray(data.reports) ? data.reports : [];
+    adminCollections.reviewReports = reports;
     adminState.reviewReportsCount = reports.length;
     updateNavCounts();
     renderReviewReports(reports);
     markAdminSynced();
   } catch (err) {
     console.error(err);
-    reviewReportList.innerHTML = "<p>Failed to load reported reviews</p>";
+    reviewReportList.innerHTML = "<div class='empty-state'><p>Failed to load reported reviews</p></div>";
   }
 }
 
 async function loadPendingPayments() {
   try {
-    const res = await fetch(`${API_BASE}/api/payments/pending`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to load payments");
-    const payments = data.payments || [];
+    const data = await adminFetchJson("/api/payments/pending");
+    const payments = Array.isArray(data.payments) ? data.payments : [];
+    adminCollections.pendingPayments = payments;
     adminState.pendingPaymentGroupsCount = groupPendingPayments(payments).length;
     updateNavCounts();
     renderPendingPayments(payments);
     markAdminSynced();
   } catch (err) {
     console.error(err);
-    paymentReviewList.innerHTML = "<p>Failed to load pending payments</p>";
+    paymentReviewList.innerHTML = "<div class='empty-state'><p>Failed to load pending payments</p></div>";
   }
 }
 
 async function loadWithdrawRequests() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/withdrawals`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to load withdrawals");
-    const withdrawals = data.withdrawals || [];
+    const data = await adminFetchJson("/api/admin/withdrawals");
+    const withdrawals = Array.isArray(data.withdrawals) ? data.withdrawals : [];
+    adminCollections.withdrawals = withdrawals;
     adminState.actionableWithdrawCount = withdrawals.filter((item) => ["pending", "approved"].includes(String(item.status || "").toLowerCase())).length;
     updateNavCounts();
     renderWithdrawRequests(withdrawals);
     markAdminSynced();
   } catch (err) {
     console.error(err);
-    withdrawRequestList.innerHTML = "<p>Failed to load withdrawal requests</p>";
+    withdrawRequestList.innerHTML = "<div class='empty-state'><p>Failed to load withdrawal requests</p></div>";
   }
 }
 
 async function loadCreatorsHub() {
   try {
-    const res = await fetch(`${API_BASE}/api/admin/creators/overview`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to load creator operations");
+    const data = await adminFetchJson("/api/admin/creators/overview");
+    adminCollections.creatorOverview = data;
     adminState.pendingVerificationsCount = Number(data.summary?.pendingVerifications || 0);
     updateNavCounts();
     renderCreatorOverview(data.summary || {});
@@ -584,6 +697,120 @@ async function loadReportsOverview() {
     reportsCampaignVariants.innerHTML = "<p>Failed to load campaign variants</p>";
     reportsCampaignHistory.innerHTML = "<p>Failed to load campaign delivery history</p>";
   }
+}
+
+async function loadSettingsOverview() {
+  if (settingsOverviewStats) {
+    settingsOverviewStats.innerHTML = Array.from({ length: 4 }, () => `
+      <article class="stat-card">
+        <h3>Loading</h3>
+        <p>...</p>
+      </article>
+    `).join("");
+  }
+  if (settingsRuntimeList) {
+    settingsRuntimeList.innerHTML = `<div class="empty-state"><p>Loading runtime checks...</p></div>`;
+  }
+  if (settingsOpsList) {
+    settingsOpsList.innerHTML = `<div class="empty-state"><p>Loading founder actions...</p></div>`;
+  }
+
+  const [healthResult, aiResult] = await Promise.allSettled([
+    fetch(`${API_BASE}/api/health`).then((response) => response.json()),
+    fetch(`${API_BASE}/api/ai/status`).then((response) => response.json()),
+  ]);
+
+  adminCollections.settingsHealth = healthResult.status === "fulfilled" ? healthResult.value : null;
+  adminCollections.settingsAi = aiResult.status === "fulfilled" ? aiResult.value : null;
+  renderSettingsOverview(adminCollections.settingsHealth, adminCollections.settingsAi);
+  markAdminSynced();
+}
+
+function applyPendingBookFilters() {
+  const searchTerm = String(contentSearchInput?.value || "").trim().toLowerCase();
+  const typeFilter = getSelectedText(contentTypeFilter, "All Types");
+  const aiFilter = getSelectedText(contentAiFilter, "AI Score");
+  const sortFilter = getSelectedText(contentSortFilter, "Sort By");
+
+  let books = [...adminCollections.pendingBooks];
+
+  if (searchTerm) {
+    books = books.filter((book) => {
+      const haystack = [
+        book.title,
+        book.category,
+        book.type,
+        book.author?.name,
+        book.authorName,
+      ].join(" ").toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }
+
+  if (typeFilter !== "All Types") {
+    const normalizedType = typeFilter.replace(/s$/i, "").toLowerCase();
+    books = books.filter((book) => {
+      const typeValue = String(book.type || "Book").trim().toLowerCase();
+      const categoryValue = String(book.category || "").trim().toLowerCase();
+      return typeValue.includes(normalizedType) || categoryValue.includes(normalizedType);
+    });
+  }
+
+  if (aiFilter === "Above 90%") {
+    books = books.filter((book) => Number(book.aiScore || 0) >= 90);
+  } else if (aiFilter === "70-90%") {
+    books = books.filter((book) => {
+      const aiScore = Number(book.aiScore || 0);
+      return aiScore >= 70 && aiScore < 90;
+    });
+  } else if (aiFilter === "Below 70%") {
+    books = books.filter((book) => Number(book.aiScore || 0) < 70);
+  }
+
+  if (sortFilter === "Highest Revenue") {
+    books.sort((left, right) => Number(right.earnings || 0) - Number(left.earnings || 0));
+  } else if (sortFilter === "High Risk") {
+    books.sort((left, right) => Number(right.plagiarismScore || 0) - Number(left.plagiarismScore || 0));
+  } else {
+    books.sort(sortByCreatedAtDesc);
+  }
+
+  renderPending(books);
+}
+
+function applyApprovedBookFilters() {
+  const searchTerm = String(approvedSearchInput?.value || "").trim().toLowerCase();
+  const sortFilter = getSelectedText(approvedSortFilter, "Newest");
+  let books = [...adminCollections.approvedBooks];
+
+  if (searchTerm) {
+    books = books.filter((book) => {
+      const haystack = [
+        book.title,
+        book.category,
+        book.type,
+        book.author?.name,
+        book.authorName,
+      ].join(" ").toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }
+
+  if (sortFilter === "Highest Revenue") {
+    books.sort((left, right) => {
+      const rightRevenue = Number(right.platformRevenue || 0) + Number(right.earnings || 0);
+      const leftRevenue = Number(left.platformRevenue || 0) + Number(left.earnings || 0);
+      return rightRevenue - leftRevenue;
+    });
+  } else if (sortFilter === "Top Sales") {
+    books.sort((left, right) => Number(right.salesCount || 0) - Number(left.salesCount || 0));
+  } else if (sortFilter === "A-Z") {
+    books.sort((left, right) => String(left.title || "").localeCompare(String(right.title || ""), "en"));
+  } else {
+    books.sort(sortByCreatedAtDesc);
+  }
+
+  renderApproved(books);
 }
 
 async function loadLifecycleExperimentConfig() {
@@ -900,6 +1127,124 @@ function renderCreatorOverview(summary) {
       <p>${Number(card.value || 0).toLocaleString("en-IN")}</p>
     </article>
   `).join("");
+}
+
+function renderSettingsOverview(health = null, aiStatus = null) {
+  const runtimeUser = parseStoredUser() || {};
+  const uploadStorage = health?.uploadStorage || {};
+  const aiQueue = health?.aiQueue || {};
+  const publicFolders = Array.isArray(uploadStorage.publiclyServedFolders)
+    ? uploadStorage.publiclyServedFolders.join(", ")
+    : "None";
+  const protectedFolders = Array.isArray(uploadStorage.protectedFolders)
+    ? uploadStorage.protectedFolders.join(", ")
+    : "None";
+  const queueDepth = Number(aiQueue.totalQueued || aiQueue.queueLength || aiQueue.queued || 0);
+  const processingCount = Number(aiQueue.active || aiQueue.processing || 0);
+  const healthEnv = health?.env || "production";
+  const aiMode = aiStatus?.mode || "fallback";
+
+  if (settingsOverviewStats) {
+    settingsOverviewStats.innerHTML = [
+      { label: "Session role", value: String(runtimeUser.role || "admin").toUpperCase() },
+      { label: "API environment", value: String(healthEnv).toUpperCase() },
+      { label: "AI runtime", value: String(aiMode).replace(/_/g, " ").toUpperCase() },
+      { label: "Queue pressure", value: `${queueDepth + processingCount}` },
+      { label: "Asset storage", value: String(uploadStorage.provider || "local").toUpperCase() },
+      { label: "Private assets", value: uploadStorage.privateProductAssetsEnabled ? "ENABLED" : "LIMITED" },
+    ].map((card) => `
+      <article class="stat-card">
+        <h3>${escapeHTML(card.label)}</h3>
+        <p>${escapeHTML(card.value)}</p>
+      </article>
+    `).join("");
+  }
+
+  if (settingsRuntimeList) {
+    settingsRuntimeList.innerHTML = [
+      {
+        title: "API + Session",
+        body: `Admin session: ${runtimeUser.email || runtimeUser.username || "Signed in"}.\nAPI base: ${API_BASE || "same-origin proxy"}.\nLast sync: ${adminState.lastSyncedAt ? formatDateTime(adminState.lastSyncedAt) : "Waiting for sync"}.`,
+      },
+      {
+        title: "Storage + Delivery",
+        body: `Provider: ${uploadStorage.provider || "local"}.\nPublic folders: ${publicFolders}.\nProtected folders: ${protectedFolders}.`,
+      },
+      {
+        title: "AI Runtime",
+        body: `Provider: ${aiStatus?.provider || "local"}.\nMode: ${aiMode}.\nHosted models: ${aiStatus?.hosted ? "configured" : "fallback only"}.`,
+      },
+      {
+        title: "Queue Health",
+        body: `Queued jobs: ${queueDepth}.\nProcessing: ${processingCount}.\nEmbeddings ready: ${aiStatus?.embeddingsReady ? "yes" : "no"}.`,
+      },
+    ].map((entry) => `
+      <article class="content-card compact-card">
+        <div class="content-info">
+          <div>
+            <h3>${escapeHTML(entry.title)}</h3>
+            <p>${escapeHTML(entry.body).replace(/\n/g, "<br/>")}</p>
+          </div>
+        </div>
+      </article>
+    `).join("");
+  }
+
+  if (settingsOpsList) {
+    settingsOpsList.innerHTML = [
+      {
+        title: "Moderation control",
+        body: "Jump straight into the pending content queue and reported reviews when trust issues spike.",
+        target: "review",
+        label: "Open review ops",
+      },
+      {
+        title: "Treasury control",
+        body: "Resolve manual payment proofs and creator withdrawal approvals from one payouts queue.",
+        target: "payouts",
+        label: "Open payout ops",
+      },
+      {
+        title: "Growth intelligence",
+        body: "Inspect lifecycle winners, launch blockers, and the founder revenue board without leaving admin.",
+        target: "reports",
+        label: "Open growth reports",
+      },
+      {
+        title: "Refresh system health",
+        body: "Pull a fresh health, storage, and AI runtime snapshot for the command center.",
+        action: "refresh-settings",
+        label: "Refresh health",
+      },
+    ].map((entry) => `
+      <article class="content-card compact-card">
+        <div class="content-info">
+          <div>
+            <h3>${escapeHTML(entry.title)}</h3>
+            <p>${escapeHTML(entry.body)}</p>
+          </div>
+        </div>
+        <div class="actions">
+          ${entry.target
+            ? `<button class="changes" type="button" data-jump-target="${escapeAttribute(entry.target)}">${escapeHTML(entry.label)}</button>`
+            : `<button class="approve" type="button" data-settings-action="${escapeAttribute(entry.action || "")}">${escapeHTML(entry.label)}</button>`}
+        </div>
+      </article>
+    `).join("");
+
+    settingsOpsList.querySelectorAll("[data-jump-target]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = button.getAttribute("data-jump-target");
+        if (target) {
+          void switchSection(target);
+        }
+      });
+    });
+
+    settingsOpsList.querySelector('[data-settings-action="refresh-settings"]')?.addEventListener("click", () => {
+      void loadSettingsOverview();
+    });
+  }
 }
 
 function renderReportsOverview(summary, launchReadiness, typeBreakdown, deliveryBreakdown, topProducts, campaignAnalytics, lifecycleStrategies, lifecycleSnapshots) {
@@ -1860,7 +2205,14 @@ function enhanceBookModerationCard(card, book, options = {}) {
 function renderPending(books) {
   contentList.innerHTML = "";
   if (!books.length) {
-    contentList.innerHTML = "<p style='opacity:.7'>No pending content</p>";
+    const hasFilters = Boolean(
+      String(contentSearchInput?.value || "").trim()
+      || getSelectedText(contentTypeFilter, "All Types") !== "All Types"
+      || getSelectedText(contentAiFilter, "AI Score") !== "AI Score"
+    );
+    contentList.innerHTML = hasFilters
+      ? "<div class='empty-state'><p>No pending products match the current filters.</p></div>"
+      : "<p style='opacity:.7'>No pending content</p>";
     return;
   }
 
@@ -1903,7 +2255,10 @@ function renderPending(books) {
 function renderApproved(books) {
   approvedList.innerHTML = "";
   if (!books.length) {
-    approvedList.innerHTML = "<p style='opacity:.7'>No approved content yet</p>";
+    const hasFilters = Boolean(String(approvedSearchInput?.value || "").trim());
+    approvedList.innerHTML = hasFilters
+      ? "<div class='empty-state'><p>No approved products match the current search.</p></div>"
+      : "<p style='opacity:.7'>No approved content yet</p>";
     return;
   }
 
@@ -2648,6 +3003,13 @@ async function rejectPayment(paymentId, isBatch = false) {
 
 async function bootstrapAdmin() {
   try {
+    if (typeof window.protectPage === "function") {
+      const allowed = await window.protectPage(["admin"]);
+      if (!allowed) {
+        return;
+      }
+    }
+
     syncAdminIdentity();
     setHeaderStatus("Booting Ops", "warning");
     await switchSection(resolveInitialSection());
