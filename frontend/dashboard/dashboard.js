@@ -6,6 +6,7 @@ const dashboardState = {
   notice: "",
   noticeType: "success",
   activatingCreator: false,
+  revealObserver: null,
 };
 
 document.addEventListener("DOMContentLoaded", initDashboard);
@@ -109,6 +110,9 @@ function renderDashboard(data, token) {
 
   renderNavigation(viewer, data);
   renderHero(viewer, data);
+  renderSpotlight(viewer, data);
+  renderJourney(viewer, data);
+  renderFocus(viewer, data);
   renderSummary(viewer, data);
   renderChart(viewer, data);
 
@@ -116,12 +120,13 @@ function renderDashboard(data, token) {
     renderCreatorBooks(data, token);
     renderCreatorTopBooks(data);
     renderCreatorActivity(data);
-    return;
+  } else {
+    renderReaderPurchases(data, token);
+    renderReaderOrders(data);
+    renderReaderProfile(data);
   }
 
-  renderReaderPurchases(data, token);
-  renderReaderOrders(data);
-  renderReaderProfile(data);
+  finalizeDashboardRender();
 }
 
 function renderNavigation(viewer, data) {
@@ -174,6 +179,199 @@ function renderHero(viewer, data) {
   );
   renderHeroActions(viewer);
   renderDashboardNotice();
+}
+
+function renderSpotlight(viewer, data) {
+  const spotlightGrid = document.getElementById("spotlightGrid");
+  if (!spotlightGrid) {
+    return;
+  }
+
+  const cards = viewer === "creator"
+    ? [
+        {
+          label: "Wallet ready",
+          value: data.creatorStats?.walletBalance || 0,
+          format: "currency",
+          note: `${numberText(data.creatorStats?.totalSales || 0)} sales processed`,
+          accent: "violet",
+        },
+        {
+          label: "Catalog live",
+          value: data.creatorStats?.totalBooks || 0,
+          format: "number",
+          note: `${numberText(getStatusCount(data.statusBreakdown, "approved"))} approved products`,
+          accent: "cyan",
+        },
+        {
+          label: "Audience reach",
+          value: data.creatorStats?.totalViews || 0,
+          format: "number",
+          note: `${numberText(data.creatorStats?.totalDownloads || 0)} downloads recorded`,
+          accent: "emerald",
+        },
+      ]
+    : [
+        {
+          label: "Unlock vault",
+          value: data.readerStats?.downloadsUnlocked || 0,
+          format: "number",
+          note: `${numberText(data.readerStats?.totalPurchased || 0)} approved purchases`,
+          accent: "violet",
+        },
+        {
+          label: "Learning spend",
+          value: data.readerStats?.totalSpent || 0,
+          format: "currency",
+          note: "Only approved transactions are counted",
+          accent: "cyan",
+        },
+        {
+          label: "Payments in motion",
+          value: data.readerStats?.pendingOrders || 0,
+          format: "number",
+          note: `${numberText(data.readerStats?.rejectedOrders || 0)} need attention`,
+          accent: "amber",
+        },
+      ];
+
+  spotlightGrid.innerHTML = cards.map((card) => `
+    <article class="spotlight-card accent-${escapeAttribute(card.accent)}" data-reveal>
+      <div class="spotlight-glow"></div>
+      <p>${escapeHTML(card.label)}</p>
+      ${buildMetricMarkup(card.value, card.format, "spotlight-value")}
+      <span>${escapeHTML(card.note)}</span>
+    </article>
+  `).join("");
+}
+
+function renderJourney(viewer, data) {
+  setText("journeyKicker", viewer === "creator" ? "Creator runway" : "Member runway");
+  setText(
+    "journeyTitle",
+    viewer === "creator" ? "Turn uploads into repeat revenue" : "Move from learner to seller"
+  );
+  setText("journeyBadge", viewer === "creator" ? "Revenue milestones" : "Growth milestones");
+
+  const journeyBody = document.getElementById("journeyBody");
+  if (!journeyBody) {
+    return;
+  }
+
+  const items = viewer === "creator"
+    ? buildCreatorJourney(data)
+    : buildReaderJourney(data);
+
+  journeyBody.innerHTML = items.map((item, index) => `
+    <article class="journey-item status-${escapeAttribute(item.status)}">
+      <div class="journey-marker">
+        <span>${index + 1}</span>
+      </div>
+      <div class="journey-copy">
+        <div class="journey-topline">
+          <h3>${escapeHTML(item.title)}</h3>
+          <span class="journey-state">${escapeHTML(item.state)}</span>
+        </div>
+        <p>${escapeHTML(item.description)}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderFocus(viewer, data) {
+  setText("focusKicker", viewer === "creator" ? "Daily ops" : "Launchpad");
+  setText("focusTitle", viewer === "creator" ? "Highest-impact creator moves" : "Your best next moves");
+  setText("focusBadge", viewer === "creator" ? "Operator mode" : "Reader mode");
+
+  const focusBody = document.getElementById("focusBody");
+  if (!focusBody) {
+    return;
+  }
+
+  const actions = viewer === "creator"
+    ? [
+        {
+          title: "Publish next product",
+          description: "Launch another asset, prompt pack, or study product to keep catalog momentum up.",
+          href: "upload.html",
+          label: "Upload now",
+          variant: "solid",
+        },
+        {
+          title: "Tune your storefront",
+          description: "Update creator profile, banner, and social proof so more viewers convert into followers.",
+          href: "setting.html",
+          label: "Open settings",
+          variant: "ghost",
+        },
+        {
+          title: "Track revenue quality",
+          description: "Review earnings, conversions, and which products are doing the heavy lifting.",
+          href: "earning.html",
+          label: "View earnings",
+          variant: "ghost",
+        },
+      ]
+    : [
+        {
+          title: "Find your next unlock",
+          description: "Browse products, prompt packs, and notes that are already tailored for student creators.",
+          href: "../explore.html",
+          label: "Open marketplace",
+          variant: "solid",
+        },
+        {
+          title: "Switch on creator mode",
+          description: "Enable creator tools once, then you can upload notes, books, prompts, and templates.",
+          action: "activate-creator",
+          label: dashboardState.activatingCreator ? "Enabling..." : "Become creator",
+          variant: "ghost",
+          disabled: dashboardState.activatingCreator,
+        },
+        {
+          title: "Polish your public identity",
+          description: "Add a profile photo, bio, and creator details before you start selling globally.",
+          href: "setting.html",
+          label: "Edit profile",
+          variant: "ghost",
+        },
+      ];
+
+  const signals = viewer === "creator"
+    ? [
+        `Top category: ${getTopKey(data.categoryCounts) || "Build your first niche"}`,
+        `Approval mix: ${buildCompactStatus(data.statusBreakdown || {})}`,
+        `Current month: ${formatCurrency(data.creatorStats?.monthlyEarnings || 0)}`,
+      ]
+    : [
+        `Recent spend: ${formatCurrency(data.readerStats?.totalSpent || 0)}`,
+        `Last login: ${formatRelativeDate(data.profile?.lastLogin)}`,
+        data.readerStats?.pendingOrders
+          ? `${numberText(data.readerStats.pendingOrders)} payment records are still being reviewed`
+          : "No payment approvals are waiting right now",
+      ];
+
+  focusBody.innerHTML = `
+    <div class="focus-actions">
+      ${actions.map((action) => `
+        <article class="action-card">
+          <h3>${escapeHTML(action.title)}</h3>
+          <p>${escapeHTML(action.description)}</p>
+          ${action.href
+            ? `<a class="${escapeAttribute(action.variant === "solid" ? "solid-btn" : "ghost-link")} focus-btn" href="${escapeAttribute(action.href)}">${escapeHTML(action.label)}</a>`
+            : `<button class="${escapeAttribute(action.variant === "solid" ? "solid-btn" : "ghost-btn")} focus-btn" type="button" data-dashboard-action="${escapeAttribute(action.action || "")}" ${action.disabled ? "disabled" : ""}>${escapeHTML(action.label)}</button>`
+          }
+        </article>
+      `).join("")}
+    </div>
+    <div class="signal-cluster">
+      ${signals.map((signal) => `<div class="signal-pill">${escapeHTML(signal)}</div>`).join("")}
+    </div>
+  `;
+
+  focusBody.querySelectorAll("[data-dashboard-action='activate-creator']").forEach((button) => {
+    button.addEventListener("click", activateCreatorModeFromDashboard);
+  });
 }
 
 function renderHeroActions(viewer) {
@@ -275,52 +473,90 @@ function renderSummary(viewer, data) {
     ? [
         {
           label: "Total earnings",
-          value: formatCurrency(data.creatorStats?.totalEarnings || 0),
-          note: `${numberText(data.creatorStats?.totalSales || 0)} confirmed sales`
+          value: data.creatorStats?.totalEarnings || 0,
+          format: "currency",
+          note: `${numberText(data.creatorStats?.totalSales || 0)} confirmed sales`,
+          chip: "Cash flow",
+          meter: getProgressMeter(data.creatorStats?.totalSales || 0, 25),
+          tone: "violet",
         },
         {
           label: "This month",
-          value: formatCurrency(data.creatorStats?.monthlyEarnings || 0),
-          note: "Current month revenue"
+          value: data.creatorStats?.monthlyEarnings || 0,
+          format: "currency",
+          note: "Current month revenue",
+          chip: "Velocity",
+          meter: getProgressMeter(data.creatorStats?.monthlyEarnings || 0, 10000),
+          tone: "cyan",
         },
         {
           label: "Marketplace reach",
-          value: numberText(data.creatorStats?.totalViews || 0),
-          note: `${numberText(data.creatorStats?.totalDownloads || 0)} downloads recorded`
+          value: data.creatorStats?.totalViews || 0,
+          format: "number",
+          note: `${numberText(data.creatorStats?.totalDownloads || 0)} downloads recorded`,
+          chip: "Audience",
+          meter: getProgressMeter(data.creatorStats?.totalViews || 0, 5000),
+          tone: "emerald",
         },
         {
           label: "Creator score",
-          value: `${data.creatorStats?.creatorScore || 0}/100`,
-          note: `${numberText(data.creatorStats?.totalBooks || 0)} active products`
+          value: data.creatorStats?.creatorScore || 0,
+          format: "number",
+          suffix: "/100",
+          note: `${numberText(data.creatorStats?.totalBooks || 0)} active products`,
+          chip: "Trust",
+          meter: Number(data.creatorStats?.creatorScore || 0),
+          tone: "amber",
         }
       ]
     : [
         {
           label: "Purchased products",
-          value: numberText(data.readerStats?.totalPurchased || 0),
-          note: `${numberText(data.readerStats?.downloadsUnlocked || 0)} ready to access`
+          value: data.readerStats?.totalPurchased || 0,
+          format: "number",
+          note: `${numberText(data.readerStats?.downloadsUnlocked || 0)} ready to access`,
+          chip: "Library",
+          meter: getProgressMeter(data.readerStats?.downloadsUnlocked || 0, 12),
+          tone: "violet",
         },
         {
           label: "Total spent",
-          value: formatCurrency(data.readerStats?.totalSpent || 0),
-          note: "Approved purchases only"
+          value: data.readerStats?.totalSpent || 0,
+          format: "currency",
+          note: "Approved purchases only",
+          chip: "Investment",
+          meter: getProgressMeter(data.readerStats?.totalSpent || 0, 12000),
+          tone: "cyan",
         },
         {
           label: "Pending payments",
-          value: numberText(data.readerStats?.pendingOrders || 0),
-          note: "Waiting for review or confirmation"
+          value: data.readerStats?.pendingOrders || 0,
+          format: "number",
+          note: "Waiting for review or confirmation",
+          chip: "Ops",
+          meter: getInverseProgressMeter(data.readerStats?.pendingOrders || 0, 6),
+          tone: "amber",
         },
         {
-          label: "Rejected payments",
-          value: numberText(data.readerStats?.rejectedOrders || 0),
-          note: "Payments that need attention"
+          label: "Creator readiness",
+          value: getCreatorReadinessScore(data),
+          format: "number",
+          suffix: "/100",
+          note: "Profile and buyer journey readiness",
+          chip: "Launch",
+          meter: getCreatorReadinessScore(data),
+          tone: "emerald",
         }
       ];
 
   summaryGrid.innerHTML = cards.map((card) => `
-    <article class="summary-card">
-      <p>${escapeHTML(card.label)}</p>
-      <h3>${escapeHTML(card.value)}</h3>
+    <article class="summary-card tone-${escapeAttribute(card.tone)}" data-reveal>
+      <div class="summary-topline">
+        <p>${escapeHTML(card.label)}</p>
+        <span class="summary-chip">${escapeHTML(card.chip)}</span>
+      </div>
+      ${buildMetricMarkup(card.value, card.format, "metric-value", card.suffix || "")}
+      <div class="summary-meter"><span style="width: ${Math.max(10, Math.min(100, card.meter || 0))}%"></span></div>
       <span>${escapeHTML(card.note)}</span>
     </article>
   `).join("");
@@ -370,6 +606,10 @@ function renderChart(viewer, data) {
     return;
   }
 
+  const creatorGradient = context.createLinearGradient(0, 0, 0, 320);
+  creatorGradient.addColorStop(0, "rgba(139, 92, 246, 0.38)");
+  creatorGradient.addColorStop(1, "rgba(34, 211, 238, 0.04)");
+
   dashboardChart = new Chart(context, {
     type: chartData.type,
     data: {
@@ -380,17 +620,26 @@ function renderChart(viewer, data) {
           data: chartData.values,
           borderColor: "#8b5cf6",
           backgroundColor: viewer === "creator"
-            ? "rgba(99, 102, 241, 0.2)"
+            ? creatorGradient
             : ["#8b5cf6", "#0ea5e9", "#fb7185"],
           fill: viewer === "creator",
+          pointBackgroundColor: "#22d3ee",
+          pointBorderColor: "#e2e8f0",
+          pointRadius: viewer === "creator" ? 4 : 0,
+          pointHoverRadius: viewer === "creator" ? 6 : 0,
           tension: 0.38,
-          borderWidth: 2
+          borderWidth: 2.4
         }
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      cutout: viewer === "creator" ? 0 : "68%",
+      animation: {
+        duration: 950,
+        easing: "easeOutQuart"
+      },
       plugins: {
         legend: {
           labels: {
@@ -841,6 +1090,9 @@ function renderFatalState(message) {
   closeUnlockModal();
   setText("dashboardTitle", "We could not load your dashboard");
   setText("dashboardSubtitle", message);
+  document.getElementById("spotlightGrid").innerHTML = "";
+  document.getElementById("journeyBody").innerHTML = `<div class="empty-copy">${escapeHTML(message)}</div>`;
+  document.getElementById("focusBody").innerHTML = "<div class=\"empty-copy\">Refresh this page after logging in again.</div>";
   document.getElementById("summaryGrid").innerHTML = `
     <article class="summary-card">
       <p>Status</p>
@@ -853,6 +1105,242 @@ function renderFatalState(message) {
   document.getElementById("activityBody").innerHTML = "<div class=\"empty-copy\">Try signing out and back in, then refresh this page.</div>";
   document.getElementById("chartEmpty").classList.remove("hidden");
   document.getElementById("dashboardChart").classList.add("hidden");
+}
+
+function finalizeDashboardRender() {
+  window.requestAnimationFrame(() => {
+    animateMetricValues();
+    setupRevealAnimations();
+  });
+}
+
+function setupRevealAnimations() {
+  const nodes = Array.from(document.querySelectorAll("[data-reveal]"));
+  if (!nodes.length) {
+    return;
+  }
+
+  if (!("IntersectionObserver" in window)) {
+    nodes.forEach((node) => node.classList.add("is-visible"));
+    return;
+  }
+
+  dashboardState.revealObserver?.disconnect();
+  dashboardState.revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+        dashboardState.revealObserver?.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.18,
+    rootMargin: "0px 0px -40px 0px",
+  });
+
+  nodes.forEach((node, index) => {
+    node.classList.remove("is-visible");
+    node.style.setProperty("--reveal-delay", `${Math.min(index * 70, 420)}ms`);
+    dashboardState.revealObserver.observe(node);
+  });
+}
+
+function animateMetricValues() {
+  document.querySelectorAll(".metric-value[data-count]").forEach((element) => {
+    const target = Number(element.dataset.count || 0);
+    if (!Number.isFinite(target)) {
+      return;
+    }
+
+    const format = element.dataset.format || "number";
+    const prefix = element.dataset.prefix || "";
+    const suffix = element.dataset.suffix || "";
+    const duration = 820;
+    const start = performance.now();
+
+    const tick = (timestamp) => {
+      const progress = Math.min(1, (timestamp - start) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = target * eased;
+      element.textContent = formatMetricValue(current, format, prefix, suffix, progress < 1);
+
+      if (progress < 1) {
+        window.requestAnimationFrame(tick);
+      }
+    };
+
+    window.requestAnimationFrame(tick);
+  });
+}
+
+function buildMetricMarkup(value, format, className = "metric-value", suffix = "") {
+  const numericValue = Number(value || 0);
+  const prefix = format === "currency" ? "Rs. " : "";
+  const display = formatMetricValue(numericValue, format, prefix, suffix, false);
+
+  return `
+    <h3
+      class="${escapeAttribute(className)} metric-value"
+      data-count="${escapeAttribute(String(numericValue))}"
+      data-format="${escapeAttribute(format || "number")}"
+      data-prefix="${escapeAttribute(prefix)}"
+      data-suffix="${escapeAttribute(suffix)}"
+    >${escapeHTML(display)}</h3>
+  `;
+}
+
+function formatMetricValue(value, format = "number", prefix = "", suffix = "", inFlight = false) {
+  const safeValue = Math.max(0, Number(value || 0));
+  const numericText = Math.round(inFlight ? safeValue : safeValue).toLocaleString("en-IN");
+  if (format === "currency") {
+    return `${prefix || "Rs. "}${numericText}${suffix}`;
+  }
+  return `${prefix}${numericText}${suffix}`;
+}
+
+function buildReaderJourney(data) {
+  const totalPurchased = Number(data.readerStats?.totalPurchased || 0);
+  const pendingOrders = Number(data.readerStats?.pendingOrders || 0);
+  const readiness = getCreatorReadinessScore(data);
+
+  return [
+    {
+      title: "Account ready",
+      state: "Live",
+      status: "complete",
+      description: "Your member account is active and connected to the marketplace.",
+    },
+    {
+      title: "Unlock your first product",
+      state: totalPurchased > 0 ? "Completed" : "Next step",
+      status: totalPurchased > 0 ? "complete" : "active",
+      description: totalPurchased > 0
+        ? `${numberText(totalPurchased)} products are already inside your dashboard library.`
+        : "Buy one product and your secure unlock flow will appear here instantly.",
+    },
+    {
+      title: "Clear payment queue",
+      state: pendingOrders > 0 ? "In review" : "Stable",
+      status: pendingOrders > 0 ? "active" : "complete",
+      description: pendingOrders > 0
+        ? `${numberText(pendingOrders)} manual or delayed payments are still being reviewed.`
+        : "There are no pending payment issues blocking your library right now.",
+    },
+    {
+      title: "Launch creator mode",
+      state: readiness >= 70 ? "Ready" : "Prepare",
+      status: readiness >= 70 ? "active" : "locked",
+      description: "Complete your profile and switch on creator mode when you want to start selling.",
+    },
+  ];
+}
+
+function buildCreatorJourney(data) {
+  const totalBooks = Number(data.creatorStats?.totalBooks || 0);
+  const approvedBooks = getStatusCount(data.statusBreakdown, "approved");
+  const totalSales = Number(data.creatorStats?.totalSales || 0);
+  const monthlyEarnings = Number(data.creatorStats?.monthlyEarnings || 0);
+
+  return [
+    {
+      title: "Creator mode enabled",
+      state: "Completed",
+      status: "complete",
+      description: "Your workspace is now running with upload, analytics, and earnings access.",
+    },
+    {
+      title: "Publish your catalog",
+      state: totalBooks > 0 ? "Live" : "Start now",
+      status: totalBooks > 0 ? "complete" : "active",
+      description: totalBooks > 0
+        ? `${numberText(totalBooks)} products are already part of your creator catalog.`
+        : "Your first upload will unlock moderation, AI review, and storefront discovery.",
+    },
+    {
+      title: "Win approvals",
+      state: approvedBooks > 0 ? "Approved" : "Awaiting review",
+      status: approvedBooks > 0 ? "complete" : totalBooks > 0 ? "active" : "locked",
+      description: approvedBooks > 0
+        ? `${numberText(approvedBooks)} products are already approved for the marketplace.`
+        : "Push quality and metadata so your first items clear moderation faster.",
+    },
+    {
+      title: "Compound revenue",
+      state: totalSales > 0 ? "Revenue live" : "Next milestone",
+      status: totalSales > 0 ? "complete" : approvedBooks > 0 ? "active" : "locked",
+      description: totalSales > 0
+        ? `${numberText(totalSales)} sales processed and ${formatCurrency(monthlyEarnings)} this month.`
+        : "Once your products are approved, focus on pricing, covers, and conversion quality.",
+    },
+  ];
+}
+
+function getStatusCount(statusBreakdown, name) {
+  const key = Object.keys(statusBreakdown || {}).find(
+    (entry) => String(entry || "").toLowerCase() === String(name || "").toLowerCase()
+  );
+  return Number(key ? statusBreakdown[key] : 0);
+}
+
+function getTopKey(map) {
+  return Object.entries(map || {}).sort((left, right) => Number(right[1] || 0) - Number(left[1] || 0))[0]?.[0] || "";
+}
+
+function getProgressMeter(value, goal) {
+  return Math.round((Math.min(Number(value || 0), goal) / Math.max(goal, 1)) * 100);
+}
+
+function getInverseProgressMeter(value, limit) {
+  const ratio = Math.min(Number(value || 0), limit) / Math.max(limit, 1);
+  return Math.round((1 - ratio) * 100);
+}
+
+function getCreatorReadinessScore(data) {
+  const profile = data.profile || {};
+  let score = 32;
+
+  if (profile.name) {
+    score += 18;
+  }
+  if (profile.username) {
+    score += 18;
+  }
+  if (profile.avatar && !String(profile.avatar).includes("default-avatar")) {
+    score += 18;
+  }
+  if (data.readerStats?.totalPurchased) {
+    score += 7;
+  }
+  if (data.readerStats?.pendingOrders === 0) {
+    score += 7;
+  }
+
+  return Math.min(100, score);
+}
+
+function formatRelativeDate(value) {
+  if (!value) {
+    return "Not available";
+  }
+
+  const source = new Date(value);
+  if (Number.isNaN(source.getTime())) {
+    return "Not available";
+  }
+
+  const diffMs = Date.now() - source.getTime();
+  const diffHours = Math.max(1, Math.round(diffMs / (1000 * 60 * 60)));
+
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  if (diffDays < 30) {
+    return `${diffDays}d ago`;
+  }
+
+  return formatDate(value);
 }
 
 function buildSecureFileUrl(relativeUrl, token) {
@@ -902,17 +1390,25 @@ function resolveAssetUrl(value) {
     return "../assets/covers/Ebook_AI.png";
   }
 
+  const frontendAssetBase = window.location.pathname.includes("/frontend/")
+    ? `${window.location.origin}/frontend`
+    : "";
+
   const repaired = source.replace(
     /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
     "$1/$2"
   );
 
-  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(repaired)) {
     return repaired;
   }
 
+  if (repaired.startsWith("/assets/")) {
+    return frontendAssetBase ? `${frontendAssetBase}${repaired}` : repaired;
+  }
+
   if (/^assets\//i.test(repaired)) {
-    return `/${repaired}`;
+    return frontendAssetBase ? `${frontendAssetBase}/${repaired}` : `/${repaired}`;
   }
 
   if (repaired.startsWith("/uploads")) {

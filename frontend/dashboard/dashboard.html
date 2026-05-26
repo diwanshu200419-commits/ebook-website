@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=20260525-dashboard-fix2">
+<link rel="stylesheet" href="dashboard.css?v=20260526-dashboard-upgrade1">
 
 <script src="../config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -65,9 +65,35 @@
       </div>
     </header>
 
+    <section class="spotlight-grid" id="spotlightGrid"></section>
+
+    <section class="command-grid">
+      <article class="panel journey-panel" data-reveal>
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker" id="journeyKicker">Journey</p>
+            <h2 id="journeyTitle">Your next milestones</h2>
+          </div>
+          <span class="panel-badge" id="journeyBadge">Live roadmap</span>
+        </div>
+        <div class="journey-list" id="journeyBody"></div>
+      </article>
+
+      <article class="panel focus-panel" data-reveal>
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker" id="focusKicker">Focus</p>
+            <h2 id="focusTitle">What to do next</h2>
+          </div>
+          <span class="panel-badge" id="focusBadge">Action queue</span>
+        </div>
+        <div class="focus-body" id="focusBody"></div>
+      </article>
+    </section>
+
     <section class="summary-grid" id="summaryGrid"></section>
 
-    <section class="panel chart-panel">
+    <section class="panel chart-panel" data-reveal>
       <div class="panel-header">
         <div>
           <p class="panel-kicker" id="chartKicker">Insights</p>
@@ -84,7 +110,7 @@
       </div>
     </section>
 
-    <section class="panel">
+    <section class="panel" data-reveal>
       <div class="panel-header">
         <div>
           <p class="panel-kicker" id="primaryKicker">Library</p>
@@ -97,7 +123,7 @@
       <div class="empty-copy hidden" id="primaryEmpty"></div>
     </section>
 
-    <section class="panel">
+    <section class="panel" data-reveal>
       <div class="panel-header">
         <div>
           <p class="panel-kicker" id="secondaryKicker">History</p>
@@ -108,7 +134,7 @@
       <div id="secondaryBody"></div>
     </section>
 
-    <section class="panel">
+    <section class="panel" data-reveal>
       <div class="panel-header">
         <div>
           <p class="panel-kicker" id="activityKicker">Profile</p>
@@ -128,7 +154,7 @@
   </div>
 </div>
 
-<script src="dashboard.js?v=20260525-dashboard-fix2"></script>
+<script src="dashboard.js?v=20260526-dashboard-upgrade1"></script>
 
 </body>
 </html>
