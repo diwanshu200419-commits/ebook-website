@@ -3,6 +3,10 @@ const token = localStorage.getItem("token");
 const params = new URLSearchParams(window.location.search);
 const bookId = params.get("id");
 
+const UPLOAD_DRAFT_KEY = "ebook-market-upload-draft";
+const REVIEW_HISTORY_KEY = "ebook-market-ai-review-history";
+const MAX_REVIEW_HISTORY = 6;
+
 const titleEl = document.getElementById("contentTitle");
 const categoryEl = document.getElementById("contentCategory");
 const typeEl = document.getElementById("contentType");
@@ -22,7 +26,6 @@ const providerBadge = document.getElementById("providerBadge");
 const providerMeta = document.getElementById("providerMeta");
 const scoreCircle = document.querySelector(".score-circle");
 
-const reviewModePanel = document.getElementById("reviewModePanel");
 const modeKicker = document.getElementById("modeKicker");
 const modeTitle = document.getElementById("modeTitle");
 const modeDescription = document.getElementById("modeDescription");
@@ -38,8 +41,20 @@ const studioExcerptInput = document.getElementById("studioExcerpt");
 const runStudioReviewBtn = document.getElementById("runStudioReviewBtn");
 const loadSampleBtn = document.getElementById("loadSampleBtn");
 const clearStudioBtn = document.getElementById("clearStudioBtn");
+const importUploadDraftBtn = document.getElementById("importUploadDraftBtn");
+const chooseReviewFileBtn = document.getElementById("chooseReviewFileBtn");
+const reviewFileInput = document.getElementById("reviewFileInput");
+const reviewFileMeta = document.getElementById("reviewFileMeta");
+const reviewToolkit = document.getElementById("reviewToolkit");
+const toolkitStatus = document.getElementById("toolkitStatus");
+const applyToUploadDraftBtn = document.getElementById("applyToUploadDraftBtn");
+const copyReviewTagsBtn = document.getElementById("copyReviewTagsBtn");
+const copyReviewDescriptionBtn = document.getElementById("copyReviewDescriptionBtn");
+const reviewHistory = document.getElementById("reviewHistory");
+const historyList = document.getElementById("historyList");
 
 let reviewData = null;
+let selectedReviewFile = null;
 let scoreAnimationTimer = null;
 
 document.addEventListener("DOMContentLoaded", initializeReviewPage);
@@ -66,7 +81,10 @@ function enterReportMode() {
     title: "Review a live marketplace upload",
     description: "This mode shows the saved AI moderation report for a real product in your marketplace pipeline.",
   });
+
   reviewStudio?.classList.add("hidden");
+  reviewToolkit?.classList.add("hidden");
+  reviewHistory?.classList.add("hidden");
   renderReportPlaceholder("Loading the saved AI report for this product...");
   loadReviewReport();
 }
@@ -75,7 +93,7 @@ function enterStudioMode() {
   setModeCopy({
     kicker: "Free AI review studio",
     title: "Analyze a draft before you publish",
-    description: "Paste your listing details and sample content to get a free launch-readiness review with no paid AI model required.",
+    description: "Paste your listing details, import your creator draft, or attach a PDF/text file to get a free launch-readiness review.",
   });
 
   adminActions?.classList.add("hidden");
@@ -83,12 +101,20 @@ function enterStudioMode() {
   bindStudioActions();
   renderProvider("local", "local-heuristic", "Free local review mode");
   renderStudioPlaceholder();
+  renderHistory();
 }
 
 function bindStudioActions() {
   loadSampleBtn?.addEventListener("click", loadSampleReview);
   clearStudioBtn?.addEventListener("click", clearStudioForm);
   runStudioReviewBtn?.addEventListener("click", runStudioReview);
+  importUploadDraftBtn?.addEventListener("click", importUploadDraft);
+  chooseReviewFileBtn?.addEventListener("click", () => reviewFileInput?.click());
+  reviewFileInput?.addEventListener("change", handleReviewFileChange);
+  applyToUploadDraftBtn?.addEventListener("click", applyReviewToUploadDraft);
+  copyReviewTagsBtn?.addEventListener("click", copyReviewTags);
+  copyReviewDescriptionBtn?.addEventListener("click", copyReviewDescription);
+  historyList?.addEventListener("click", handleHistoryClick);
 }
 
 function configureViewerShell() {
@@ -152,17 +178,35 @@ async function runStudioReview() {
     return;
   }
 
-  setStudioLoading(true, "Running free AI review on your draft...");
+  const hasFile = Boolean(selectedReviewFile);
+  setStudioLoading(true, hasFile
+    ? `Running free AI review on ${selectedReviewFile.name}...`
+    : "Running free AI review on your draft...");
 
   try {
-    const response = await fetch(`${API_BASE}/api/ai/review-preview`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
+    let response;
+    if (hasFile) {
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, value]) => {
+        formData.append(key, value ?? "");
+      });
+      formData.append("contentFile", selectedReviewFile);
+
+      response = await fetch(`${API_BASE}/api/ai/review-preview-file`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+    } else {
+      response = await fetch(`${API_BASE}/api/ai/review-preview`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+    }
 
     const data = await response.json();
     if (!response.ok) {
@@ -171,7 +215,9 @@ async function runStudioReview() {
 
     reviewData = data;
     renderReport(data);
-    setStudioStatus("Free AI review completed. Update the draft and run it again any time.", "success");
+    saveReviewHistory(data);
+    renderHistory();
+    setStudioStatus("Free AI review completed. You can copy the output or push it straight into your upload draft.", "success");
   } catch (error) {
     console.error(error);
     setStudioStatus(error.message || "Unable to run the free AI review right now.", "error");
@@ -199,8 +245,8 @@ function validateStudioPayload(payload) {
   }
 
   const sourceLength = `${payload.description}\n${payload.excerpt}`.trim().length;
-  if (sourceLength < 80) {
-    return "Add at least 80 characters of description or sample content for a reliable free AI review.";
+  if (sourceLength < 80 && !selectedReviewFile) {
+    return "Add at least 80 characters of description or sample content, or attach a PDF/text file.";
   }
 
   return null;
@@ -221,6 +267,48 @@ function loadSampleReview() {
   setStudioStatus("Sample draft loaded. Run the free AI review to see the report.", "loading");
 }
 
+function importUploadDraft() {
+  try {
+    const raw = localStorage.getItem(UPLOAD_DRAFT_KEY);
+    if (!raw) {
+      setStudioStatus("No saved upload draft was found yet. Save a creator draft first, then import it here.", "error");
+      return;
+    }
+
+    const draft = JSON.parse(raw);
+    studioTitleInput.value = draft.title || "";
+    studioTypeInput.value = draft.type || "Book";
+    studioCategoryInput.value = draft.category || "";
+    studioPriceInput.value = draft.price || "";
+    studioTagsInput.value = Array.isArray(draft.tags) ? draft.tags.join(", ") : "";
+    studioDescriptionInput.value = draft.description || "";
+    studioExcerptInput.value = [
+      draft.deliveryInstructions || "",
+      draft.promptText || "",
+      draft.deliveryIncludes || "",
+    ].filter(Boolean).join("\n\n");
+
+    setStudioStatus("Upload draft imported. Add a file if you want, then run the free AI review.", "success");
+    showToast("Upload draft imported");
+  } catch (error) {
+    console.error(error);
+    setStudioStatus("The saved upload draft could not be read. Save it again from the upload studio.", "error");
+  }
+}
+
+function handleReviewFileChange() {
+  const file = reviewFileInput?.files?.[0] || null;
+  selectedReviewFile = file;
+
+  if (!file) {
+    reviewFileMeta.textContent = "Optional: attach a PDF, TXT, MD, JSON, or CSV file for free local AI review.";
+    return;
+  }
+
+  reviewFileMeta.textContent = `Attached file: ${file.name} (${formatBytes(file.size)})`;
+  setStudioStatus(`File attached: ${file.name}. You can review it directly or combine it with your pasted description.`, "loading");
+}
+
 function clearStudioForm() {
   if (studioTitleInput) studioTitleInput.value = "";
   if (studioTypeInput) studioTypeInput.value = "Book";
@@ -229,6 +317,9 @@ function clearStudioForm() {
   if (studioTagsInput) studioTagsInput.value = "";
   if (studioDescriptionInput) studioDescriptionInput.value = "";
   if (studioExcerptInput) studioExcerptInput.value = "";
+  if (reviewFileInput) reviewFileInput.value = "";
+  selectedReviewFile = null;
+  reviewFileMeta.textContent = "Optional: attach a PDF, TXT, MD, JSON, or CSV file for free local AI review.";
 
   reviewData = null;
   renderStudioPlaceholder();
@@ -239,6 +330,13 @@ function setStudioLoading(loading, message = "") {
   if (runStudioReviewBtn) {
     runStudioReviewBtn.disabled = loading;
     runStudioReviewBtn.textContent = loading ? "Running..." : "Run Free AI Review";
+  }
+
+  if (chooseReviewFileBtn) {
+    chooseReviewFileBtn.disabled = loading;
+  }
+  if (importUploadDraftBtn) {
+    importUploadDraftBtn.disabled = loading;
   }
 
   if (message) {
@@ -279,12 +377,13 @@ function renderStudioPlaceholder() {
 
   renderInsights([
     "Paste your title, product description, and sample content to generate a real report.",
-    "This free mode uses the local marketplace review engine, so it works without paid AI keys.",
-    "For PDF-level scanning, use the upload flow after publishing your draft."
+    "Import your saved creator upload draft to analyze the listing before publishing.",
+    "Attach a PDF, TXT, MD, JSON, or CSV file if you want the free local AI engine to read from a real file."
   ]);
 
   recommendationBox.className = "ai-recommendation review";
   recommendationText.textContent = "Add content and run the free AI review to get launch-readiness guidance.";
+  reviewToolkit?.classList.add("hidden");
 }
 
 function renderReport(data) {
@@ -323,6 +422,157 @@ function renderReport(data) {
   recommendationBox.className = `ai-recommendation ${recommendation.className}`;
   recommendationText.textContent = recommendation.message;
   animateScore(Number(book.aiScore || 0));
+
+  if (data.mode === "standalone") {
+    renderToolkit();
+  }
+}
+
+function renderToolkit() {
+  reviewToolkit?.classList.remove("hidden");
+  if (!toolkitStatus) {
+    return;
+  }
+
+  const tags = Array.isArray(reviewData?.report?.generatedTags) ? reviewData.report.generatedTags.length : 0;
+  const descriptionReady = Boolean(reviewData?.report?.generatedDescription || reviewData?.book?.description);
+  toolkitStatus.textContent = `Ready to use: ${tags} AI tag suggestion${tags === 1 ? "" : "s"} and ${descriptionReady ? "a reusable description" : "your current draft description"}.`;
+}
+
+function applyReviewToUploadDraft() {
+  if (!reviewData?.book || !reviewData?.report) {
+    showToast("Run a free AI review first");
+    return;
+  }
+
+  try {
+    const existing = JSON.parse(localStorage.getItem(UPLOAD_DRAFT_KEY) || "{}");
+    const nextDraft = {
+      ...existing,
+      title: reviewData.book.title || existing.title || "",
+      type: reviewData.book.type || existing.type || "Book",
+      category: reviewData.book.aiCategory || reviewData.book.category || existing.category || "",
+      language: reviewData.book.language || existing.language || "English",
+      price: String(reviewData.book.price ?? existing.price ?? ""),
+      originalPrice: String(reviewData.book.price ?? existing.originalPrice ?? existing.price ?? ""),
+      description: reviewData.report.generatedDescription || reviewData.book.description || existing.description || "",
+      tags: Array.isArray(reviewData.report.generatedTags) && reviewData.report.generatedTags.length
+        ? reviewData.report.generatedTags
+        : Array.isArray(reviewData.book.tags)
+          ? reviewData.book.tags
+          : existing.tags || [],
+      deliveryInstructions: reviewData.report.improvementSuggestions?.join("\n") || existing.deliveryInstructions || "",
+    };
+
+    localStorage.setItem(UPLOAD_DRAFT_KEY, JSON.stringify(nextDraft));
+    toolkitStatus.textContent = "Applied to your creator upload draft. Open the upload page to continue publishing.";
+    showToast("Applied to upload draft");
+  } catch (error) {
+    console.error(error);
+    showToast("Unable to update the upload draft right now");
+  }
+}
+
+async function copyReviewTags() {
+  const tags = Array.isArray(reviewData?.report?.generatedTags)
+    ? reviewData.report.generatedTags.join(", ")
+    : "";
+
+  if (!tags) {
+    showToast("No AI tags available yet");
+    return;
+  }
+
+  await copyText(tags, "AI tags copied");
+}
+
+async function copyReviewDescription() {
+  const text = reviewData?.report?.generatedDescription || reviewData?.book?.description || "";
+  if (!text) {
+    showToast("No AI description available yet");
+    return;
+  }
+
+  await copyText(text, "AI description copied");
+}
+
+function saveReviewHistory(data) {
+  if (data?.mode !== "standalone") {
+    return;
+  }
+
+  const currentHistory = readReviewHistory();
+  const entry = {
+    id: `${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    title: data.book?.title || "Untitled draft",
+    type: data.book?.type || "Digital Product",
+    category: data.book?.aiCategory || data.book?.category || "Uncategorized",
+    score: Number(data.book?.aiScore || 0),
+    status: String(data.book?.aiStatus || "pending"),
+    recommendation: recommendationText.textContent || "",
+    report: data,
+  };
+
+  const nextHistory = [entry, ...currentHistory].slice(0, MAX_REVIEW_HISTORY);
+  localStorage.setItem(REVIEW_HISTORY_KEY, JSON.stringify(nextHistory));
+}
+
+function renderHistory() {
+  const history = readReviewHistory();
+  if (!reviewHistory || !historyList) {
+    return;
+  }
+
+  if (!history.length) {
+    reviewHistory.classList.add("hidden");
+    historyList.innerHTML = "";
+    return;
+  }
+
+  reviewHistory.classList.remove("hidden");
+  historyList.innerHTML = history.map((entry, index) => `
+    <article class="history-card">
+      <div>
+        <h4>${escapeHTML(entry.title)}</h4>
+        <p>${escapeHTML(entry.category)} • ${escapeHTML(entry.type)}</p>
+        <div class="history-meta">
+          <span class="history-chip">${escapeHTML(String(entry.score || 0))}% score</span>
+          <span class="history-chip">${escapeHTML(String(entry.status || "pending").replace(/_/g, " "))}</span>
+          <span class="history-chip">${escapeHTML(formatHistoryTime(entry.createdAt))}</span>
+        </div>
+      </div>
+      <div class="toolkit-actions">
+        <button type="button" class="btn ghost" data-history-restore="${index}">Reuse</button>
+      </div>
+    </article>
+  `).join("");
+}
+
+function handleHistoryClick(event) {
+  const restoreIndex = event.target.closest("[data-history-restore]")?.getAttribute("data-history-restore");
+  if (restoreIndex == null) {
+    return;
+  }
+
+  const history = readReviewHistory();
+  const entry = history[Number(restoreIndex)];
+  if (!entry?.report) {
+    return;
+  }
+
+  reviewData = entry.report;
+  renderReport(entry.report);
+  setStudioStatus("Loaded a recent free review. You can now apply it to your upload draft or review it again.", "success");
+}
+
+function readReviewHistory() {
+  try {
+    const raw = localStorage.getItem(REVIEW_HISTORY_KEY);
+    return Array.isArray(JSON.parse(raw || "[]")) ? JSON.parse(raw || "[]") : [];
+  } catch {
+    return [];
+  }
 }
 
 function renderProvider(provider, model, context = "") {
@@ -379,6 +629,10 @@ function buildInsights(book, report, isStudioMode = false) {
     insights.push(`Closest similarity match: ${top.title} by ${top.authorName} (${Math.round(Number(top.score || 0) * 100)}% similarity).`);
   } else {
     insights.push("No significant similarity matches were detected against processed marketplace books.");
+  }
+
+  if (report.fileName) {
+    insights.push(`Source file reviewed: ${report.fileName}`);
   }
 
   if (report.lastError) {
@@ -652,11 +906,47 @@ function formatPrice(value) {
     : "Free";
 }
 
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (!bytes) {
+    return "0 KB";
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function formatHistoryTime(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    return "Recent";
+  }
+
+  return date.toLocaleString("en-IN", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function readCurrentUser() {
   try {
     return JSON.parse(localStorage.getItem("user") || "null");
   } catch {
     return null;
+  }
+}
+
+async function copyText(text, successMessage) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(successMessage);
+  } catch {
+    showToast("Copy failed on this browser");
   }
 }
 

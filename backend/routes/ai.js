@@ -2,6 +2,9 @@ const express = require("express");
 const Joi = require("joi");
 const mongoose = require("mongoose");
 const rateLimit = require("express-rate-limit");
+const multer = require("multer");
+const fs = require("fs/promises");
+const path = require("path");
 
 const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
@@ -28,11 +31,13 @@ const {
   getOptionalUserFromRequest,
   getRecommendedBooks,
 } = require("../services/ai/search");
+const { extractPdfAnalysis } = require("../services/ai/pdf");
 const {
   buildKeywordList,
   limitText,
   normalizeWhitespace,
 } = require("../services/ai/text");
+const { ensureUploadDir } = require("../utils/uploads");
 
 const router = express.Router();
 
@@ -89,6 +94,112 @@ const standaloneReviewSchema = Joi.object({
   description: Joi.string().trim().max(5000).allow(""),
   excerpt: Joi.string().trim().max(12000).allow(""),
 });
+
+const aiReviewTempPath = ensureUploadDir("ai-review");
+const STANDALONE_FILE_EXTENSIONS = new Set([".pdf", ".txt", ".md", ".json", ".csv"]);
+
+function safeFilename(originalname, prefix = "review") {
+  const extension = path.extname(String(originalname || "")).toLowerCase();
+  const base = path
+    .basename(String(originalname || ""), extension)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || prefix;
+
+  return `${Date.now()}-${base}${extension}`;
+}
+
+const standaloneFileUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, aiReviewTempPath),
+    filename: (req, file, cb) => cb(null, safeFilename(file.originalname)),
+  }),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(String(file.originalname || "")).toLowerCase();
+    if (!STANDALONE_FILE_EXTENSIONS.has(extension)) {
+      return cb(new Error("Only PDF, TXT, MD, JSON, and CSV files are supported in free review mode."));
+    }
+    return cb(null, true);
+  },
+});
+
+function cleanupStandaloneReviewFile(file) {
+  const filePath = file?.path;
+  if (!filePath) {
+    return Promise.resolve();
+  }
+
+  return fs.unlink(filePath).catch(() => null);
+}
+
+async function buildStandaloneReviewPayload(value, combinedText) {
+  const generatedTags = [...new Set([
+    ...(Array.isArray(value.tags) ? value.tags : []),
+    ...buildKeywordList([
+      value.title,
+      value.category,
+      value.type,
+      combinedText,
+    ].join("\n"), 8),
+  ])].slice(0, 8);
+
+  const suggestedCategory = normalizeWhitespace(value.category || value.type || "Digital Product");
+  const book = {
+    title: value.title,
+    description: normalizeWhitespace(value.description || combinedText.slice(0, 1200)),
+    category: suggestedCategory,
+    aiCategory: suggestedCategory,
+    type: normalizeWhitespace(value.type || "Digital Product"),
+    language: normalizeWhitespace(value.language || "English"),
+    tags: generatedTags,
+    price: Number(value.price || 0),
+    authorName: "Draft review",
+  };
+
+  const localReview = buildLocalModeration({
+    book,
+    analysisText: combinedText,
+    suggestedCategory,
+    generatedTags,
+    matches: [],
+    extractionNotice: "",
+  });
+
+  return {
+    success: true,
+    mode: "standalone",
+    book: {
+      ...book,
+      aiScore: localReview.aiScore,
+      aiStatus: localReview.aiStatus,
+      aiSuggestion: localReview.aiSuggestion,
+      plagiarismScore: localReview.plagiarismScore,
+      qualityScore: localReview.qualityScore,
+      moderationReason: localReview.moderationReason,
+    },
+    report: {
+      processingState: "completed",
+      moderationReason: localReview.moderationReason,
+      generatedDescription: localReview.generatedDescription,
+      suggestedCategory,
+      generatedTags,
+      improvementSuggestions: localReview.improvementSuggestions,
+      qualitySignals: localReview.qualitySignals,
+      plagiarismMatches: [],
+      extractedTextPreview: combinedText.slice(0, 500),
+      pageCount: 0,
+      chunkCount: 1,
+      fingerprintTerms: generatedTags,
+      aiProvider: "local",
+      aiModel: "local-heuristic",
+      lastProcessedAt: new Date().toISOString(),
+      lastError: "",
+      embeddingReady: false,
+    },
+  };
+}
 
 router.use(aiLimiter);
 
@@ -313,74 +424,107 @@ router.post("/review-preview", async (req, res) => {
       });
     }
 
-    const generatedTags = [...new Set([
-      ...parsedTags,
-      ...buildKeywordList([
-        value.title,
-        value.category,
-        value.type,
-        combinedText,
-      ].join("\n"), 8),
-    ])].slice(0, 8);
-
-    const suggestedCategory = normalizeWhitespace(value.category || value.type || "Digital Product");
-    const book = {
-      title: value.title,
-      description: normalizeWhitespace(value.description || combinedText.slice(0, 1200)),
-      category: suggestedCategory,
-      aiCategory: suggestedCategory,
-      type: normalizeWhitespace(value.type || "Digital Product"),
-      language: normalizeWhitespace(value.language || "English"),
-      tags: generatedTags,
-      price: Number(value.price || 0),
-      authorName: "Draft review",
-    };
-
-    const localReview = buildLocalModeration({
-      book,
-      analysisText: combinedText,
-      suggestedCategory,
-      generatedTags,
-      matches: [],
-      extractionNotice: "",
-    });
-
-    return res.json({
-      success: true,
-      mode: "standalone",
-      book: {
-        ...book,
-        aiScore: localReview.aiScore,
-        aiStatus: localReview.aiStatus,
-        aiSuggestion: localReview.aiSuggestion,
-        plagiarismScore: localReview.plagiarismScore,
-        qualityScore: localReview.qualityScore,
-        moderationReason: localReview.moderationReason,
-      },
-      report: {
-        processingState: "completed",
-        moderationReason: localReview.moderationReason,
-        generatedDescription: localReview.generatedDescription,
-        suggestedCategory,
-        generatedTags,
-        improvementSuggestions: localReview.improvementSuggestions,
-        qualitySignals: localReview.qualitySignals,
-        plagiarismMatches: [],
-        extractedTextPreview: combinedText.slice(0, 500),
-        pageCount: 0,
-        chunkCount: 1,
-        fingerprintTerms: generatedTags,
-        aiProvider: "local",
-        aiModel: "local-heuristic",
-        lastProcessedAt: new Date().toISOString(),
-        lastError: "",
-        embeddingReady: false,
-      },
-    });
+    return res.json(await buildStandaloneReviewPayload({
+      ...value,
+      tags: parsedTags,
+    }, combinedText));
   } catch (error) {
     console.error("Standalone AI review error:", error.message);
     return res.status(500).json({ success: false, message: "Failed to run free AI review" });
   }
+});
+
+router.post("/review-preview-file", (req, res) => {
+  standaloneFileUpload.single("contentFile")(req, res, async (uploadError) => {
+    if (uploadError) {
+      return res.status(400).json({ success: false, message: uploadError.message || "File upload failed" });
+    }
+
+    const cleanup = () => cleanupStandaloneReviewFile(req.file);
+
+    try {
+      const rawTags = String(req.body.tags || "")
+        .split(/[\n,]+/)
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+      const { value, error } = standaloneReviewSchema.validate(
+        {
+          ...req.body,
+          price: Number(req.body.price || 0),
+          tags: rawTags,
+        },
+        {
+          abortEarly: false,
+          stripUnknown: true,
+        }
+      );
+
+      if (error) {
+        await cleanup();
+        return res.status(400).json({ success: false, message: error.details[0].message });
+      }
+
+      if (!req.file?.path) {
+        return res.status(400).json({ success: false, message: "Attach a file to review." });
+      }
+
+      const extension = path.extname(String(req.file.originalname || "")).toLowerCase();
+      let extractedText = "";
+      let extractionNotice = "";
+      let extractedPageCount = 0;
+
+      if (extension === ".pdf") {
+        const pdfResult = await extractPdfAnalysis(req.file.path);
+        extractedText = normalizeWhitespace(pdfResult.text || pdfResult.previewText || "");
+        extractionNotice = pdfResult.notice || "";
+        extractedPageCount = Number(pdfResult.pageCount || 0);
+      } else {
+        const rawText = await fs.readFile(req.file.path, "utf8");
+        extractedText = limitText(rawText, 12000);
+      }
+
+      await cleanup();
+
+      const combinedText = limitText(
+        normalizeWhitespace([
+          value.description || "",
+          value.excerpt || "",
+          extractedText || "",
+        ].join("\n\n")),
+        12000
+      );
+
+      if (combinedText.length < 80) {
+        return res.status(400).json({
+          success: false,
+          message: "The attached file did not provide enough readable text. Add a longer description or another file.",
+        });
+      }
+
+      const payload = await buildStandaloneReviewPayload({
+        ...value,
+        tags: rawTags,
+      }, combinedText);
+
+      payload.report.extractedTextPreview = combinedText.slice(0, 500);
+      payload.report.chunkCount = 1;
+      payload.report.pageCount = extension === ".pdf" ? extractedPageCount : 0;
+      payload.report.lastError = extractionNotice || "";
+      payload.report.fileName = req.file.originalname;
+      payload.report.fileType = extension;
+
+      if (extractionNotice && !payload.report.improvementSuggestions.includes(extractionNotice)) {
+        payload.report.improvementSuggestions.push(extractionNotice);
+      }
+
+      return res.json(payload);
+    } catch (error) {
+      await cleanup();
+      console.error("Standalone file AI review error:", error.message);
+      return res.status(500).json({ success: false, message: "Failed to run free file review" });
+    }
+  });
 });
 
 router.get("/recommendations", async (req, res) => {
