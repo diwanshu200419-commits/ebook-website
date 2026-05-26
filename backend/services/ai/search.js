@@ -7,6 +7,9 @@ const User = require("../../models/user");
 const { serializeBook } = require("../bookData");
 const { syncProjectCatalogToMarketplace } = require("../catalogImport");
 const {
+  buildPublicMarketplaceDiscoveryFilter,
+} = require("../../utils/marketplaceVisibility");
+const {
   cosineSimilarity,
   lexicalSimilarity,
   clamp,
@@ -113,7 +116,7 @@ function buildSearchText(book, aiDoc) {
 
 async function getCategoryCounts() {
   const categoryCounts = await Book.aggregate([
-    { $match: { status: "Approved", isArchived: { $ne: true } } },
+    { $match: buildPublicMarketplaceDiscoveryFilter() },
     { $group: { _id: "$category", count: { $sum: 1 } } },
     { $sort: { count: -1, _id: 1 } },
   ]);
@@ -145,10 +148,7 @@ function normalizeMarketplaceLanguage(value, fallback = "All") {
 }
 
 function buildApprovedBookFilter({ category = "", language = "All" }) {
-  const filter = {
-    status: "Approved",
-    isArchived: { $ne: true },
-  };
+  const filter = buildPublicMarketplaceDiscoveryFilter();
 
   if (category) {
     filter.category = category;
@@ -376,8 +376,7 @@ async function getRecommendedBooks({
       .filter(Boolean)
   );
   const approvedBooks = await Book.find({
-    status: "Approved",
-    isArchived: { $ne: true },
+    ...buildPublicMarketplaceDiscoveryFilter(),
   }).populate("author", "name username");
 
   if (!approvedBooks.length) {

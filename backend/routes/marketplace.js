@@ -3,6 +3,9 @@ const router = express.Router();
 
 const Book = require("../models/book");
 const { serializeBook } = require("../services/bookData");
+const {
+  buildPublicMarketplaceDiscoveryFilter,
+} = require("../utils/marketplaceVisibility");
 
 const backendBaseUrl = (
   process.env.BACKEND_URL ||
@@ -14,10 +17,7 @@ router.get("/trending", async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 24);
 
-    const books = await Book.find({
-      status: "Approved",
-      isArchived: { $ne: true },
-    })
+    const books = await Book.find(buildPublicMarketplaceDiscoveryFilter())
       .sort({
         salesCount: -1,
         views: -1,

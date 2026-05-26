@@ -145,12 +145,31 @@ async function loadHomepageData() {
     }
 
     renderCategories(data.filters?.categories || []);
-    renderFeaturedBooks(data.books || []);
+    renderFeaturedBooks(filterOfficialPreviewBooks(data.books || []));
   } catch (error) {
     console.error("Homepage data failed:", error);
     renderCategories([]);
     renderFeaturedBooks([]);
   }
+}
+
+function filterOfficialPreviewBooks(books = []) {
+  return books.filter((book) => !isOfficialPreviewBook(book));
+}
+
+function isOfficialPreviewBook(book = {}) {
+  const catalogKey = String(book.catalogKey || "").trim().toLowerCase();
+  if (catalogKey.startsWith("official-preview-")) {
+    return true;
+  }
+
+  const title = String(book.title || "").trim().toLowerCase();
+  const subcategory = String(book.subcategory || "").trim().toLowerCase();
+  const cover = String(book.coverUrl || book.cover || book.coverImage || "").trim().toLowerCase();
+
+  return title === "side hustles for students"
+    && subcategory === "free preview"
+    && cover.includes("ebook_ai.png");
 }
 
 function renderCategories(categories) {

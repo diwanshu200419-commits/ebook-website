@@ -354,7 +354,7 @@ async function loadPersonalizedFeed() {
       throw new Error(data.message || "Failed to load personalized recommendations");
     }
 
-    const books = Array.isArray(data.books) ? data.books : [];
+    const books = filterOfficialPreviewBooks(Array.isArray(data.books) ? data.books : []);
     if (!books.length) {
       personalizedMeta.textContent = t("feedLearningMeta");
       personalizedSignal.textContent = t("feedLearningStatus");
@@ -420,9 +420,20 @@ async function loadBooks() {
       throw new Error(data.message || "Failed to fetch books");
     }
 
+    const books = filterOfficialPreviewBooks(Array.isArray(data.books) ? data.books : []);
     renderCategoryOptions(data.filters?.categories || []);
-    renderMarketplaceSummary(data);
-    renderProductGrid(booksGrid, data.books || [], {
+    renderMarketplaceSummary({
+      ...data,
+      books,
+      total: books.length,
+      summary: {
+        ...(data.summary || {}),
+        totalApprovedBooks: books.length,
+        totalFreeBooks: books.filter((book) => Number(book.price || 0) <= 0).length,
+        totalPaidBooks: books.filter((book) => Number(book.price || 0) > 0).length,
+      },
+    });
+    renderProductGrid(booksGrid, books, {
       emptyTitle: t("noProductsTitle"),
       emptyMessage: t("noProductsMessage"),
     });
@@ -509,6 +520,25 @@ function renderProductGrid(container, books, options = {}) {
   books.forEach((book) => {
     container.appendChild(buildProductCard(book));
   });
+}
+
+function filterOfficialPreviewBooks(books = []) {
+  return books.filter((book) => !isOfficialPreviewBook(book));
+}
+
+function isOfficialPreviewBook(book = {}) {
+  const catalogKey = String(book.catalogKey || "").trim().toLowerCase();
+  if (catalogKey.startsWith("official-preview-")) {
+    return true;
+  }
+
+  const title = String(book.title || "").trim().toLowerCase();
+  const subcategory = String(book.subcategory || "").trim().toLowerCase();
+  const cover = String(book.coverUrl || book.cover || book.coverImage || "").trim().toLowerCase();
+
+  return title === "side hustles for students"
+    && subcategory === "free preview"
+    && cover.includes("ebook_ai.png");
 }
 
 function buildProductCard(book) {

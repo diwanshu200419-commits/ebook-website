@@ -53,6 +53,9 @@ const {
   isSupportedPrimaryFile,
   isTextFirstType,
 } = require("../utils/productTypes");
+const {
+  buildPublicMarketplaceDiscoveryFilter,
+} = require("../utils/marketplaceVisibility");
 const { createBookPreview } = require("../utils/pdfPreview");
 
 const backendBaseUrl = (
@@ -851,7 +854,7 @@ router.get("/", async (req, res) => {
 router.get("/categories/counts", async (req, res) => {
   try {
     const categories = await Book.aggregate([
-      { $match: { status: "Approved", isArchived: { $ne: true } } },
+      { $match: buildPublicMarketplaceDiscoveryFilter() },
       { $group: { _id: "$category", count: { $sum: 1 } } },
       { $sort: { count: -1, _id: 1 } },
     ]);

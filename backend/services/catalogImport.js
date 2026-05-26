@@ -19,6 +19,9 @@ const {
   normalizePricing,
   pickDefaultCover,
 } = require("../utils/bookCatalog");
+const {
+  buildOfficialPreviewCatalogFilter,
+} = require("../utils/marketplaceVisibility");
 const { createBookPreview } = require("../utils/pdfPreview");
 
 const projectRoot = path.resolve(__dirname, "..", "..");
@@ -500,6 +503,62 @@ function buildExcludedBookFilter() {
   };
 }
 
+async function purgeOfficialPreviewCatalogBooks() {
+  const books = await Book.find(buildOfficialPreviewCatalogFilter())
+    .select("_id title filePath previewPath coverImage")
+    .lean();
+
+  if (!books.length) {
+    return {
+      removed: 0,
+      archived: 0,
+    };
+  }
+
+  const bookIds = books.map((book) => book._id);
+  const paymentRows = await Payment.find({ book: { $in: bookIds } })
+    .select("book")
+    .lean();
+  const purchasedIds = new Set(paymentRows.map((entry) => String(entry.book)));
+  const removableBooks = books.filter((book) => !purchasedIds.has(String(book._id)));
+  const archivedIds = books
+    .filter((book) => purchasedIds.has(String(book._id)))
+    .map((book) => book._id);
+
+  await Cart.updateMany(
+    { "items.book": { $in: bookIds } },
+    { $pull: { items: { book: { $in: bookIds } } } }
+  );
+
+  if (archivedIds.length) {
+    await Book.updateMany(
+      { _id: { $in: archivedIds } },
+      {
+        $set: {
+          isArchived: true,
+          status: "Archived",
+        },
+      }
+    );
+  }
+
+  if (removableBooks.length) {
+    await BookAI.deleteMany({ book: { $in: removableBooks.map((book) => book._id) } });
+    await Book.deleteMany({ _id: { $in: removableBooks.map((book) => book._id) } });
+
+    removableBooks.forEach((book) => {
+      safeDeletePublicFile(book.filePath);
+      safeDeletePublicFile(book.previewPath);
+      safeDeletePublicFile(book.coverImage);
+    });
+  }
+
+  return {
+    removed: removableBooks.length,
+    archived: archivedIds.length,
+  };
+}
+
 async function purgeExcludedCatalogBooks(owner) {
   const ownerId = String(owner?._id || owner?.id || "").trim();
   if (!ownerId) {
@@ -943,6 +1002,7 @@ async function syncProjectCatalogToMarketplace(options = {}) {
     try {
       const owner = await ensureMarketplaceCatalogOwner();
       const migrated = await reassignLegacyAdminCatalogBooks(owner);
+      const officialPreviewCleanup = await purgeOfficialPreviewCatalogBooks();
       const purgeResult = await purgeExcludedCatalogBooks(owner);
       const result = await importBuiltinLibraryForCreator(owner);
       marketplaceSyncCompletedAt = Date.now();
@@ -951,6 +1011,7 @@ async function syncProjectCatalogToMarketplace(options = {}) {
         ownerId: owner._id,
         ownerEmail: owner.email,
         migrated,
+        officialPreviewCleanup,
         ...purgeResult,
         ...result,
       };
@@ -967,4 +1028,5 @@ module.exports = {
   getImportableLibraryCatalog,
   importBuiltinLibraryForCreator,
   syncProjectCatalogToMarketplace,
+  purgeOfficialPreviewCatalogBooks,
 };
