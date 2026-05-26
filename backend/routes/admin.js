@@ -17,6 +17,7 @@ const {
 } = require("../services/lifecycleStrategies");
 const { getLaunchReadinessSummary } = require("../services/platformReadiness");
 const { syncBookAndCreatorRatings } = require("../services/reviewData");
+const { normalizeBooleanFlag } = require("../utils/bookCatalog");
 const { roundMoney } = require("../utils/revenue");
 
 function buildTypeBreakdown(books = []) {
@@ -327,6 +328,37 @@ router.put("/books/:bookId/request-changes", protect, authorize("admin"), async 
 /* =====================================
    🧑‍💼 ADMIN: GET ALL USERS
 ===================================== */
+router.put("/books/:bookId/featured", protect, authorize("admin"), async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.bookId);
+    if (!book) {
+      return res.status(404).json({ success: false, message: "Book not found" });
+    }
+
+    const isFeatured = normalizeBooleanFlag(req.body?.isFeatured, !book.isFeatured);
+    if (isFeatured && book.status !== "Approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Only approved live books can be added to featured placement",
+      });
+    }
+
+    book.isFeatured = isFeatured;
+    await book.save();
+
+    return res.json({
+      success: true,
+      message: isFeatured
+        ? "Book added to featured placement"
+        : "Book removed from featured placement",
+      book,
+    });
+  } catch (err) {
+    console.error("Update Featured Book Error:", err.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 router.get("/users", protect, authorize("admin"), async (req, res) => {
   try {
     const users = await User.find().select("-password");

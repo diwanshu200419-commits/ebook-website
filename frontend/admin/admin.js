@@ -839,6 +839,19 @@ function applyApprovedBookFilters() {
   renderApproved(books);
 }
 
+function syncApprovedBookRecord(nextBook) {
+  const safeId = String(nextBook?._id || nextBook?.id || "").trim();
+  if (!safeId) {
+    return;
+  }
+
+  adminCollections.approvedBooks = adminCollections.approvedBooks.map((book) => (
+    String(book?._id || "") === safeId
+      ? { ...book, ...nextBook }
+      : book
+  ));
+}
+
 async function loadLifecycleExperimentConfig() {
   if (lifecycleLabConfig) {
     return lifecycleLabConfig;
@@ -1770,6 +1783,11 @@ function renderReferralLeaderboard(referrers) {
             Rewarded purchases: ${Number(user.referralStats?.rewardedPurchasesCount || 0).toLocaleString("en-IN")} - Rewards: ₹${Number(user.referralStats?.totalRewardAmount || 0).toLocaleString("en-IN")}<br/>
             Role: ${escapeHTML(String(user.role || "reader").toUpperCase())}${user.verified ? " - Verified" : ""}
           </p>
+          <div class="signals">
+            ${featuredTone}
+            <span class="signal revenue">${escapeHTML(book.type || "Product")}</span>
+            <span class="signal ai">${escapeHTML(book.status || "Approved")}</span>
+          </div>
         </div>
       </div>
     `;
@@ -2292,6 +2310,11 @@ function renderApproved(books) {
     const card = document.createElement("div");
     card.className = "content-card";
     const cover = resolveAssetUrl(book.coverImage, "../assets/covers/Ebook_AI.png");
+    const featuredTone = book.isFeatured
+      ? `<span class="signal featured">Featured Live</span>`
+      : `<span class="signal standard">Standard Placement</span>`;
+    const featuredButtonLabel = book.isFeatured ? "Remove from Featured" : "Mark Featured";
+    const featuredButtonClass = book.isFeatured ? "reject" : "feature";
     card.innerHTML = `
       <div class="content-info">
         <img src="${cover}" style="width:80px;height:100px;object-fit:cover;border-radius:4px;" />
@@ -2302,10 +2325,25 @@ function renderApproved(books) {
             Creator: <strong>${book.author?.name || "Unknown"}</strong><br/>
             Sales: ${book.salesCount || 0} • Downloads: ${book.downloads || 0}
           </p>
+          <div class="signals">
+            ${featuredTone}
+            <span class="signal revenue">${escapeHTML(book.type || "Product")}</span>
+            <span class="signal ai">${escapeHTML(book.status || "Approved")}</span>
+          </div>
         </div>
       </div>
     `;
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    actions.innerHTML = `
+      <button class="${featuredButtonClass}" type="button" data-featured-book="${escapeAttribute(String(book._id || ""))}" data-featured-state="${book.isFeatured ? "0" : "1"}">${escapeHTML(featuredButtonLabel)}</button>
+    `;
+    card.appendChild(actions);
     enhanceBookModerationCard(card, book);
+    card.querySelector("[data-featured-book]")?.addEventListener("click", () => {
+      const nextState = card.querySelector("[data-featured-book]")?.getAttribute("data-featured-state") === "1";
+      void updateApprovedBookFeaturedState(book, nextState);
+    });
     approvedList.appendChild(card);
   });
 }
@@ -2540,6 +2578,39 @@ function renderWithdrawRequests(withdrawals) {
     card.querySelector("[data-withdraw-reject]")?.addEventListener("click", () => updateWithdrawalStatus(withdrawal._id, "rejected"));
     withdrawRequestList.appendChild(card);
   });
+}
+
+async function updateApprovedBookFeaturedState(book, nextState) {
+  const safeBookId = String(book?._id || "").trim();
+  if (!safeBookId) {
+    return;
+  }
+
+  if (!nextState && !window.confirm(`Remove "${book.title || "this book"}" from featured placement?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/books/${encodeURIComponent(safeBookId)}/featured`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ isFeatured: nextState }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || "Unable to update featured placement");
+    }
+
+    syncApprovedBookRecord(data.book || { ...book, isFeatured: nextState });
+    applyApprovedBookFilters();
+    markAdminSynced();
+    alert(data.message || (nextState ? "Book marked as featured" : "Book removed from featured"));
+  } catch (err) {
+    alert(err.message || "Unable to update featured placement");
+  }
 }
 
 async function approveBook(bookId) {
