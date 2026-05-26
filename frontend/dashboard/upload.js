@@ -1425,6 +1425,10 @@ function escapeHTML(value) {
   })[character]);
 }
 
+function escapeAttribute(value) {
+  return escapeHTML(value).replace(/"/g, "&quot;");
+}
+
 function describeProvider(provider, model, context = "") {
   const prefix = context ? `${context}: ` : "";
 
