@@ -41,7 +41,7 @@ const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
 const paymentRoutes = require("./routes/payments");
 const { getAIQueueStatus, initializeAIQueue } = require("./services/ai/queue");
-const { syncProjectCatalogToMarketplace } = require("./services/catalogImport");
+const { purgeDemoCatalogBooks } = require("./services/catalogImport");
 
 const app = express();
 const uploadStorage = describeUploadStorage();
@@ -199,12 +199,12 @@ mongoose
       console.log("ℹ️ ADMIN_EMAIL and ADMIN_PASSWORD not set - skipping admin seeding");
     }
     try {
-      const syncResult = await syncProjectCatalogToMarketplace({ force: true });
+      const cleanupResult = await purgeDemoCatalogBooks();
       console.log(
-        `Project PDF catalog sync ready: ${syncResult.created || 0} created, ${syncResult.updated || 0} updated, ${syncResult.skipped || 0} skipped`
+        `Demo catalog cleanup ready: ${cleanupResult.removed || 0} removed, ${cleanupResult.archived || 0} archived`
       );
-    } catch (syncError) {
-      console.error("Project PDF catalog sync failed:", syncError.message);
+    } catch (cleanupError) {
+      console.error("Demo catalog cleanup failed:", cleanupError.message);
     }
 
     await initializeAIQueue();

@@ -114,6 +114,16 @@ function decorateHeroCards() {
     }
   });
 
+  const featuredCard = document.querySelector(".card-wrap .book-card.featured");
+  if (featuredCard) {
+    featuredCard.href = "explore.html";
+    featuredCard.querySelector("img").alt = "Live marketplace products";
+    featuredCard.querySelector(".badge").textContent = "LIVE MARKETPLACE";
+    featuredCard.querySelector("h3").textContent = "Browse Real Books";
+    featuredCard.querySelector("p").textContent = "Books, notes, prompts, and study products";
+    featuredCard.querySelector(".cta-btn").textContent = "Explore Now ->";
+  }
+
   const lockedCards = document.querySelectorAll(".card-wrap .book-card.locked");
   if (lockedCards.length < 2) {
     return;

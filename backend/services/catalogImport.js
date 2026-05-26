@@ -48,6 +48,44 @@ const EXCLUDED_LIBRARY_FILENAMES = new Set([
   "computer-networking.-principles-protocols-and-practice-olivier-bonaventure.pdf",
   "full-networking.pdf.pdf",
 ]);
+const DEMO_CATALOG_FILENAMES = new Set([
+  ...OFFICIAL_PREVIEW_FILENAMES,
+  ...EXCLUDED_LIBRARY_FILENAMES,
+  ...BUILTIN_LIBRARY.map((entry) => normalizeFilenameKey(entry.filename)),
+]);
+const DEMO_MANUAL_CATALOG_PREFIXES = [
+  "manual-1-introduction-to-computer-networking",
+  "manual-computer-networking",
+  "manual-full-networking",
+  "manual-i-tried-8-different-ai-side-hustles",
+];
+const DEMO_CATALOG_KEY_PATTERNS = [
+  /computer-networking/i,
+  /networking-protocols/i,
+  /i-tried-8-different-ai-side-hustles/i,
+  /ai-for-beginners/i,
+  /hp-lovecraft/i,
+  /edgar-allan-poe/i,
+];
+const DEMO_CATALOG_PATH_PATTERNS = [
+  /(?:^|\/)\d+-\d+-computer-networking-principles-protocols-and-practice\.pdf$/i,
+  /(?:^|\/)\d+-i-tried-8-different-ai-side-hustles-for-students-heres-which-ones-actually-pay\.pdf$/i,
+];
+const DEMO_CATALOG_TITLE_PATTERNS = [
+  /^h\.?p\.? lovecraft collection$/i,
+  /^edgar allan poe collection$/i,
+  /^i tried 8 different ai side hustles/i,
+  /^(\d+\s+)?computer networking principles protocols and practice$/i,
+  /^(\d+\s+)?introduction to computer networking$/i,
+  /^networking protocols handbook$/i,
+  /^ai for beginners$/i,
+  /^codex\b/i,
+  /^ready:\s*/i,
+  /^full verified prompt pack$/i,
+  /^ui verified prompt pack$/i,
+  /^verified creator prompt pack$/i,
+  /^student ai prompt starter pack$/i,
+];
 const MARKETPLACE_SYNC_INTERVAL_MS = 15000;
 const MARKETPLACE_OWNER_EMAIL = "marketplace-library@ebook.local";
 
@@ -496,8 +534,8 @@ function buildExcludedBookFilter() {
   };
 }
 
-async function purgeExcludedCatalogBooks() {
-  const books = await Book.find(buildExcludedBookFilter())
+async function purgeCatalogBooksByFilter(filter, reason = "Removed from storefront catalog.", options = {}) {
+  const books = await Book.find(filter)
     .select("_id title filePath previewPath coverImage")
     .lean();
 
@@ -509,14 +547,21 @@ async function purgeExcludedCatalogBooks() {
   }
 
   const bookIds = books.map((book) => book._id);
-  const paymentRows = await Payment.find({ book: { $in: bookIds } })
-    .select("book")
-    .lean();
+  const archiveOnly = Boolean(options.archiveOnly);
+  const paymentRows = archiveOnly
+    ? []
+    : await Payment.find({ book: { $in: bookIds } })
+      .select("book")
+      .lean();
   const purchasedIds = new Set(paymentRows.map((entry) => String(entry.book)));
-  const removableBooks = books.filter((book) => !purchasedIds.has(String(book._id)));
-  const archivedIds = books
-    .filter((book) => purchasedIds.has(String(book._id)))
-    .map((book) => book._id);
+  const removableBooks = archiveOnly
+    ? []
+    : books.filter((book) => !purchasedIds.has(String(book._id)));
+  const archivedIds = archiveOnly
+    ? bookIds
+    : books
+      .filter((book) => purchasedIds.has(String(book._id)))
+      .map((book) => book._id);
 
   await Cart.updateMany(
     { "items.book": { $in: bookIds } },
@@ -533,8 +578,8 @@ async function purgeExcludedCatalogBooks() {
           isFeatured: false,
           status: "Rejected",
           aiStatus: "rejected",
-          aiSuggestion: "Removed from storefront catalog.",
-          moderationReason: "Removed from storefront catalog.",
+          aiSuggestion: reason,
+          moderationReason: reason,
         },
       }
     );
@@ -558,6 +603,49 @@ async function purgeExcludedCatalogBooks() {
     removed: removableIds.length,
     archived: archivedIds.length,
   };
+}
+
+async function purgeExcludedCatalogBooks() {
+  return purgeCatalogBooksByFilter(
+    buildExcludedBookFilter(),
+    "Removed from storefront catalog."
+  );
+}
+
+function buildDemoCatalogBookFilter() {
+  const conditions = [
+    { catalogKey: { $regex: /^(builtin|official-preview)-/i } },
+    ...DEMO_MANUAL_CATALOG_PREFIXES.map((prefix) => ({
+      catalogKey: { $regex: new RegExp(`^${escapeRegex(prefix)}`, "i") },
+    })),
+    ...DEMO_CATALOG_KEY_PATTERNS.map((pattern) => ({
+      catalogKey: { $regex: pattern },
+    })),
+    ...Array.from(DEMO_CATALOG_FILENAMES).flatMap((filename) => {
+      const escaped = escapeRegex(filename);
+      return [
+        { filePath: { $regex: new RegExp(`${escaped}$`, "i") } },
+        { previewPath: { $regex: new RegExp(`${escaped}$`, "i") } },
+      ];
+    }),
+    ...DEMO_CATALOG_PATH_PATTERNS.flatMap((pattern) => ([
+      { filePath: { $regex: pattern } },
+      { previewPath: { $regex: pattern } },
+    ])),
+    ...DEMO_CATALOG_TITLE_PATTERNS.map((pattern) => ({
+      title: { $regex: pattern },
+    })),
+  ];
+
+  return { $or: conditions };
+}
+
+async function purgeDemoCatalogBooks() {
+  return purgeCatalogBooksByFilter(
+    buildDemoCatalogBookFilter(),
+    "Demo catalog listing removed. Real creator uploads now power the marketplace.",
+    { archiveOnly: true }
+  );
 }
 
 function ensureCatalogBookIsStored(entry) {
@@ -899,5 +987,6 @@ module.exports = {
   BUILTIN_LIBRARY,
   getImportableLibraryCatalog,
   importBuiltinLibraryForCreator,
+  purgeDemoCatalogBooks,
   syncProjectCatalogToMarketplace,
 };
