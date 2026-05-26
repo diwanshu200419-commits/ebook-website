@@ -9,6 +9,7 @@ const categorySelect = document.getElementById("categorySelect");
 const languageSelect = document.getElementById("languageSelect");
 const sortSelect = document.getElementById("sortSelect");
 const applyBtn = document.getElementById("applyBtn");
+const quickFilterRow = document.getElementById("quickFilterRow");
 const resultsMeta = document.getElementById("resultsMeta");
 const resultsSignal = document.getElementById("resultsSignal");
 const personalizedMeta = document.getElementById("personalizedMeta");
@@ -40,6 +41,7 @@ const COPY = {
     resultsTitle: "Live Marketplace",
     allCategories: "All Categories",
     allLanguages: "All Languages",
+    quickAll: "All",
     sortTrending: "Trending",
     sortNewest: "Newest",
     sortPriceLow: "Price Low to High",
@@ -359,6 +361,7 @@ async function loadPersonalizedFeed() {
       personalizedMeta.textContent = t("feedLearningMeta");
       personalizedSignal.textContent = t("feedLearningStatus");
       renderProductGrid(personalizedGrid, [], {
+        variant: "personalized",
         emptyTitle: t("noPersonalizedTitle"),
         emptyMessage: t("noPersonalizedMessage"),
       });
@@ -368,6 +371,7 @@ async function loadPersonalizedFeed() {
     personalizedMeta.textContent = t("personalizedLiveMeta");
     personalizedSignal.textContent = t("personalizedLiveStatus");
     renderProductGrid(personalizedGrid, books, {
+      variant: "personalized",
       emptyTitle: t("noPersonalizedTitle"),
       emptyMessage: t("noPersonalizedMessage"),
     });
@@ -375,6 +379,7 @@ async function loadPersonalizedFeed() {
     personalizedMeta.textContent = error.message || t("personalizedUnavailableMessage");
     personalizedSignal.textContent = t("personalizedUnavailableStatus");
     renderProductGrid(personalizedGrid, [], {
+      variant: "personalized",
       emptyTitle: t("personalizedUnavailableTitle"),
       emptyMessage: error.message || t("personalizedUnavailableMessage"),
     });
@@ -422,6 +427,7 @@ async function loadBooks() {
 
     const books = filterOfficialPreviewBooks(Array.isArray(data.books) ? data.books : []);
     renderCategoryOptions(data.filters?.categories || []);
+    renderQuickFilters(data.filters?.categories || []);
     renderMarketplaceSummary({
       ...data,
       books,
@@ -434,11 +440,13 @@ async function loadBooks() {
       },
     });
     renderProductGrid(booksGrid, books, {
+      variant: "catalog",
       emptyTitle: t("noProductsTitle"),
       emptyMessage: t("noProductsMessage"),
     });
   } catch (error) {
     renderProductGrid(booksGrid, [], {
+      variant: "catalog",
       emptyTitle: t("marketplaceUnavailableTitle"),
       emptyMessage: error.message || t("marketplaceUnavailableMeta"),
     });
@@ -468,6 +476,39 @@ function renderCategoryOptions(categories) {
 
   categorySelect.innerHTML = options.join("");
   categorySelect.value = active;
+}
+
+function renderQuickFilters(categories) {
+  if (!quickFilterRow || !categorySelect) {
+    return;
+  }
+
+  const activeCategory = String(categorySelect.value || "").trim();
+  const chips = [
+    { value: "", label: t("quickAll") },
+    ...categories.slice(0, 6).map((category) => ({
+      value: category.name,
+      label: `${category.name} (${Number(category.count || 0).toLocaleString("en-IN")})`,
+    })),
+  ];
+
+  quickFilterRow.innerHTML = chips.map((chip) => `
+    <button
+      class="quick-filter-chip${chip.value === activeCategory ? " active" : ""}"
+      type="button"
+      data-quick-category="${escapeAttribute(chip.value)}"
+    >
+      ${escapeHTML(chip.label)}
+    </button>
+  `).join("");
+
+  quickFilterRow.querySelectorAll("[data-quick-category]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const nextCategory = button.getAttribute("data-quick-category") || "";
+      categorySelect.value = nextCategory;
+      await handleRefresh();
+    });
+  });
 }
 
 function renderMarketplaceSummary(data) {
@@ -501,11 +542,20 @@ function renderProductGrid(container, books, options = {}) {
   }
 
   const {
+    variant = "catalog",
     emptyTitle = t("noProductsFound"),
     emptyMessage = t("noProductsFallback"),
   } = options;
 
   container.innerHTML = "";
+  container.className = "results-grid";
+  container.classList.add(variant === "personalized" ? "is-personalized" : "is-catalog");
+  if (books.length <= 2) {
+    container.classList.add("is-sparse");
+  }
+  if (books.length === 1) {
+    container.classList.add("is-single");
+  }
 
   if (!books.length) {
     container.innerHTML = `
@@ -517,8 +567,13 @@ function renderProductGrid(container, books, options = {}) {
     return;
   }
 
-  books.forEach((book) => {
-    container.appendChild(buildProductCard(book));
+  books.forEach((book, index) => {
+    container.appendChild(buildProductCard(book, {
+      variant,
+      spotlight: variant === "personalized"
+        ? index === 0
+        : books.length === 1 && index === 0,
+    }));
   });
 }
 
@@ -541,7 +596,7 @@ function isOfficialPreviewBook(book = {}) {
     && cover.includes("ebook_ai.png");
 }
 
-function buildProductCard(book) {
+function legacyBuildProductCard(book) {
   const cover = resolveAssetUrl(
     book.coverUrl || book.cover || book.coverImage,
     "assets/covers/Ebook_AI.png"
@@ -597,6 +652,95 @@ function buildProductCard(book) {
 
   card.querySelector("[data-add-cart]")?.addEventListener("click", () => addToCart(book._id));
   return card;
+}
+
+function buildProductCard(book, options = {}) {
+  const { variant = "catalog", spotlight = false } = options;
+  const cover = resolveAssetUrl(
+    book.coverUrl || book.cover || book.coverImage,
+    "assets/covers/Ebook_AI.png"
+  );
+  const salePrice = Number(book.discountPrice || book.price || 0);
+  const originalPrice = Number(book.originalPrice || salePrice || 0);
+  const creatorLink = buildCreatorLink(book.authorUsername);
+  const isPaid = Number(book.price || 0) > 0;
+  const ratingCount = Number(book.ratingCount || 0);
+  const ratingAverage = Number(book.ratingAverage || 0);
+  const ratingSignal = ratingCount > 0
+    ? `${ratingAverage.toFixed(1)} / 5 - ${ratingCount.toLocaleString("en-IN")} ${t("reviewsSuffix")}`
+    : t("newListing");
+  const authorMarkup = creatorLink
+    ? `<a href="${creatorLink}" class="marketplace-link" style="padding:0;background:none;color:#d9ecff;">${escapeHTML(book.authorName || "Creator")}</a>`
+    : escapeHTML(book.authorName || "Creator");
+  const reason = String(book.recommendationReason || "").trim();
+  const description = truncateText(
+    book.description || `${book.type || "Digital product"} for ${book.category || "creators"}.`,
+    spotlight ? 240 : 120
+  );
+  const kicker = book.isFeatured
+    ? t("featuredPrefix")
+    : variant === "personalized"
+      ? "AI-ranked match"
+      : "Marketplace listing";
+  const statChips = [
+    Number(book.salesCount || 0) > 0 ? `${Number(book.salesCount || 0).toLocaleString("en-IN")} sales` : "New drop",
+    Number(book.views || 0) > 0 ? `${Number(book.views || 0).toLocaleString("en-IN")} views` : `${book.language || "English"} ready`,
+    ratingCount > 0 ? `${ratingAverage.toFixed(1)}* rating` : `${book.type || "Product"}`,
+  ];
+
+  const card = document.createElement("article");
+  card.className = `product-card${spotlight ? " is-spotlight" : ""}`;
+  card.innerHTML = `
+    <div class="product-cover">
+      <img src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title)}" />
+    </div>
+    <div class="product-body">
+      <div class="product-badges">
+        <span class="product-badge">${escapeHTML(book.type || "Product")}</span>
+        <span class="product-badge">${escapeHTML(book.category || "Book")}</span>
+        ${book.language ? `<span class="product-badge language">${escapeHTML(book.language)}</span>` : ""}
+        ${book.subcategory ? `<span class="product-badge">${escapeHTML(book.subcategory)}</span>` : ""}
+        ${book.isPremium ? `<span class="product-badge premium">Premium</span>` : ""}
+        ${!isPaid ? `<span class="product-badge free">Free</span>` : ""}
+      </div>
+      <div class="product-copy">
+        <span class="product-kicker">${escapeHTML(kicker)}</span>
+        <h3>${escapeHTML(book.title)}</h3>
+        <p class="product-seller">${escapeHTML(book.bookAuthor || `${book.type || "Digital product"} by creator`)} - Sold by ${authorMarkup}</p>
+        <p class="product-description">${escapeHTML(description)}</p>
+      </div>
+      ${reason ? `<div class="product-reason">${escapeHTML(reason)}</div>` : ""}
+      <div class="product-signal-row">
+        ${statChips.map((chip) => `<span class="product-signal">${escapeHTML(chip)}</span>`).join("")}
+      </div>
+      <div class="product-meta">
+        <div class="price-stack">
+          <strong>${isPaid ? `Rs. ${salePrice.toLocaleString("en-IN")}` : escapeHTML(t("freeAccess"))}</strong>
+          ${isPaid && originalPrice > salePrice ? `<span>Rs. ${originalPrice.toLocaleString("en-IN")}</span>` : ""}
+        </div>
+        <span class="marketplace-chip subtle">${escapeHTML(book.isFeatured ? `${t("featuredPrefix")} - ${ratingSignal}` : ratingSignal)}</span>
+      </div>
+      <div class="product-actions">
+        <a class="marketplace-ghost-button" href="book_view.html?id=${encodeURIComponent(book._id)}">${escapeHTML(t("viewDetails"))}</a>
+        ${isPaid
+          ? `<button class="marketplace-button" type="button" data-add-cart="${escapeAttribute(book._id)}">${escapeHTML(token ? t("addToCart") : t("signInToBuy"))}</button>`
+          : `<a class="marketplace-button" href="book_view.html?id=${encodeURIComponent(book._id)}">${escapeHTML(t("openFreeProduct"))}</a>`
+        }
+      </div>
+    </div>
+  `;
+
+  card.querySelector("[data-add-cart]")?.addEventListener("click", () => addToCart(book._id));
+  return card;
+}
+
+function truncateText(value, maxLength = 120) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, Math.max(maxLength - 3, 0)).trimEnd()}...`;
 }
 
 async function addToCart(bookId) {
