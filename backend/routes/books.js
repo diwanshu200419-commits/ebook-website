@@ -738,26 +738,27 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
 router.get("/library-import/catalog", protect, authorize("creator", "author", "admin"), async (req, res) => {
   try {
     const catalog = getImportableLibraryCatalog();
+    const importPaths = catalog.map((entry) => buildPublicUploadPath("books", entry.filename));
 
     const existing = await Book.find({
       author: req.user.id,
       $or: [
         { catalogKey: { $in: catalog.map((entry) => entry.catalogKey) } },
-        { title: { $in: catalog.map((entry) => entry.title) } },
+        { filePath: { $in: importPaths } },
       ],
-    }).select("catalogKey title status price isArchived");
+    }).select("catalogKey title status price isArchived filePath");
 
     const existingMap = new Map(
       existing.map((book) => [String(book.catalogKey || ""), book])
     );
-    const existingTitleMap = new Map(
-      existing.map((book) => [String(book.title || "").trim().toLowerCase(), book])
+    const existingPathMap = new Map(
+      existing.map((book) => [String(book.filePath || ""), book])
     );
 
     const books = catalog.map((entry) => {
       const imported =
         existingMap.get(entry.catalogKey)
-        || existingTitleMap.get(String(entry.title || "").trim().toLowerCase());
+        || existingPathMap.get(buildPublicUploadPath("books", entry.filename));
       return {
         catalogKey: entry.catalogKey,
         title: entry.title,

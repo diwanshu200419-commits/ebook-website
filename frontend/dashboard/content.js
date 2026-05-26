@@ -19,8 +19,8 @@ async function loadBooks() {
   try {
     const response = await fetch(`${API_BASE}/api/books/my/books`, {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.status === 401) {
@@ -45,7 +45,8 @@ async function loadBooks() {
 
 function renderStats(books, summary) {
   const totalBooks = summary.totalBooks ?? books.length;
-  const publishedCount = summary.publishedBooks ?? books.filter((book) => book.rawStatus === "Approved" && !book.isArchived).length;
+  const publishedCount = summary.publishedBooks
+    ?? books.filter((book) => book.rawStatus === "Approved" && !book.isArchived).length;
   const totalSales = books.reduce((sum, book) => sum + Number(book.salesCount || 0), 0);
   const totalRevenue = books.reduce((sum, book) => sum + Number(book.earnings || 0), 0);
 
@@ -70,10 +71,14 @@ function renderTable(books) {
     <tr>
       <td>
         <div class="book-cell">
-            <img src="${escapeAttribute(resolveAssetUrl(book.coverUrl || book.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(book.title)}">
+          <img src="${escapeAttribute(resolveAssetUrl(book.coverUrl || book.coverImage || "../assets/covers/Ebook_AI.png"))}" alt="${escapeAttribute(book.title)}">
           <div>
             <strong>${escapeHTML(book.title)}</strong>
-            <span>${escapeHTML(book.category || "Book")} · ${book.isPaid ? formatCurrency(book.price || 0) : "Free"}</span>
+            <span>${escapeHTML(book.category || "Book")} | ${book.isPaid ? formatCurrency(book.price || 0) : "Free"}</span>
+            <div class="book-source-row">
+              <span class="source-pill ${isImportedCatalogBook(book) ? "imported" : "manual"}">${escapeHTML(getSourceLabel(book))}</span>
+              ${book.isArchived ? '<span class="source-pill archived">Archived</span>' : ""}
+            </div>
           </div>
         </div>
       </td>
@@ -97,7 +102,7 @@ function renderTable(books) {
           <button type="button" class="secondary-btn" data-ai-id="${book._id}">View AI</button>
           <button type="button" class="secondary-btn" data-refresh-ai-id="${book._id}">Re-run AI</button>
           <button type="button" class="secondary-btn" data-edit-id="${book._id}">Edit</button>
-          <button type="button" class="secondary-btn danger" data-delete-id="${book._id}">${book.isArchived ? "Delete" : "Archive/Delete"}</button>
+          <button type="button" class="secondary-btn danger" data-delete-id="${book._id}">${escapeHTML(getDeleteActionLabel(book))}</button>
         </div>
       </td>
     </tr>
@@ -174,7 +179,7 @@ async function submitEdit(event) {
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean),
-    description: document.getElementById("editDescription").value.trim()
+    description: document.getElementById("editDescription").value.trim(),
   };
 
   try {
@@ -182,9 +187,9 @@ async function submitEdit(event) {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     const data = await response.json();
@@ -206,13 +211,13 @@ async function handleDelete(bookId) {
     return;
   }
 
-  const confirmed = window.confirm(
-    book.isArchived
-      ? "Delete this archived book permanently? This should only be used when it has no order history."
-      : "Delete this book? If it already has order history, it will be archived instead to protect buyers."
+  const confirmationKeyword = book.isArchived ? "DELETE" : "REMOVE";
+  const typed = window.prompt(
+    `${buildDeleteDescription(book)}\n\nBook: "${book.title}"\n\nType ${confirmationKeyword} to continue.`,
+    ""
   );
 
-  if (!confirmed) {
+  if (String(typed || "").trim().toUpperCase() !== confirmationKeyword) {
     return;
   }
 
@@ -220,8 +225,8 @@ async function handleDelete(bookId) {
     const response = await fetch(`${API_BASE}/api/books/${bookId}`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     const data = await response.json();
@@ -245,8 +250,8 @@ async function reprocessAi(bookId) {
     const response = await fetch(`${API_BASE}/api/ai/books/${bookId}/reprocess`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     const data = await response.json();
@@ -322,7 +327,39 @@ function buildAiSummary(book) {
     parts.push(String(book.aiSuggestion));
   }
 
-  return parts.join(" • ") || "AI review data will appear here after processing.";
+  return parts.join(" | ") || "AI review data will appear here after processing.";
+}
+
+function isImportedCatalogBook(book) {
+  return Boolean(String(book?.catalogKey || "").trim());
+}
+
+function getSourceLabel(book) {
+  return isImportedCatalogBook(book) ? "Project PDF import" : "Manual upload";
+}
+
+function getDeleteActionLabel(book) {
+  if (book?.isArchived) {
+    return "Delete permanently";
+  }
+
+  if (isImportedCatalogBook(book)) {
+    return "Remove imported copy";
+  }
+
+  return "Archive/Delete";
+}
+
+function buildDeleteDescription(book) {
+  if (book?.isArchived) {
+    return "This permanently deletes the archived product record. Use this only when you are sure it is no longer needed.";
+  }
+
+  if (isImportedCatalogBook(book)) {
+    return "This removes only this imported project-PDF copy. It will not delete your other uploads.";
+  }
+
+  return "This removes this product. If it already has order history, it will be archived instead to protect buyers and past downloads.";
 }
 
 function formatCurrency(value) {
@@ -335,17 +372,25 @@ function resolveAssetUrl(value) {
     return "../assets/covers/Ebook_AI.png";
   }
 
+  const frontendAssetBase = window.location.pathname.includes("/frontend/")
+    ? `${window.location.origin}/frontend`
+    : "";
+
   const repaired = source.replace(
     /^(https?:\/\/[^/]+)(assets\/|uploads\/)/i,
     "$1/$2"
   );
 
-  if (/^(https?:|data:|\.\.\/|\.\/|\/assets\/)/i.test(repaired)) {
+  if (/^(https?:|data:|\.\.\/|\.\/)/i.test(repaired)) {
     return repaired;
   }
 
+  if (repaired.startsWith("/assets/")) {
+    return frontendAssetBase ? `${frontendAssetBase}${repaired}` : repaired;
+  }
+
   if (/^assets\//i.test(repaired)) {
-    return `/${repaired}`;
+    return frontendAssetBase ? `${frontendAssetBase}/${repaired}` : `/${repaired}`;
   }
 
   if (repaired.startsWith("/uploads")) {
@@ -368,8 +413,8 @@ function escapeHTML(value) {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
+    "\"": "&quot;",
+    "'": "&#39;",
   })[character]);
 }
 

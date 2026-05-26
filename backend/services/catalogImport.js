@@ -216,6 +216,10 @@ function buildManualDescription(title = "") {
   return `${title} was imported from a PDF file you added manually to this project. Review the pricing, cover, and description after import to make the listing storefront-ready.`;
 }
 
+function buildCatalogStoredPath(filename = "") {
+  return buildPublicUploadPath("books", String(filename || "").trim());
+}
+
 function buildCoverAssetPath(absolutePath = "") {
   if (!absolutePath) {
     return "";
@@ -496,8 +500,18 @@ function buildExcludedBookFilter() {
   };
 }
 
-async function purgeExcludedCatalogBooks() {
+async function purgeExcludedCatalogBooks(owner) {
+  const ownerId = String(owner?._id || owner?.id || "").trim();
+  if (!ownerId) {
+    return {
+      removed: 0,
+      archived: 0,
+    };
+  }
+
   const books = await Book.find(buildExcludedBookFilter())
+    .where("author").equals(ownerId)
+    .where("catalogKey").ne("")
     .select("_id title filePath previewPath coverImage")
     .lean();
 
@@ -589,37 +603,24 @@ function ensureCatalogBookIsStored(entry) {
 }
 
 async function ensureMarketplaceCatalogOwner() {
-  const configuredAdminEmail = String(process.env.ADMIN_EMAIL || "")
-    .trim()
-    .toLowerCase();
-
-  if (configuredAdminEmail) {
-    const configuredAdmin = await User.findOne({
-      email: configuredAdminEmail,
-      isDeleted: { $ne: true },
-    });
-
-    if (configuredAdmin) {
-      return configuredAdmin;
-    }
-  }
-
-  const existingAdmin = await User.findOne({
-    role: "admin",
-    isDeleted: { $ne: true },
-    status: { $ne: "blocked" },
-  }).sort({ createdAt: 1 });
-
-  if (existingAdmin) {
-    return existingAdmin;
-  }
-
   const existingCatalogOwner = await User.findOne({
     email: MARKETPLACE_OWNER_EMAIL,
     isDeleted: { $ne: true },
   });
 
   if (existingCatalogOwner) {
+    let changed = false;
+    if (String(existingCatalogOwner.role || "").toLowerCase() !== "author") {
+      existingCatalogOwner.role = "author";
+      changed = true;
+    }
+    if (!existingCatalogOwner.verified) {
+      existingCatalogOwner.verified = true;
+      changed = true;
+    }
+    if (changed) {
+      await existingCatalogOwner.save({ validateBeforeSave: false });
+    }
     return existingCatalogOwner;
   }
 
@@ -632,6 +633,70 @@ async function ensureMarketplaceCatalogOwner() {
     verified: true,
     bio: "System-managed marketplace catalog owner for folder-based PDF imports.",
   });
+}
+
+async function reassignLegacyAdminCatalogBooks(owner) {
+  const ownerId = String(owner?._id || owner?.id || "").trim();
+  if (!ownerId) {
+    return 0;
+  }
+
+  const adminAccounts = await User.find({
+    _id: { $ne: ownerId },
+    role: "admin",
+    isDeleted: { $ne: true },
+  }).select("_id");
+  const adminIds = adminAccounts.map((entry) => entry._id);
+
+  const configuredAdminEmail = String(process.env.ADMIN_EMAIL || "")
+    .trim()
+    .toLowerCase();
+  if (configuredAdminEmail) {
+    const configuredAdmin = await User.findOne({
+      email: configuredAdminEmail,
+      _id: { $ne: ownerId },
+      isDeleted: { $ne: true },
+    }).select("_id");
+    if (configuredAdmin && !adminIds.some((entry) => String(entry) === String(configuredAdmin._id))) {
+      adminIds.push(configuredAdmin._id);
+    }
+  }
+
+  if (!adminIds.length) {
+    return 0;
+  }
+
+  const legacyBooks = await Book.find({
+    author: { $in: adminIds },
+    catalogKey: { $ne: "" },
+    salesCount: { $lte: 0 },
+  }).select("_id");
+  const legacyIds = legacyBooks.map((entry) => entry._id);
+
+  if (!legacyIds.length) {
+    return 0;
+  }
+
+  const paidBookIds = await Payment.distinct("book", { book: { $in: legacyIds } });
+  const safeBookIds = legacyIds.filter(
+    (bookId) => !paidBookIds.some((paidId) => String(paidId) === String(bookId))
+  );
+
+  if (!safeBookIds.length) {
+    return 0;
+  }
+
+  const result = await Book.updateMany(
+    { _id: { $in: safeBookIds } },
+    {
+      $set: {
+        author: owner._id,
+        authorName: owner.name || "Marketplace Library",
+      },
+    }
+  );
+
+  return Number(result.modifiedCount || 0);
 }
 
 function buildImportedBookPayload(entry, creator, preview, filePath) {
@@ -750,7 +815,7 @@ async function importBuiltinLibraryForCreator(creator) {
       author: creatorId,
       $or: [
         { catalogKey: entry.catalogKey },
-        { title: entry.title },
+        { filePath: buildCatalogStoredPath(entry.filename) },
       ],
     });
 
@@ -876,14 +941,16 @@ async function syncProjectCatalogToMarketplace(options = {}) {
 
   marketplaceSyncPromise = (async () => {
     try {
-      const purgeResult = await purgeExcludedCatalogBooks();
       const owner = await ensureMarketplaceCatalogOwner();
+      const migrated = await reassignLegacyAdminCatalogBooks(owner);
+      const purgeResult = await purgeExcludedCatalogBooks(owner);
       const result = await importBuiltinLibraryForCreator(owner);
       marketplaceSyncCompletedAt = Date.now();
 
       return {
         ownerId: owner._id,
         ownerEmail: owner.email,
+        migrated,
         ...purgeResult,
         ...result,
       };
