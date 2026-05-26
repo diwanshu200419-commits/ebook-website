@@ -18,7 +18,7 @@ Upload Content | E-Book Market
 
 <link
   rel="stylesheet"
-  href="upload.css?v=20260525-dashboard-fix1"
+  href="upload.css?v=20260526-upload-fix2"
 />
 
 <!-- GOOGLE FONT -->
@@ -137,7 +137,7 @@ Creator Studio
 UPLOAD CARD
 ========================= -->
 
-<div class="upload-card">
+<div class="upload-card upload-card--booting" id="uploadCard">
 
 <section id="creatorActivationGate" class="creator-activation-gate" hidden>
 
@@ -170,7 +170,18 @@ Open Settings
 <form
   id="uploadForm"
   autocomplete="off"
+  class="is-loading"
+  aria-busy="true"
 >
+
+<div
+  id="uploadReadinessBanner"
+  class="upload-readiness-banner"
+  role="status"
+  aria-live="polite"
+>
+Preparing your creator studio...
+</div>
 
 <!-- =========================
 BASIC DETAILS
@@ -1052,7 +1063,7 @@ BACK
 
 <script src="../auth.js?v=20260525-dashboard-fix1"></script>
 
-<script src="upload.js?v=20260526-upload-fix1"></script>
+<script src="upload.js?v=20260526-upload-fix2"></script>
 
 </body>
 

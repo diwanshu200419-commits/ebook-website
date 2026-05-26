@@ -4,7 +4,9 @@ const token = localStorage.getItem("token");
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const DRAFT_KEY = "ebook-market-upload-draft";
 
+const uploadCard = document.getElementById("uploadCard");
 const form = document.getElementById("uploadForm");
+const uploadReadinessBanner = document.getElementById("uploadReadinessBanner");
 const typeSelect = document.getElementById("type");
 const tagInput = document.getElementById("tagInput");
 const tagContainer = document.getElementById("tagContainer");
@@ -174,6 +176,7 @@ if (document.readyState === "loading") {
 }
 
 async function bootstrapUploadPage() {
+  setStudioBootState(true, "Checking creator access and preparing upload tools...");
   bindCreatorActivation();
 
   if (!token || token === "null" || token === "undefined") {
@@ -196,6 +199,7 @@ async function bootstrapUploadPage() {
 
 function initializePage() {
   if (isInitialized) {
+    setStudioBootState(false);
     return;
   }
 
@@ -221,6 +225,7 @@ function initializePage() {
   if (loadLibraryCatalogBtn) {
     loadLibraryCatalog();
   }
+  setStudioBootState(false);
 }
 
 function bindCreatorActivation() {
@@ -237,6 +242,7 @@ function canUploadProducts(role) {
 }
 
 function showCreatorActivationGate() {
+  setStudioBootState(false);
   if (creatorActivationGate) {
     creatorActivationGate.hidden = false;
   }
@@ -267,6 +273,7 @@ async function activateCreatorModeForUpload() {
   }
 
   const originalLabel = activateCreatorNowBtn.textContent;
+  setStudioBootState(true, "Turning on creator mode and opening your upload studio...");
   activateCreatorNowBtn.disabled = true;
   activateCreatorNowBtn.textContent = "Enabling...";
 
@@ -294,6 +301,7 @@ async function activateCreatorModeForUpload() {
     showStatus("Creator mode is active. You can now upload and publish products.", "success");
     showToast("Creator mode enabled", "success");
   } catch (error) {
+    setStudioBootState(false);
     showStatus(error.message || "Unable to enable creator mode right now", "error");
     showToast(error.message || "Unable to enable creator mode", "error");
   } finally {
@@ -1281,6 +1289,29 @@ function showStatus(message, type) {
 
   statusMessage.textContent = message;
   statusMessage.className = `status-message ${type}`;
+}
+
+function setStudioBootState(loading, message = "") {
+  uploadCard?.classList.toggle("upload-card--booting", loading);
+  form?.classList.toggle("is-loading", loading);
+
+  if (form) {
+    form.setAttribute("aria-busy", loading ? "true" : "false");
+    if (loading) {
+      form.setAttribute("inert", "");
+    } else {
+      form.removeAttribute("inert");
+    }
+  }
+
+  if (!uploadReadinessBanner) {
+    return;
+  }
+
+  uploadReadinessBanner.hidden = !loading;
+  if (loading && message) {
+    uploadReadinessBanner.textContent = message;
+  }
 }
 
 function showLibraryStatus(message, type) {
