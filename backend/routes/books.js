@@ -25,6 +25,10 @@ const {
   syncBookAndCreatorRatings,
 } = require("../services/reviewData");
 const {
+  getImportableLibraryCatalog,
+  importBuiltinLibraryForCreator,
+} = require("../services/catalogImport");
+const {
   buildSignedBookAccessUrls,
   verifyBookAssetToken,
 } = require("../services/bookAccess");
@@ -732,23 +736,82 @@ router.post("/upload", protect, authorize("creator", "author", "admin"), async (
 });
 
 router.get("/library-import/catalog", protect, authorize("creator", "author", "admin"), async (req, res) => {
-  return res.json({
-    success: true,
-    message: "Project PDF imports are disabled. Upload real products through Creator Studio.",
-    books: [],
-    summary: {
-      total: 0,
-      imported: 0,
-      pendingImport: 0,
-    },
-  });
+  try {
+    const catalog = getImportableLibraryCatalog();
+
+    const existing = await Book.find({
+      author: req.user.id,
+      $or: [
+        { catalogKey: { $in: catalog.map((entry) => entry.catalogKey) } },
+        { title: { $in: catalog.map((entry) => entry.title) } },
+      ],
+    }).select("catalogKey title status price isArchived");
+
+    const existingMap = new Map(
+      existing.map((book) => [String(book.catalogKey || ""), book])
+    );
+    const existingTitleMap = new Map(
+      existing.map((book) => [String(book.title || "").trim().toLowerCase(), book])
+    );
+
+    const books = catalog.map((entry) => {
+      const imported =
+        existingMap.get(entry.catalogKey)
+        || existingTitleMap.get(String(entry.title || "").trim().toLowerCase());
+      return {
+        catalogKey: entry.catalogKey,
+        title: entry.title,
+        bookAuthor: entry.bookAuthor,
+        category: entry.category,
+        subcategory: entry.subcategory,
+        price: Number(entry.discountPrice || 0),
+        originalPrice: Number(entry.originalPrice || entry.discountPrice || 0),
+        previewPages: Number(entry.previewPages || 0),
+        filePath: buildPublicUploadPath("books", entry.filename),
+        coverImage: entry.coverImage || "",
+        sourceLabel: entry.sourceLabel || "",
+        catalogType: entry.catalogType || "curated",
+        imported: Boolean(imported),
+        importedBookId: imported?._id || null,
+        importedStatus: imported?.status || "",
+      };
+    });
+
+    return res.json({
+      success: true,
+      books,
+      summary: {
+        total: books.length,
+        imported: books.filter((book) => book.imported).length,
+        pendingImport: books.filter((book) => !book.imported).length,
+      },
+    });
+  } catch (error) {
+    console.error("Library catalog load error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load the project PDF catalog",
+    });
+  }
 });
 
 router.post("/library-import", protect, authorize("creator", "author", "admin"), async (req, res) => {
-  return res.status(410).json({
-    success: false,
-    message: "Project PDF imports are disabled. Upload real products through Creator Studio.",
-  });
+  try {
+    const result = await importBuiltinLibraryForCreator(req.user);
+    return res.status(201).json({
+      success: true,
+      message: result.created
+        ? `${result.created} project PDF books imported successfully.`
+        : "Project PDF import completed with no new books created.",
+      ...result,
+    });
+  } catch (error) {
+    console.error("Library import error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Unable to import the project PDF catalog",
+    });
+  }
 });
 
 /* =====================================

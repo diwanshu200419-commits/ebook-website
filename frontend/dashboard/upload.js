@@ -3,7 +3,6 @@ const token = localStorage.getItem("token");
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const DRAFT_KEY = "ebook-market-upload-draft";
-const ENABLE_PROJECT_PDF_IMPORT = false;
 
 const uploadCard = document.getElementById("uploadCard");
 const form = document.getElementById("uploadForm");
@@ -223,7 +222,7 @@ function initializePage() {
   updateProductTypeUI();
   setUploadAiProvider();
   hydrateAiRuntime();
-  if (ENABLE_PROJECT_PDF_IMPORT && loadLibraryCatalogBtn) {
+  if (loadLibraryCatalogBtn) {
     loadLibraryCatalog();
   }
   setStudioBootState(false);
@@ -383,7 +382,7 @@ function updateProductTypeUI() {
     previewPagesGroup.style.display = isPdfType ? "" : "none";
   }
   if (importProjectSection) {
-    importProjectSection.style.display = ENABLE_PROJECT_PDF_IMPORT && PROJECT_IMPORT_TYPES.has(type) ? "" : "none";
+    importProjectSection.style.display = PROJECT_IMPORT_TYPES.has(type) ? "" : "none";
   }
   if (promptTextInput && type === "Prompt" && !promptTextInput.placeholder.includes("prompt")) {
     promptTextInput.placeholder = "Paste the full AI prompt, prompt pack instructions, or instant-access content buyers should unlock.";
@@ -639,13 +638,6 @@ function bindCreatorAssist() {
 }
 
 function bindLibraryImport() {
-  if (!ENABLE_PROJECT_PDF_IMPORT) {
-    if (importProjectSection) {
-      importProjectSection.style.display = "none";
-    }
-    return;
-  }
-
   loadLibraryCatalogBtn?.addEventListener("click", loadLibraryCatalog);
   importLibraryBtn?.addEventListener("click", importLibraryCatalog);
 }
@@ -837,11 +829,6 @@ function sendUploadRequest(formData) {
 }
 
 async function loadLibraryCatalog() {
-  if (!ENABLE_PROJECT_PDF_IMPORT) {
-    showLibraryStatus("Project PDF imports are disabled. Upload real products with the form above.", "info");
-    return;
-  }
-
   if (!loadLibraryCatalogBtn) {
     return;
   }
@@ -904,11 +891,6 @@ function renderLibraryCatalog(books) {
 }
 
 async function importLibraryCatalog() {
-  if (!ENABLE_PROJECT_PDF_IMPORT) {
-    showLibraryStatus("Project PDF imports are disabled. Upload real products with the form above.", "info");
-    return;
-  }
-
   if (!importLibraryBtn) {
     return;
   }
@@ -1513,11 +1495,6 @@ function describeProvider(provider, model, context = "") {
 }
 
 function loadLibraryCatalog() {
-  if (!ENABLE_PROJECT_PDF_IMPORT) {
-    showLibraryStatus("Project PDF imports are disabled. Upload real products with the form above.", "info");
-    return Promise.resolve();
-  }
-
   if (!loadLibraryCatalogBtn) {
     return Promise.resolve();
   }
@@ -1585,11 +1562,6 @@ function renderLibraryCatalog(books) {
 }
 
 function importLibraryCatalog() {
-  if (!ENABLE_PROJECT_PDF_IMPORT) {
-    showLibraryStatus("Project PDF imports are disabled. Upload real products with the form above.", "info");
-    return Promise.resolve();
-  }
-
   if (!importLibraryBtn) {
     return Promise.resolve();
   }

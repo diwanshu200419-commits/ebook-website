@@ -61,7 +61,13 @@ const COPY = {
     bookNotFound: "Book not found",
     reviewsUnavailable: "Reviews unavailable",
     reviewsUnavailableBecauseLoad: "Reviews are unavailable because this product could not be loaded.",
-    missingProductId: "Open a real marketplace product from Explore to see its preview, checkout actions, and reviews.",
+    demoMeta: "Official demo - Free preview",
+    demoDescription: "This demo title stays available as the storefront preview while the live marketplace loads books from the backend.",
+    demoReviewSummary: "Review features are available on live marketplace products.",
+    demoMode: "Demo mode",
+    demoReviewGate: "Open a live catalog product to see learner reviews and publish your own feedback.",
+    demoReviewList: "This demo title does not use the live reviews API.",
+    officialPreviewLoaded: "Official preview loaded.",
     download: "Download",
     explore: "Explore",
     addingToCart: "Adding this book to your cart...",
@@ -172,7 +178,13 @@ const COPY = {
     bookNotFound: "Book not found",
     reviewsUnavailable: "Reviews unavailable",
     reviewsUnavailableBecauseLoad: "Product load na hone ki wajah se reviews unavailable hain.",
-    missingProductId: "Preview, checkout actions, aur reviews dekhne ke liye Explore se koi real marketplace product kholiye.",
+    demoMeta: "Official demo - Free preview",
+    demoDescription: "Backend se live books load hote waqt yeh demo title storefront preview ke roop me available rehta hai.",
+    demoReviewSummary: "Review features live marketplace products par available hain.",
+    demoMode: "Demo mode",
+    demoReviewGate: "Learner reviews dekhne aur apni feedback publish karne ke liye koi live catalog product kholiye.",
+    demoReviewList: "Yeh demo title live reviews API use nahin karta.",
+    officialPreviewLoaded: "Official preview load ho gaya.",
     download: "Download",
     explore: "Explore",
     addingToCart: "Yeh book aapke cart me add ho rahi hai...",
@@ -784,6 +796,74 @@ function renderFallback(message) {
   setActionStatus("", "info");
 }
 
+function renderManualBook() {
+  const pdfPath = "assets/books/I-Tried-8-Different-AI-Side-Hustles-for-Students-Heres-Which-Ones-Actually-Pay.pdf";
+  document.title = `Side Hustles for Students | E-Book Market`;
+  if (typeof window.applySeo === "function") {
+    window.applySeo({
+      title: "Side Hustles for Students | E-Book Market",
+      description: "Read the official free demo book on E-Book Market and experience the digital product preview flow.",
+      path: "/book_view.html",
+      type: "product",
+      image: "assets/covers/Ebook_AI.png",
+      keywords: [
+        "free ebook preview",
+        "student side hustle ebook",
+        "digital product demo",
+        "ebook marketplace preview",
+      ],
+      jsonLd: {
+        "@context": "https://schema.org",
+        "@type": "Book",
+        name: "Side Hustles for Students",
+        description: "Official free preview title for the E-Book Market storefront demo.",
+        image: [
+          typeof window.buildSeoAbsoluteUrl === "function"
+            ? window.buildSeoAbsoluteUrl("assets/covers/Ebook_AI.png")
+            : "assets/covers/Ebook_AI.png",
+        ],
+        url: typeof window.buildSeoAbsoluteUrl === "function"
+          ? window.buildSeoAbsoluteUrl("/book_view.html")
+          : "/book_view.html",
+        inLanguage: "en-IN",
+        isAccessibleForFree: true,
+        author: {
+          "@type": "Organization",
+          name: "E-Book Market",
+        },
+      },
+    });
+  }
+  document.getElementById("bookTitle").textContent = "Side Hustles for Students";
+  document.getElementById("bookMeta").textContent = t("demoMeta");
+  document.getElementById("bookPrice").textContent = t("free");
+  document.getElementById("bookDescription").textContent =
+    t("demoDescription");
+  renderViewerPdf({
+    src: pdfPath,
+    cover: "assets/covers/Ebook_AI.png",
+    title: "Side Hustles for Students",
+    fallbackKicker: t("previewUnavailable"),
+    fallbackMessage: t("previewUnavailableNow"),
+  });
+  renderReviewPlaceholder({
+    summaryText: t("demoReviewSummary"),
+    scoreText: t("demoMode"),
+    gateMessage: t("demoReviewGate"),
+    listMessage: t("demoReviewList"),
+  });
+  setBookNote(t("officialPreviewLoaded"), "info");
+  document.getElementById("downloadBtn").textContent = t("download");
+  document.getElementById("downloadBtn").onclick = () => window.open(pdfPath, "_blank");
+  document.getElementById("cartBtn").style.display = "none";
+  document.getElementById("secondaryBtn").textContent = t("explore");
+  document.getElementById("secondaryBtn").onclick = () => {
+    window.location.href = "explore.html";
+  };
+  setActionStatus("", "info");
+  renderRecommendations([]);
+}
+
 async function addToCart(bookId) {
   const token = getToken();
   if (!token) {
@@ -1224,11 +1304,7 @@ async function loadBookView() {
   const bookId = params.get("id");
 
   if (!bookId) {
-    renderFallback(t("missingProductId"));
-    document.getElementById("secondaryBtn").textContent = t("explore");
-    document.getElementById("secondaryBtn").onclick = () => {
-      window.location.href = "explore.html";
-    };
+    renderManualBook();
     return;
   }
 

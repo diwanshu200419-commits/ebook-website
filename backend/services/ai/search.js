@@ -5,6 +5,7 @@ const BookAI = require("../../models/BookAI");
 const Payment = require("../../models/Payment");
 const User = require("../../models/user");
 const { serializeBook } = require("../bookData");
+const { syncProjectCatalogToMarketplace } = require("../catalogImport");
 const {
   cosineSimilarity,
   lexicalSimilarity,
@@ -24,8 +25,6 @@ function getSortConfig(sort) {
   switch (String(sort || "").toLowerCase()) {
     case "oldest":
       return { createdAt: 1 };
-    case "newest":
-      return { publishedAt: -1, createdAt: -1, price: -1 };
     case "price-low":
       return { price: 1, createdAt: -1 };
     case "price-high":
@@ -33,26 +32,19 @@ function getSortConfig(sort) {
     case "title":
       return { title: 1 };
     case "trending":
-      return { publishedAt: -1, createdAt: -1, price: -1, salesCount: -1, views: -1, downloads: -1, aiScore: -1 };
+      return { salesCount: -1, views: -1, downloads: -1, aiScore: -1, createdAt: -1 };
     default:
-      return { publishedAt: -1, createdAt: -1, price: -1 };
+      return { createdAt: -1 };
   }
 }
 
 function applyExplicitSort(entries, sort) {
   const normalized = String(sort || "").toLowerCase();
   const list = [...entries];
-  const newestFirst = (left, right) => {
-    const leftDate = new Date(left.book.publishedAt || left.book.createdAt || 0).getTime();
-    const rightDate = new Date(right.book.publishedAt || right.book.createdAt || 0).getTime();
-    return rightDate - leftDate || Number(right.book.price || 0) - Number(left.book.price || 0);
-  };
 
   switch (normalized) {
     case "oldest":
       return list.sort((left, right) => new Date(left.book.createdAt) - new Date(right.book.createdAt));
-    case "newest":
-      return list.sort(newestFirst);
     case "price-low":
       return list.sort((left, right) => Number(left.book.price || 0) - Number(right.book.price || 0));
     case "price-high":
@@ -61,11 +53,6 @@ function applyExplicitSort(entries, sort) {
       return list.sort((left, right) => String(left.book.title || "").localeCompare(String(right.book.title || "")));
     case "trending":
       return list.sort((left, right) => {
-        const freshness = newestFirst(left, right);
-        if (freshness !== 0) {
-          return freshness;
-        }
-
         const leftTrend = Number(left.book.salesCount || 0) * 4 + Number(left.book.views || 0) + Number(left.book.downloads || 0) * 2;
         const rightTrend = Number(right.book.salesCount || 0) * 4 + Number(right.book.views || 0) + Number(right.book.downloads || 0) * 2;
         return rightTrend - leftTrend || right.score - left.score;
@@ -211,6 +198,12 @@ async function searchApprovedBooks({
   language = "",
   userId = "",
 }) {
+  try {
+    await syncProjectCatalogToMarketplace();
+  } catch (error) {
+    console.error("Marketplace catalog sync error:", error.message);
+  }
+
   const safePage = Math.max(parseInt(page, 10) || 1, 1);
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 60);
   const safeCategory = String(category || "").trim();
