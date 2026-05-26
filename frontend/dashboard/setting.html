@@ -80,20 +80,37 @@
       </div>
 
       <div class="identity-shell">
-        <div class="banner-preview" id="bannerPreview">
+        <div class="banner-preview drop-surface" id="bannerDropZone">
           <div class="banner-overlay"></div>
           <div class="banner-toolbar">
             <span class="mini-pill">Public banner</span>
-            <button class="btn-outline small-btn" id="bannerSelectBtn" type="button">Upload banner</button>
+            <div class="asset-action-group">
+              <button class="btn-outline small-btn" id="bannerSelectBtn" type="button">Choose banner</button>
+              <button class="btn-outline small-btn hidden" id="clearBannerImageBtn" type="button">Clear</button>
+            </div>
           </div>
+          <div class="banner-drop-copy">
+            <strong>Drop a banner here</strong>
+            <p id="bannerImageMeta">PNG, JPG, or WEBP up to 5MB. A wide visual makes the public profile feel premium.</p>
+          </div>
+          <div class="banner-preview-layer" id="bannerPreview"></div>
         </div>
 
         <div class="identity-grid">
           <div class="avatar-column">
-            <img id="profilePreview" src="../assets/default-avatar.png" alt="Profile">
+            <div class="avatar-drop-zone drop-surface" id="avatarDropZone">
+              <img id="profilePreview" src="../assets/default-avatar.png" alt="Profile">
+              <div class="avatar-drop-copy">
+                <strong>Creator photo</strong>
+                <span id="profileImageMeta">Square photo, PNG/JPG/WEBP, up to 5MB.</span>
+              </div>
+            </div>
             <input type="file" id="profileImage" hidden accept="image/*">
             <input type="file" id="bannerImage" hidden accept="image/*">
-            <button class="btn-outline" id="profileSelectBtn" type="button">Upload avatar</button>
+            <div class="asset-action-group stacked-actions">
+              <button class="btn-outline" id="profileSelectBtn" type="button">Choose avatar</button>
+              <button class="btn-outline hidden" id="clearProfileImageBtn" type="button">Clear</button>
+            </div>
           </div>
 
           <div class="identity-copy">
@@ -108,6 +125,40 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Creator community</h3>
+          <p class="card-subcopy">Your public profile should show real people, not empty counters. This panel previews your followers and following network.</p>
+        </div>
+        <span class="badge">Social graph</span>
+      </div>
+
+      <div class="community-preview-grid">
+        <article class="community-panel">
+          <div class="community-panel-header">
+            <div>
+              <p class="community-kicker">Followers</p>
+              <h4>People following your work</h4>
+            </div>
+            <span class="mini-pill" id="creatorFollowersBadge">0</span>
+          </div>
+          <div class="mini-people-list" id="creatorFollowersList"></div>
+        </article>
+
+        <article class="community-panel">
+          <div class="community-panel-header">
+            <div>
+              <p class="community-kicker">Following</p>
+              <h4>Creators you keep up with</h4>
+            </div>
+            <span class="mini-pill" id="creatorFollowingBadge">0</span>
+          </div>
+          <div class="mini-people-list" id="creatorFollowingList"></div>
+        </article>
       </div>
     </section>
 
@@ -199,6 +250,24 @@
           <span id="profileMsg" class="form-message"></span>
         </div>
       </form>
+    </section>
+
+    <section class="settings-card">
+      <div class="card-header">
+        <div>
+          <h3>Creator board preview</h3>
+          <p class="card-subcopy">This is the Pinterest-style storefront board readers will scan before they decide to follow or buy.</p>
+        </div>
+        <span class="badge">Showcase</span>
+      </div>
+
+      <div class="showcase-summary-row">
+        <span class="mini-pill" id="showcaseAllCount">0 live products</span>
+        <span class="mini-pill" id="showcasePaidCount">0 paid</span>
+        <span class="mini-pill" id="showcaseFreeCount">0 free</span>
+      </div>
+
+      <div class="creator-board-grid" id="creatorBoardGrid"></div>
     </section>
 
     <section class="settings-card">
@@ -475,7 +544,7 @@
   </main>
 </div>
 
-<script src="setting.js?v=20260525-dashboard-fix1"></script>
+<script src="setting.js?v=20260525-creator-studio1"></script>
 <script src="motion-system.js"></script>
 <script>
 protectPage(["creator", "author", "reader", "admin"]);

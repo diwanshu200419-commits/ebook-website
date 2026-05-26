@@ -19,12 +19,16 @@ const elements = {
   accountBadge: document.getElementById("accountBadge"),
   profilePreview: document.getElementById("profilePreview"),
   bannerPreview: document.getElementById("bannerPreview"),
+  bannerDropZone: document.getElementById("bannerDropZone"),
+  avatarDropZone: document.getElementById("avatarDropZone"),
   displayNamePreview: document.getElementById("displayNamePreview"),
   usernamePreview: document.getElementById("usernamePreview"),
   bioPreview: document.getElementById("bioPreview"),
   previewFollowers: document.getElementById("previewFollowers"),
   previewDownloads: document.getElementById("previewDownloads"),
   previewViews: document.getElementById("previewViews"),
+  profileImageMeta: document.getElementById("profileImageMeta"),
+  bannerImageMeta: document.getElementById("bannerImageMeta"),
   fullName: document.getElementById("fullName"),
   email: document.getElementById("email"),
   username: document.getElementById("username"),
@@ -74,6 +78,8 @@ const elements = {
   bannerImage: document.getElementById("bannerImage"),
   profileSelectBtn: document.getElementById("profileSelectBtn"),
   bannerSelectBtn: document.getElementById("bannerSelectBtn"),
+  clearProfileImageBtn: document.getElementById("clearProfileImageBtn"),
+  clearBannerImageBtn: document.getElementById("clearBannerImageBtn"),
   currentPassword: document.getElementById("currentPassword"),
   newPassword: document.getElementById("newPassword"),
   interfaceLanguage: document.getElementById("interfaceLanguage"),
@@ -88,6 +94,14 @@ const elements = {
   savePreferencesBtn: document.getElementById("savePreferencesBtn"),
   submitVerificationBtn: document.getElementById("submitVerificationBtn"),
   deleteAccountBtn: document.getElementById("deleteAccountBtn"),
+  creatorFollowersBadge: document.getElementById("creatorFollowersBadge"),
+  creatorFollowingBadge: document.getElementById("creatorFollowingBadge"),
+  creatorFollowersList: document.getElementById("creatorFollowersList"),
+  creatorFollowingList: document.getElementById("creatorFollowingList"),
+  showcaseAllCount: document.getElementById("showcaseAllCount"),
+  showcasePaidCount: document.getElementById("showcasePaidCount"),
+  showcaseFreeCount: document.getElementById("showcaseFreeCount"),
+  creatorBoardGrid: document.getElementById("creatorBoardGrid"),
 };
 
 document.addEventListener("DOMContentLoaded", initSettings);
@@ -116,9 +130,20 @@ function bindEvents() {
 
   elements.profileSelectBtn?.addEventListener("click", () => elements.profileImage?.click());
   elements.bannerSelectBtn?.addEventListener("click", () => elements.bannerImage?.click());
+  elements.clearProfileImageBtn?.addEventListener("click", clearSelectedProfileImage);
+  elements.clearBannerImageBtn?.addEventListener("click", clearSelectedBannerImage);
 
   elements.profileImage?.addEventListener("change", handleProfileImageSelect);
   elements.bannerImage?.addEventListener("change", handleBannerImageSelect);
+  elements.avatarDropZone?.addEventListener("click", () => elements.profileImage?.click());
+  elements.bannerDropZone?.addEventListener("click", (event) => {
+    if (event.target.closest("button")) {
+      return;
+    }
+    elements.bannerImage?.click();
+  });
+  bindDropSurface(elements.avatarDropZone, "profile");
+  bindDropSurface(elements.bannerDropZone, "banner");
 
   [
     elements.fullName,
@@ -143,6 +168,8 @@ async function loadSettingsData() {
       growth: creatorResponse.growth || {},
       payout: creatorResponse.payout || {},
       notifications: creatorResponse.notifications || {},
+      community: creatorResponse.community || {},
+      showcase: creatorResponse.showcase || {},
     };
 
     renderSettings();
@@ -203,6 +230,8 @@ function renderSettings() {
   const banner = resolveAssetUrl(creator.bannerUrl || user.bannerImage || "", "");
   if (banner) {
     elements.bannerPreview.style.backgroundImage = `linear-gradient(135deg, rgba(15, 21, 48, 0.88), rgba(18, 14, 45, 0.56)), url("${escapeAttribute(banner)}")`;
+  } else {
+    elements.bannerPreview.style.backgroundImage = "";
   }
 
   elements.accountRole.textContent = formatRole(user.role || creator.role || "reader");
@@ -241,6 +270,9 @@ function renderSettings() {
     elements.previewProfileLink.classList.add("hidden");
   }
 
+  renderAssetSelectionState();
+  renderCommunityPreview();
+  renderShowcasePreview();
   renderLivePreview();
   renderVerificationStatus(verification, isCreator);
   persistMarketplacePreferences(preferences);
@@ -305,7 +337,7 @@ async function updateProfile(event) {
     if (elements.profileImage) elements.profileImage.value = "";
     if (elements.bannerImage) elements.bannerImage.value = "";
 
-    renderSettings();
+    await loadSettingsData();
     showMessage(elements.profileMsg, "Creator profile updated successfully.");
   } catch (error) {
     showMessage(elements.profileMsg, error.message || "Unable to update creator profile", "error");
@@ -571,25 +603,245 @@ async function deleteAccount() {
 }
 
 function handleProfileImageSelect(event) {
-  const file = event.target.files?.[0];
-  if (!file) {
-    return;
-  }
-
-  state.selectedProfileImage = file;
-  const previewUrl = URL.createObjectURL(file);
-  elements.profilePreview.src = previewUrl;
+  applySelectedAsset("profile", event.target.files?.[0]);
 }
 
 function handleBannerImageSelect(event) {
-  const file = event.target.files?.[0];
+  applySelectedAsset("banner", event.target.files?.[0]);
+}
+
+function bindDropSurface(surface, type) {
+  if (!surface) {
+    return;
+  }
+
+  const onDragEvent = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  ["dragenter", "dragover"].forEach((eventName) => {
+    surface.addEventListener(eventName, (event) => {
+      onDragEvent(event);
+      surface.classList.add("drag-active");
+    });
+  });
+
+  ["dragleave", "dragend"].forEach((eventName) => {
+    surface.addEventListener(eventName, (event) => {
+      onDragEvent(event);
+      if (!surface.contains(event.relatedTarget)) {
+        surface.classList.remove("drag-active");
+      }
+    });
+  });
+
+  surface.addEventListener("drop", (event) => {
+    onDragEvent(event);
+    surface.classList.remove("drag-active");
+    const file = event.dataTransfer?.files?.[0];
+    applySelectedAsset(type, file);
+  });
+}
+
+function applySelectedAsset(type, file) {
   if (!file) {
     return;
   }
 
-  state.selectedBannerImage = file;
+  const validationError = validateCreatorImageFile(file);
+  if (validationError) {
+    showMessage(elements.profileMsg, validationError, "error");
+    return;
+  }
+
+  if (type === "profile") {
+    state.selectedProfileImage = file;
+  } else {
+    state.selectedBannerImage = file;
+  }
+
   const previewUrl = URL.createObjectURL(file);
-  elements.bannerPreview.style.backgroundImage = `linear-gradient(135deg, rgba(15, 21, 48, 0.88), rgba(18, 14, 45, 0.56)), url("${escapeAttribute(previewUrl)}")`;
+  if (type === "profile") {
+    elements.profilePreview.src = previewUrl;
+  } else {
+    elements.bannerPreview.style.backgroundImage = `linear-gradient(135deg, rgba(15, 21, 48, 0.88), rgba(18, 14, 45, 0.56)), url("${escapeAttribute(previewUrl)}")`;
+  }
+
+  renderAssetSelectionState();
+}
+
+function validateCreatorImageFile(file) {
+  const sizeLimit = 5 * 1024 * 1024;
+  if (!file.type?.startsWith("image/")) {
+    return "Please choose an image file for the creator profile.";
+  }
+
+  if (Number(file.size || 0) > sizeLimit) {
+    return "Creator images can be up to 5MB.";
+  }
+
+  return "";
+}
+
+function clearSelectedProfileImage() {
+  state.selectedProfileImage = null;
+  if (elements.profileImage) {
+    elements.profileImage.value = "";
+  }
+
+  const avatar = resolveAssetUrl(
+    state.creatorProfile?.avatarUrl || state.profile?.profileImage || "",
+    FALLBACK_AVATAR
+  );
+  elements.profilePreview.src = avatar;
+  renderAssetSelectionState();
+}
+
+function clearSelectedBannerImage() {
+  state.selectedBannerImage = null;
+  if (elements.bannerImage) {
+    elements.bannerImage.value = "";
+  }
+
+  const banner = resolveAssetUrl(
+    state.creatorProfile?.bannerUrl || state.profile?.bannerImage || "",
+    ""
+  );
+  elements.bannerPreview.style.backgroundImage = banner
+    ? `linear-gradient(135deg, rgba(15, 21, 48, 0.88), rgba(18, 14, 45, 0.56)), url("${escapeAttribute(banner)}")`
+    : "";
+  renderAssetSelectionState();
+}
+
+function renderAssetSelectionState() {
+  const profileMeta = state.selectedProfileImage
+    ? `${state.selectedProfileImage.name} selected. Save profile to publish it.`
+    : "Square photo, PNG/JPG/WEBP, up to 5MB.";
+  const bannerMeta = state.selectedBannerImage
+    ? `${state.selectedBannerImage.name} selected. Save profile to publish it.`
+    : "PNG, JPG, or WEBP up to 5MB. A wide visual makes the public profile feel premium.";
+
+  if (elements.profileImageMeta) {
+    elements.profileImageMeta.textContent = profileMeta;
+  }
+  if (elements.bannerImageMeta) {
+    elements.bannerImageMeta.textContent = bannerMeta;
+  }
+
+  elements.clearProfileImageBtn?.classList.toggle("hidden", !state.selectedProfileImage);
+  elements.clearBannerImageBtn?.classList.toggle("hidden", !state.selectedBannerImage);
+}
+
+function renderCommunityPreview() {
+  const community = state.creatorProfile?.community || {};
+  const stats = state.creatorProfile?.stats || {};
+  const followers = Array.isArray(community.followers) ? community.followers : [];
+  const following = Array.isArray(community.following) ? community.following : [];
+
+  if (elements.creatorFollowersBadge) {
+    elements.creatorFollowersBadge.textContent = formatNumber(stats.followersCount || followers.length);
+  }
+  if (elements.creatorFollowingBadge) {
+    elements.creatorFollowingBadge.textContent = formatNumber(stats.followingCount || following.length);
+  }
+
+  renderMiniPeopleList(
+    elements.creatorFollowersList,
+    followers,
+    "Followers will appear here once readers start following this creator profile."
+  );
+  renderMiniPeopleList(
+    elements.creatorFollowingList,
+    following,
+    "Following other creators helps your profile feel connected and active."
+  );
+}
+
+function renderMiniPeopleList(container, people, emptyMessage) {
+  if (!container) {
+    return;
+  }
+
+  if (!Array.isArray(people) || !people.length) {
+    container.innerHTML = `<div class="mini-empty-state">${escapeHTML(emptyMessage)}</div>`;
+    return;
+  }
+
+  container.innerHTML = people.map((person) => {
+    const profileLink = person.username
+      ? `../creator/creator.html?username=${encodeURIComponent(person.username)}`
+      : "#";
+    const avatar = resolveAssetUrl(person.avatarUrl || person.avatar || "", FALLBACK_AVATAR);
+
+    return `
+      <article class="mini-person-card">
+        <img class="mini-person-avatar" src="${escapeAttribute(avatar)}" alt="${escapeAttribute(person.name || "Member")}">
+        <div class="mini-person-copy">
+          <h4>${escapeHTML(person.name || "Member")}</h4>
+          <p>${escapeHTML(person.bio || "Marketplace member")}</p>
+          <span>@${escapeHTML(person.username || "member")}</span>
+        </div>
+        <a class="mini-person-role" href="${escapeAttribute(profileLink)}">${escapeHTML(formatRole(person.role || "reader"))}</a>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderShowcasePreview() {
+  const showcase = state.creatorProfile?.showcase || {};
+  const items = Array.isArray(showcase.featured) ? showcase.featured : [];
+
+  if (elements.showcaseAllCount) {
+    elements.showcaseAllCount.textContent = `${formatNumber(showcase.allCount || 0)} live products`;
+  }
+  if (elements.showcasePaidCount) {
+    elements.showcasePaidCount.textContent = `${formatNumber(showcase.paidCount || 0)} paid`;
+  }
+  if (elements.showcaseFreeCount) {
+    elements.showcaseFreeCount.textContent = `${formatNumber(showcase.freeCount || 0)} free`;
+  }
+
+  if (!elements.creatorBoardGrid) {
+    return;
+  }
+
+  if (!items.length) {
+    elements.creatorBoardGrid.innerHTML = `
+      <div class="mini-empty-state">
+        Publish approved books or digital products to unlock your public creator board. This board updates automatically as your catalog goes live.
+      </div>
+    `;
+    return;
+  }
+
+  elements.creatorBoardGrid.innerHTML = items.map((item) => {
+    const cover = resolveAssetUrl(item.coverUrl || item.coverImage || "", "../assets/covers/Ebook_AI.png");
+    const isPaid = Number(item.price || 0) > 0;
+    const label = item.productTypeLabel || item.productType || item.category || "Digital product";
+    const link = `../book_view.html?id=${encodeURIComponent(item._id || item.id || "")}`;
+
+    return `
+      <article class="board-card">
+        <img class="board-cover" src="${escapeAttribute(cover)}" alt="${escapeAttribute(item.title || "Product cover")}">
+        <div class="board-content">
+          <div class="board-label-row">
+            <span class="mini-pill">${escapeHTML(label)}</span>
+            <span class="mini-pill">${escapeHTML(isPaid ? formatCurrency(item.price || 0) : "Free")}</span>
+          </div>
+          <div>
+            <h4>${escapeHTML(item.title || "Untitled product")}</h4>
+            <p>${escapeHTML(item.description || "Add a stronger description to help readers understand the value of this product.")}</p>
+          </div>
+          <div class="board-micro">
+            <span>${formatCompactNumber(item.salesCount || 0)} sales</span>
+            <span>${formatCompactNumber(item.views || 0)} views</span>
+          </div>
+          <a class="board-link" href="${escapeAttribute(link)}">Open public product page</a>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function renderLivePreview() {
@@ -729,6 +981,13 @@ function formatCurrency(value) {
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString("en-IN");
+}
+
+function formatCompactNumber(value) {
+  return new Intl.NumberFormat("en-IN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
 }
 
 function normalizePreferences(user) {

@@ -5,12 +5,14 @@ const path = require("path");
 
 const { protect } = require("../middleware/auth");
 const User = require("../models/user");
+const Book = require("../models/book");
 const {
   ensureUploadDir,
   buildPublicUploadPath,
   safeDeletePublicFile,
 } = require("../utils/uploads");
 const {
+  buildCreatorCollections,
   buildCreatorIdentity,
   buildFollowPreview,
   buildPublicCreatorProfile,
@@ -146,7 +148,22 @@ router.get("/me/profile", protect, async (req, res) => {
       });
     }
 
-    const stats = await refreshCreatorStats(user);
+    const [stats, approvedBooks] = await Promise.all([
+      refreshCreatorStats(user),
+      Book.find({
+        author: user._id,
+        status: "Approved",
+        isArchived: { $ne: true },
+      })
+        .populate("author", "name username")
+        .sort({ publishedAt: -1, createdAt: -1 }),
+    ]);
+    const collections = buildCreatorCollections(approvedBooks, backendBaseUrl);
+    const featuredShowcase = (
+      collections.trending.length
+        ? collections.trending
+        : collections.all
+    ).slice(0, 8);
 
     return res.json({
       success: true,
@@ -154,6 +171,20 @@ router.get("/me/profile", protect, async (req, res) => {
         ...buildCreatorIdentity(user, backendBaseUrl, stats),
         stats,
         isCreator: isCreatorRole(user.role),
+      },
+      community: {
+        followers: (Array.isArray(user.followers) ? user.followers : [])
+          .slice(0, 12)
+          .map((member) => buildFollowPreview(member, backendBaseUrl)),
+        following: (Array.isArray(user.following) ? user.following : [])
+          .slice(0, 12)
+          .map((member) => buildFollowPreview(member, backendBaseUrl)),
+      },
+      showcase: {
+        featured: featuredShowcase,
+        allCount: collections.all.length,
+        freeCount: collections.free.length,
+        paidCount: collections.paid.length,
       },
       verification: user.creatorVerification || { status: user.verified ? "approved" : "unverified" },
       growth: {

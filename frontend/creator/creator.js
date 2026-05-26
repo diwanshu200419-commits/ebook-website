@@ -168,14 +168,7 @@ async function loadCreatorProfile(username) {
   showState("Loading creator profile...", "Fetching the creator identity, live books, and social metrics.");
 
   try {
-    const headers = state.token ? { Authorization: `Bearer ${state.token}` } : {};
-    const response = await fetch(`${API_BASE}/api/creator/${encodeURIComponent(username)}`, { headers });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || "Unable to load creator profile");
-    }
-
+    const data = await requestCreatorProfile(username);
     state.profile = data;
     state.collections = data.books || state.collections;
     renderProfile(data);
@@ -194,6 +187,18 @@ async function loadCreatorProfile(username) {
     }
     showState("Creator profile unavailable", error.message || "We could not load this creator right now.");
   }
+}
+
+async function requestCreatorProfile(username) {
+  const headers = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+  const response = await fetch(`${API_BASE}/api/creator/${encodeURIComponent(username)}`, { headers });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Unable to load creator profile");
+  }
+
+  return data;
 }
 
 async function loadTrendingCreators() {
@@ -346,7 +351,7 @@ function renderPopularCategories(categories) {
       <span>${formatCompactNumber(category.count || 0)} books</span>
       <span>${formatCompactNumber(category.count || 0)}x</span>
     </div>
-  `).join("");
+  `).join("").replace(/Ã‚Â·|Â·/g, "·");
 }
 
 function renderBookCollection() {
@@ -361,7 +366,7 @@ function renderBookCollection() {
   if (!books.length) {
     elements.booksGrid.innerHTML = `
       <article class="empty-card">
-        No books are available in this collection yet. As the creator uploads and gets books approved, they will appear here automatically.
+        No live products are available in this collection yet. As the creator uploads and gets products approved, they will appear here automatically.
       </article>
     `;
     return;
@@ -370,13 +375,14 @@ function renderBookCollection() {
   elements.booksGrid.innerHTML = books.map((book) => {
     const cover = resolveAssetUrl(book.coverUrl || book.coverImage || "", "../assets/covers/Ebook_AI.png");
     const isPaid = Number(book.price || 0) > 0;
+    const productLabel = book.productTypeLabel || book.productType || book.category || "Digital product";
     return `
       <article class="book-card">
         <img class="book-cover" src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title || "Book cover")}">
         <div class="book-content">
           <div class="book-label-row">
             <span class="pill ${isPaid ? "paid" : "free"}">${isPaid ? "Paid" : "Free"}</span>
-            <span class="pill ${String(book.status || "").toLowerCase() === "approved" ? "success" : ""}">${escapeHTML(book.category || "Book")}</span>
+            <span class="pill ${String(book.status || "").toLowerCase() === "approved" ? "success" : ""}">${escapeHTML(productLabel)}</span>
           </div>
           <div>
             <h3>${escapeHTML(book.title || "Untitled book")}</h3>
@@ -530,6 +536,10 @@ async function toggleFollowCreator() {
     updateFollowButton(Boolean(data.following), true);
     animateNumber(elements.followersCount, data.followersCount || 0);
     elements.followersBadge.textContent = formatCompactNumber(data.followersCount || 0);
+    const refreshedProfile = await requestCreatorProfile(state.profile.creator.username);
+    state.profile = refreshedProfile;
+    state.collections = refreshedProfile.books || state.collections;
+    renderProfile(refreshedProfile);
   } catch (error) {
     console.error("Follow creator failed:", error);
     alert(error.message || "Unable to update follow state");

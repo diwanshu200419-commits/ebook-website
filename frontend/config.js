@@ -11,7 +11,9 @@
   var metaOverride = "";
   var globalOverride = "";
   var storedOverride = "";
-  var localDefaultBackend = "http://localhost:5000";
+  var localDefaultBackend = hostname === "127.0.0.1"
+    ? "http://127.0.0.1:5000"
+    : "http://localhost:5000";
   var localDefaultFrontend = "http://127.0.0.1:5501/frontend";
 
   try {
