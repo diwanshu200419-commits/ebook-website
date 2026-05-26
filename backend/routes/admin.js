@@ -80,6 +80,9 @@ router.get("/books", protect, authorize("admin"), async (req, res) => {
     const { status } = req.query;
     let filter = {};
     if (status) filter.status = status;
+    if (!normalizeBooleanFlag(req.query?.includeArchived, false)) {
+      filter.isArchived = { $ne: true };
+    }
 
     const books = await Book.find(filter).populate("author", "name email");
     res.json({ success: true, books });

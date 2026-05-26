@@ -852,6 +852,16 @@ function syncApprovedBookRecord(nextBook) {
   ));
 }
 
+function removeBookFromAdminCollections(bookId) {
+  const safeId = String(bookId || "").trim();
+  if (!safeId) {
+    return;
+  }
+
+  adminCollections.approvedBooks = adminCollections.approvedBooks.filter((book) => String(book?._id || "") !== safeId);
+  adminCollections.pendingBooks = adminCollections.pendingBooks.filter((book) => String(book?._id || "") !== safeId);
+}
+
 async function loadLifecycleExperimentConfig() {
   if (lifecycleLabConfig) {
     return lifecycleLabConfig;
@@ -2284,12 +2294,16 @@ function renderPending(books) {
         <button class="changes" data-report-id="${book._id}">View Report</button>
         <button class="approve" data-id="${book._id}">Approve</button>
         <button class="reject" data-id="${book._id}">Reject</button>
+        <button class="changes danger-soft" data-delete-id="${book._id}">Delete / Archive</button>
       </div>
     `;
 
     card.querySelector(".changes").onclick = () => openAiReport(book._id);
     card.querySelector(".approve").onclick = () => approveBook(book._id);
     card.querySelector(".reject").onclick = () => rejectBook(book._id);
+    card.querySelector("[data-delete-id]")?.addEventListener("click", () => {
+      void deleteBookFromAdmin(book, { source: "review" });
+    });
     enhanceBookModerationCard(card, book, { pending: true });
 
     contentList.appendChild(card);
@@ -2337,12 +2351,16 @@ function renderApproved(books) {
     actions.className = "actions";
     actions.innerHTML = `
       <button class="${featuredButtonClass}" type="button" data-featured-book="${escapeAttribute(String(book._id || ""))}" data-featured-state="${book.isFeatured ? "0" : "1"}">${escapeHTML(featuredButtonLabel)}</button>
+      <button class="changes danger-soft" type="button" data-delete-approved="${escapeAttribute(String(book._id || ""))}">Delete / Archive</button>
     `;
     card.appendChild(actions);
     enhanceBookModerationCard(card, book);
     card.querySelector("[data-featured-book]")?.addEventListener("click", () => {
       const nextState = card.querySelector("[data-featured-book]")?.getAttribute("data-featured-state") === "1";
       void updateApprovedBookFeaturedState(book, nextState);
+    });
+    card.querySelector("[data-delete-approved]")?.addEventListener("click", () => {
+      void deleteBookFromAdmin(book, { source: "approved" });
     });
     approvedList.appendChild(card);
   });
@@ -2610,6 +2628,51 @@ async function updateApprovedBookFeaturedState(book, nextState) {
     alert(data.message || (nextState ? "Book marked as featured" : "Book removed from featured"));
   } catch (err) {
     alert(err.message || "Unable to update featured placement");
+  }
+}
+
+async function deleteBookFromAdmin(book, options = {}) {
+  const safeBookId = String(book?._id || "").trim();
+  if (!safeBookId) {
+    return;
+  }
+
+  const confirmationKeyword = book?.isArchived ? "DELETE" : "REMOVE";
+  const promptMessage = book?.isArchived
+    ? `This will permanently delete "${book.title || "this book"}".\n\nType ${confirmationKeyword} to continue.`
+    : `This will remove "${book.title || "this book"}". Products with order history will be archived automatically to protect buyers.\n\nType ${confirmationKeyword} to continue.`;
+  const typed = window.prompt(promptMessage, "") ?? "";
+  if (String(typed).trim().toUpperCase() !== confirmationKeyword) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/books/${encodeURIComponent(safeBookId)}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || "Unable to delete book");
+    }
+
+    removeBookFromAdminCollections(safeBookId);
+    applyApprovedBookFilters();
+    applyPendingBookFilters();
+    updateNavCounts();
+    markAdminSynced();
+
+    if (options.source === "approved") {
+      await loadApprovedBooks();
+    } else if (options.source === "review") {
+      await loadPendingBooks();
+    }
+
+    alert(data.message || (data.mode === "archived" ? "Book archived successfully" : "Book deleted successfully"));
+  } catch (err) {
+    alert(err.message || "Unable to delete book");
   }
 }
 

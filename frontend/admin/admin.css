@@ -756,6 +756,12 @@ button {
   border-color: rgba(255, 255, 255, 0.06);
 }
 
+.changes.danger-soft {
+  color: #ffe5eb;
+  background: rgba(225, 29, 72, 0.18);
+  border-color: rgba(251, 113, 133, 0.2);
+}
+
 .feature {
   color: #1d1604;
   background: linear-gradient(135deg, #facc15, #f59e0b);
