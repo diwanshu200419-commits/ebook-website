@@ -20,25 +20,75 @@ const viewerBadge = document.getElementById("viewerBadge");
 const providerPanel = document.getElementById("providerPanel");
 const providerBadge = document.getElementById("providerBadge");
 const providerMeta = document.getElementById("providerMeta");
+const scoreCircle = document.querySelector(".score-circle");
+
+const reviewModePanel = document.getElementById("reviewModePanel");
+const modeKicker = document.getElementById("modeKicker");
+const modeTitle = document.getElementById("modeTitle");
+const modeDescription = document.getElementById("modeDescription");
+const reviewStudio = document.getElementById("reviewStudio");
+const studioStatus = document.getElementById("studioStatus");
+const studioTitleInput = document.getElementById("studioTitle");
+const studioTypeInput = document.getElementById("studioType");
+const studioCategoryInput = document.getElementById("studioCategory");
+const studioPriceInput = document.getElementById("studioPrice");
+const studioTagsInput = document.getElementById("studioTags");
+const studioDescriptionInput = document.getElementById("studioDescription");
+const studioExcerptInput = document.getElementById("studioExcerpt");
+const runStudioReviewBtn = document.getElementById("runStudioReviewBtn");
+const loadSampleBtn = document.getElementById("loadSampleBtn");
+const clearStudioBtn = document.getElementById("clearStudioBtn");
 
 let reviewData = null;
+let scoreAnimationTimer = null;
 
 document.addEventListener("DOMContentLoaded", initializeReviewPage);
 
 function initializeReviewPage() {
   configureViewerShell();
 
+  if (bookId) {
+    enterReportMode();
+    return;
+  }
+
+  enterStudioMode();
+}
+
+function enterReportMode() {
   if (!token) {
     redirectToLogin();
     return;
   }
 
-  if (!bookId) {
-    renderErrorState("No book selected. Open this page from the dashboard or admin review queue.");
-    return;
-  }
-
+  setModeCopy({
+    kicker: "Book AI report",
+    title: "Review a live marketplace upload",
+    description: "This mode shows the saved AI moderation report for a real product in your marketplace pipeline.",
+  });
+  reviewStudio?.classList.add("hidden");
+  renderReportPlaceholder("Loading the saved AI report for this product...");
   loadReviewReport();
+}
+
+function enterStudioMode() {
+  setModeCopy({
+    kicker: "Free AI review studio",
+    title: "Analyze a draft before you publish",
+    description: "Paste your listing details and sample content to get a free launch-readiness review with no paid AI model required.",
+  });
+
+  adminActions?.classList.add("hidden");
+  reviewStudio?.classList.remove("hidden");
+  bindStudioActions();
+  renderProvider("local", "local-heuristic", "Free local review mode");
+  renderStudioPlaceholder();
+}
+
+function bindStudioActions() {
+  loadSampleBtn?.addEventListener("click", loadSampleReview);
+  clearStudioBtn?.addEventListener("click", clearStudioForm);
+  runStudioReviewBtn?.addEventListener("click", runStudioReview);
 }
 
 function configureViewerShell() {
@@ -46,13 +96,30 @@ function configureViewerShell() {
   const role = user?.role || "";
   const isAdmin = role === "admin";
 
-  viewerBadge.textContent = isAdmin ? "ADMIN" : role ? "CREATOR VIEW" : "REVIEW";
-  backLink.href = isAdmin ? "../admin/admin.html" : "../dashboard/content.html";
-  backLink.textContent = isAdmin ? "← Back to Admin Dashboard" : "← Back to Content Studio";
+  if (bookId) {
+    viewerBadge.textContent = isAdmin ? "ADMIN" : role ? "CREATOR VIEW" : "REVIEW";
+    backLink.href = isAdmin ? "../admin/admin.html" : "../dashboard/content.html";
+    backLink.textContent = isAdmin ? "<- Back to Admin Dashboard" : "<- Back to Content Studio";
 
-  if (role && !isAdmin) {
-    adminActions.classList.add("hidden");
+    if (role && !isAdmin) {
+      adminActions?.classList.add("hidden");
+    }
+    return;
   }
+
+  viewerBadge.textContent = "FREE AI MODE";
+  backLink.href = isAdmin ? "../admin/admin.html" : role ? "../dashboard/content.html" : "../index.html";
+  backLink.textContent = isAdmin
+    ? "<- Back to Admin Dashboard"
+    : role
+      ? "<- Back to Creator Dashboard"
+      : "<- Back to Marketplace";
+}
+
+function setModeCopy({ kicker, title, description }) {
+  if (modeKicker) modeKicker.textContent = kicker;
+  if (modeTitle) modeTitle.textContent = title;
+  if (modeDescription) modeDescription.textContent = description;
 }
 
 async function loadReviewReport() {
@@ -76,44 +143,191 @@ async function loadReviewReport() {
   }
 }
 
+async function runStudioReview() {
+  const payload = collectStudioPayload();
+  const validationError = validateStudioPayload(payload);
+  if (validationError) {
+    setStudioStatus(validationError, "error");
+    showToast(validationError);
+    return;
+  }
+
+  setStudioLoading(true, "Running free AI review on your draft...");
+
+  try {
+    const response = await fetch(`${API_BASE}/api/ai/review-preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to run free AI review");
+    }
+
+    reviewData = data;
+    renderReport(data);
+    setStudioStatus("Free AI review completed. Update the draft and run it again any time.", "success");
+  } catch (error) {
+    console.error(error);
+    setStudioStatus(error.message || "Unable to run the free AI review right now.", "error");
+    showToast(error.message || "Unable to run the free AI review");
+  } finally {
+    setStudioLoading(false);
+  }
+}
+
+function collectStudioPayload() {
+  return {
+    title: studioTitleInput?.value.trim() || "",
+    type: studioTypeInput?.value || "Book",
+    category: studioCategoryInput?.value.trim() || "",
+    price: Number(studioPriceInput?.value || 0),
+    tags: studioTagsInput?.value.trim() || "",
+    description: studioDescriptionInput?.value.trim() || "",
+    excerpt: studioExcerptInput?.value.trim() || "",
+  };
+}
+
+function validateStudioPayload(payload) {
+  if (!payload.title || payload.title.length < 3) {
+    return "Add a title with at least 3 characters.";
+  }
+
+  const sourceLength = `${payload.description}\n${payload.excerpt}`.trim().length;
+  if (sourceLength < 80) {
+    return "Add at least 80 characters of description or sample content for a reliable free AI review.";
+  }
+
+  return null;
+}
+
+function loadSampleReview() {
+  studioTitleInput.value = "The Beginner's Guide to Spanish Vocabulary";
+  studioTypeInput.value = "Book";
+  studioCategoryInput.value = "Language Learning";
+  studioPriceInput.value = "199";
+  studioTagsInput.value = "spanish, beginner, vocabulary, workbook";
+  studioDescriptionInput.value = "A structured beginner ebook that helps students build daily Spanish vocabulary with pronunciation notes, memory cues, and practice drills.";
+  studioExcerptInput.value = [
+    "Unit 1 focuses on greetings, introductions, and classroom vocabulary.",
+    "Each section includes a quick explanation, 15 to 20 useful words, example sentences, and a short recap drill.",
+    "The book is designed for Indian college students who want practical Spanish for study, travel, and freelance opportunities."
+  ].join(" ");
+  setStudioStatus("Sample draft loaded. Run the free AI review to see the report.", "loading");
+}
+
+function clearStudioForm() {
+  if (studioTitleInput) studioTitleInput.value = "";
+  if (studioTypeInput) studioTypeInput.value = "Book";
+  if (studioCategoryInput) studioCategoryInput.value = "";
+  if (studioPriceInput) studioPriceInput.value = "";
+  if (studioTagsInput) studioTagsInput.value = "";
+  if (studioDescriptionInput) studioDescriptionInput.value = "";
+  if (studioExcerptInput) studioExcerptInput.value = "";
+
+  reviewData = null;
+  renderStudioPlaceholder();
+  setStudioStatus("Ready for analysis.", "loading");
+}
+
+function setStudioLoading(loading, message = "") {
+  if (runStudioReviewBtn) {
+    runStudioReviewBtn.disabled = loading;
+    runStudioReviewBtn.textContent = loading ? "Running..." : "Run Free AI Review";
+  }
+
+  if (message) {
+    setStudioStatus(message, loading ? "loading" : "success");
+  }
+}
+
+function setStudioStatus(message, type = "loading") {
+  if (!studioStatus) {
+    return;
+  }
+
+  studioStatus.textContent = message;
+  studioStatus.className = `studio-status ${type}`;
+}
+
+function renderStudioPlaceholder() {
+  titleEl.textContent = "Run a free AI draft review";
+  categoryEl.textContent = "Draft analysis";
+  typeEl.textContent = "Standalone review";
+  creatorEl.textContent = readCurrentUser()?.name || "Not linked to a saved product";
+  priceMeta.innerHTML = "Price: <strong>Not set</strong>";
+
+  overallScoreEl.textContent = "--";
+  updateScoreCircle(0);
+
+  scoreStatusEl.textContent = "Awaiting content";
+  scoreStatusEl.className = "score-status warn";
+
+  renderMetrics([
+    { label: "Originality", value: "--", className: "warn" },
+    { label: "Readability", value: "--", className: "warn" },
+    { label: "Quality", value: "--", className: "warn" },
+    { label: "Similarity Risk", value: "--", className: "warn" },
+    { label: "Review State", value: "Ready", className: "good" },
+    { label: "Detected Category", value: "Pending", className: "warn" }
+  ]);
+
+  renderInsights([
+    "Paste your title, product description, and sample content to generate a real report.",
+    "This free mode uses the local marketplace review engine, so it works without paid AI keys.",
+    "For PDF-level scanning, use the upload flow after publishing your draft."
+  ]);
+
+  recommendationBox.className = "ai-recommendation review";
+  recommendationText.textContent = "Add content and run the free AI review to get launch-readiness guidance.";
+}
+
 function renderReport(data) {
   const book = data.book || {};
   const report = data.report || {};
   const qualitySignals = report.qualitySignals || {};
   const originalityScore = Math.max(0, 100 - Number(book.plagiarismScore || 0));
   const readabilityScore = Number(qualitySignals.readabilityScore || 0);
-  const spamRisk = Number(qualitySignals.spamScore || 0);
   const recommendation = buildRecommendation(book, report);
 
-  titleEl.textContent = book.title || "Untitled book";
-  categoryEl.textContent = book.aiCategory || book.category || "Book";
-  typeEl.textContent = book.type || "Book";
-  creatorEl.textContent = book.authorName || "Unknown creator";
+  titleEl.textContent = book.title || "Untitled product";
+  categoryEl.textContent = book.aiCategory || book.category || report.suggestedCategory || "Digital Product";
+  typeEl.textContent = book.type || "Digital Product";
+  creatorEl.textContent = book.authorName || readCurrentUser()?.name || "Marketplace creator";
   priceMeta.innerHTML = `Price: <strong>${escapeHTML(formatPrice(book.price || 0))}</strong>`;
 
   scoreStatusEl.textContent = recommendation.statusText;
   scoreStatusEl.className = `score-status ${recommendation.className}`;
-  renderProvider(report.aiProvider, report.aiModel);
+  renderProvider(report.aiProvider, report.aiModel, data.mode === "standalone" ? "Free local review mode" : "");
 
   renderMetrics([
     { label: "Originality", value: `${originalityScore}%`, className: originalityScore >= 75 ? "good" : originalityScore >= 50 ? "warn" : "bad" },
     { label: "Readability", value: `${readabilityScore}%`, className: readabilityScore >= 65 ? "good" : readabilityScore >= 45 ? "warn" : "bad" },
     { label: "Quality", value: `${Number(book.qualityScore || 0)}%`, className: Number(book.qualityScore || 0) >= 70 ? "good" : Number(book.qualityScore || 0) >= 45 ? "warn" : "bad" },
     { label: "Similarity Risk", value: `${Number(book.plagiarismScore || 0)}%`, className: Number(book.plagiarismScore || 0) <= 25 ? "safe" : Number(book.plagiarismScore || 0) <= 55 ? "warn" : "bad" },
-    { label: "Queue State", value: String(report.processingState || book.aiProcessingState || "idle").replace(/_/g, " "), className: report.processingState === "failed" ? "bad" : report.processingState === "completed" ? "good" : "warn" },
-    { label: "Detected Category", value: book.aiCategory || report.suggestedCategory || book.category || "Book", className: "good" }
+    {
+      label: data.mode === "standalone" ? "Review State" : "Queue State",
+      value: String(report.processingState || book.aiProcessingState || "idle").replace(/_/g, " "),
+      className: report.processingState === "failed" ? "bad" : report.processingState === "completed" ? "good" : "warn"
+    },
+    { label: "Detected Category", value: book.aiCategory || report.suggestedCategory || book.category || "Digital Product", className: "good" }
   ]);
 
-  renderInsights(buildInsights(book, report));
+  renderInsights(buildInsights(book, report, data.mode === "standalone"));
 
   recommendationBox.className = `ai-recommendation ${recommendation.className}`;
   recommendationText.textContent = recommendation.message;
   animateScore(Number(book.aiScore || 0));
 }
 
-function renderProvider(provider, model) {
+function renderProvider(provider, model, context = "") {
   const normalized = String(provider || "local").toLowerCase();
-  const descriptor = describeProvider(normalized, model);
+  const descriptor = describeProvider(normalized, model, context);
 
   providerPanel.dataset.provider = normalized;
   providerBadge.textContent = descriptor.label;
@@ -134,7 +348,7 @@ function renderMetrics(metrics) {
   });
 }
 
-function buildInsights(book, report) {
+function buildInsights(book, report, isStudioMode = false) {
   const insights = [];
 
   if (book.moderationReason) {
@@ -156,6 +370,8 @@ function buildInsights(book, report) {
 
   if (report.pageCount) {
     insights.push(`AI processed ${report.pageCount} page(s) across ${report.chunkCount || 0} text chunk(s).`);
+  } else if (isStudioMode && report.extractedTextPreview) {
+    insights.push("Free studio mode analyzed the text you pasted on this page.");
   }
 
   if (Array.isArray(report.plagiarismMatches) && report.plagiarismMatches.length) {
@@ -176,7 +392,7 @@ function renderInsights(insights) {
   insightsList.innerHTML = "";
   insights.forEach((insight) => {
     const li = document.createElement("li");
-    li.textContent = `• ${insight}`;
+    li.textContent = insight;
     insightsList.appendChild(li);
   });
 }
@@ -212,22 +428,41 @@ function buildRecommendation(book, report) {
   return {
     className: "review",
     statusText: "Needs manual review",
-    message: "Manual admin review is recommended before this upload goes live"
+    message: "Manual review or more source content is recommended before publishing."
   };
 }
 
 function animateScore(target) {
+  if (scoreAnimationTimer) {
+    clearInterval(scoreAnimationTimer);
+  }
+
   let current = 0;
   const safeTarget = Math.max(0, Math.min(100, Number(target || 0)));
-  const interval = setInterval(() => {
+  overallScoreEl.textContent = "0%";
+  updateScoreCircle(0);
+
+  scoreAnimationTimer = setInterval(() => {
     current += 1;
     overallScoreEl.textContent = `${current}%`;
+    updateScoreCircle(current);
 
     if (current >= safeTarget) {
-      clearInterval(interval);
+      clearInterval(scoreAnimationTimer);
+      scoreAnimationTimer = null;
       overallScoreEl.textContent = `${safeTarget}%`;
+      updateScoreCircle(safeTarget);
     }
   }, 15);
+}
+
+function updateScoreCircle(value) {
+  if (!scoreCircle) {
+    return;
+  }
+
+  const safeValue = Math.max(0, Math.min(100, Number(value || 0)));
+  scoreCircle.style.background = `conic-gradient(#8b5cf6 0%, #8b5cf6 ${safeValue}%, rgba(255,255,255,.08) ${safeValue}%, rgba(255,255,255,.08) 100%)`;
 }
 
 async function approveContent() {
@@ -340,23 +575,48 @@ function goBack() {
   window.location.href = backLink.href;
 }
 
+function renderReportPlaceholder(message) {
+  titleEl.textContent = "Loading AI report...";
+  categoryEl.textContent = "Preparing";
+  typeEl.textContent = "Preparing";
+  creatorEl.textContent = "Checking access";
+  priceMeta.innerHTML = "Price: <strong>Loading</strong>";
+  overallScoreEl.textContent = "--";
+  updateScoreCircle(0);
+  scoreStatusEl.textContent = "Loading report";
+  scoreStatusEl.className = "score-status warn";
+  recommendationBox.className = "ai-recommendation review";
+  recommendationText.textContent = message;
+  renderProvider("loading", "Checking active model...", "");
+  renderMetrics([
+    { label: "Originality", value: "--", className: "warn" },
+    { label: "Readability", value: "--", className: "warn" },
+    { label: "Quality", value: "--", className: "warn" },
+    { label: "Similarity Risk", value: "--", className: "warn" },
+    { label: "Queue State", value: "Loading", className: "warn" },
+    { label: "Detected Category", value: "Loading", className: "warn" }
+  ]);
+  renderInsights([message]);
+}
+
 function renderErrorState(message) {
   titleEl.textContent = "AI report unavailable";
   categoryEl.textContent = "Unavailable";
   typeEl.textContent = "Unavailable";
   creatorEl.textContent = "Unavailable";
-  priceMeta.innerHTML = `Price: <strong>Unavailable</strong>`;
+  priceMeta.innerHTML = "Price: <strong>Unavailable</strong>";
   scoreStatusEl.textContent = "Could not load report";
   scoreStatusEl.className = "score-status bad";
   recommendationBox.className = "ai-recommendation reject";
   recommendationText.textContent = message;
   overallScoreEl.textContent = "--";
+  updateScoreCircle(0);
   metricsGrid.innerHTML = "";
-  renderProvider("loading", "Unavailable");
+  renderProvider("loading", "Unavailable", "");
   renderInsights([message]);
 }
 
-function describeProvider(provider, model) {
+function describeProvider(provider, model, context = "") {
   if (provider === "openai") {
     return {
       label: "OpenAI",
@@ -379,8 +639,10 @@ function describeProvider(provider, model) {
   }
 
   return {
-    label: "Local Rules Engine",
-    meta: model && model !== "local-heuristic" ? `Mode: ${model}` : "Fallback mode with no live model server"
+    label: "Free Local AI Review",
+    meta: context || (model && model !== "local-heuristic"
+      ? `Mode: ${model}`
+      : "Runs on the free local marketplace review engine")
   };
 }
 
@@ -407,7 +669,7 @@ function escapeHTML(value) {
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
-    '"': "&quot;",
+    "\"": "&quot;",
     "'": "&#39;"
   })[character]);
 }

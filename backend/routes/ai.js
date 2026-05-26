@@ -11,6 +11,7 @@ const {
   generateDescriptionWithAI,
   getBookAiReport,
 } = require("../services/ai/pipeline");
+const { buildLocalModeration } = require("../services/ai/pipeline");
 const { buildCreatorAssist } = require("../services/ai/creatorAssist");
 const {
   getConfiguredAiProvider,
@@ -27,6 +28,11 @@ const {
   getOptionalUserFromRequest,
   getRecommendedBooks,
 } = require("../services/ai/search");
+const {
+  buildKeywordList,
+  limitText,
+  normalizeWhitespace,
+} = require("../services/ai/text");
 
 const router = express.Router();
 
@@ -68,6 +74,20 @@ const creatorAssistSchema = Joi.object({
   ),
   notes: Joi.string().trim().max(5000).allow(""),
   excerpt: Joi.string().trim().max(6000).allow(""),
+});
+
+const standaloneReviewSchema = Joi.object({
+  title: Joi.string().trim().min(3).max(160).required(),
+  type: Joi.string().trim().max(60).allow(""),
+  category: Joi.string().trim().max(60).allow(""),
+  language: Joi.string().trim().max(40).allow(""),
+  price: Joi.number().min(0).max(100000).default(0),
+  tags: Joi.alternatives().try(
+    Joi.array().items(Joi.string().trim().max(32)).max(8),
+    Joi.string().allow("")
+  ),
+  description: Joi.string().trim().max(5000).allow(""),
+  excerpt: Joi.string().trim().max(12000).allow(""),
 });
 
 router.use(aiLimiter);
@@ -250,6 +270,116 @@ router.post("/creator-assist", protect, authorize("creator", "author", "admin"),
   } catch (error) {
     console.error("Creator assist error:", error.message);
     return res.status(500).json({ success: false, message: "Failed to build creator assist suggestions" });
+  }
+});
+
+router.post("/review-preview", async (req, res) => {
+  try {
+    const parsedTags = Array.isArray(req.body.tags)
+      ? req.body.tags
+      : String(req.body.tags || "")
+        .split(/[\n,]+/)
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+    const { value, error } = standaloneReviewSchema.validate(
+      {
+        ...req.body,
+        price: Number(req.body.price || 0),
+        tags: parsedTags,
+      },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      }
+    );
+
+    if (error) {
+      return res.status(400).json({ success: false, message: error.details[0].message });
+    }
+
+    const combinedText = limitText(
+      normalizeWhitespace([
+        value.description || "",
+        value.excerpt || "",
+      ].join("\n\n")),
+      12000
+    );
+
+    if (combinedText.length < 80) {
+      return res.status(400).json({
+        success: false,
+        message: "Add at least 80 characters of description or sample content for a reliable AI review.",
+      });
+    }
+
+    const generatedTags = [...new Set([
+      ...parsedTags,
+      ...buildKeywordList([
+        value.title,
+        value.category,
+        value.type,
+        combinedText,
+      ].join("\n"), 8),
+    ])].slice(0, 8);
+
+    const suggestedCategory = normalizeWhitespace(value.category || value.type || "Digital Product");
+    const book = {
+      title: value.title,
+      description: normalizeWhitespace(value.description || combinedText.slice(0, 1200)),
+      category: suggestedCategory,
+      aiCategory: suggestedCategory,
+      type: normalizeWhitespace(value.type || "Digital Product"),
+      language: normalizeWhitespace(value.language || "English"),
+      tags: generatedTags,
+      price: Number(value.price || 0),
+      authorName: "Draft review",
+    };
+
+    const localReview = buildLocalModeration({
+      book,
+      analysisText: combinedText,
+      suggestedCategory,
+      generatedTags,
+      matches: [],
+      extractionNotice: "",
+    });
+
+    return res.json({
+      success: true,
+      mode: "standalone",
+      book: {
+        ...book,
+        aiScore: localReview.aiScore,
+        aiStatus: localReview.aiStatus,
+        aiSuggestion: localReview.aiSuggestion,
+        plagiarismScore: localReview.plagiarismScore,
+        qualityScore: localReview.qualityScore,
+        moderationReason: localReview.moderationReason,
+      },
+      report: {
+        processingState: "completed",
+        moderationReason: localReview.moderationReason,
+        generatedDescription: localReview.generatedDescription,
+        suggestedCategory,
+        generatedTags,
+        improvementSuggestions: localReview.improvementSuggestions,
+        qualitySignals: localReview.qualitySignals,
+        plagiarismMatches: [],
+        extractedTextPreview: combinedText.slice(0, 500),
+        pageCount: 0,
+        chunkCount: 1,
+        fingerprintTerms: generatedTags,
+        aiProvider: "local",
+        aiModel: "local-heuristic",
+        lastProcessedAt: new Date().toISOString(),
+        lastError: "",
+        embeddingReady: false,
+      },
+    });
+  } catch (error) {
+    console.error("Standalone AI review error:", error.message);
+    return res.status(500).json({ success: false, message: "Failed to run free AI review" });
   }
 });
 

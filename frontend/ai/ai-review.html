@@ -8,7 +8,7 @@
   <title>AI Content Review | E-Book Market</title>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="ai-review.css" />
+  <link rel="stylesheet" href="ai-review.css?v=20260526-ai-review-fix1" />
 
   <!-- Google Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -54,6 +54,82 @@
       </div>
 
     </header>
+
+    <section class="review-mode-panel" id="reviewModePanel">
+      <div>
+        <span class="mode-kicker" id="modeKicker">Free AI Review Studio</span>
+        <h2 id="modeTitle">Analyze a draft before you publish</h2>
+        <p id="modeDescription">
+          Paste your listing details and sample content to get a free launch-readiness review with quality,
+          originality, readability, and category signals.
+        </p>
+      </div>
+
+      <div class="mode-actions">
+        <button type="button" class="btn changes" id="loadSampleBtn">Load Sample</button>
+        <button type="button" class="btn reject ghost" id="clearStudioBtn">Clear</button>
+      </div>
+    </section>
+
+    <section class="review-studio hidden" id="reviewStudio">
+      <div class="studio-grid">
+        <div class="studio-field">
+          <label for="studioTitle">Title</label>
+          <input id="studioTitle" type="text" maxlength="160" placeholder="Spanish grammar masterclass notes for beginners" />
+        </div>
+
+        <div class="studio-field">
+          <label for="studioType">Content Type</label>
+          <select id="studioType">
+            <option value="Book">E-Book</option>
+            <option value="Notes">Notes</option>
+            <option value="Study">Study Pack</option>
+            <option value="Prompt">AI Prompt Pack</option>
+            <option value="Template">Template</option>
+            <option value="Course">Mini Course</option>
+            <option value="Bundle">Bundle</option>
+            <option value="Other">Other Digital Product</option>
+          </select>
+        </div>
+
+        <div class="studio-field">
+          <label for="studioCategory">Category</label>
+          <input id="studioCategory" type="text" maxlength="60" placeholder="Language Learning" />
+        </div>
+
+        <div class="studio-field">
+          <label for="studioPrice">Price</label>
+          <input id="studioPrice" type="number" min="0" step="1" placeholder="199" />
+        </div>
+
+        <div class="studio-field full">
+          <label for="studioTags">Tags</label>
+          <input id="studioTags" type="text" maxlength="240" placeholder="spanish, beginner, vocabulary, workbook" />
+        </div>
+
+        <div class="studio-field full">
+          <label for="studioDescription">Product Description</label>
+          <textarea id="studioDescription" maxlength="5000" placeholder="Describe what the learner gets, the transformation, and the product quality."></textarea>
+        </div>
+
+        <div class="studio-field full">
+          <label for="studioExcerpt">Sample Content / Outline</label>
+          <textarea id="studioExcerpt" maxlength="12000" placeholder="Paste an excerpt, outline, lesson sample, or notes so the free AI review engine has real content to score."></textarea>
+        </div>
+      </div>
+
+      <div class="studio-footer">
+        <p class="studio-note">
+          Free mode uses the deployed local AI review engine, so this page works even without paid AI keys.
+        </p>
+
+        <div class="studio-actions">
+          <button type="button" class="btn approve" id="runStudioReviewBtn">Run Free AI Review</button>
+        </div>
+      </div>
+
+      <div class="studio-status" id="studioStatus">Ready for analysis.</div>
+    </section>
 
     <!-- ================= CONTENT SUMMARY ================= -->
 
@@ -259,11 +335,7 @@
   <script src="../config.js"></script>
   <script src="../auth.js"></script>
 
-  <script src="ai-review.js"></script>
-
-  <script>
-    protectPage(["admin", "creator", "author"]);
-  </script>
+  <script src="ai-review.js?v=20260526-ai-review-fix1"></script>
 
 </body>
 
