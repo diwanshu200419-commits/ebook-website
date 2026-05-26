@@ -550,7 +550,7 @@ function renderProductGrid(container, books, options = {}) {
   container.innerHTML = "";
   container.className = "results-grid";
   container.classList.add(variant === "personalized" ? "is-personalized" : "is-catalog");
-  if (books.length <= 2) {
+  if (books.length === 2) {
     container.classList.add("is-sparse");
   }
   if (books.length === 1) {
