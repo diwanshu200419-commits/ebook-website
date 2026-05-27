@@ -14,17 +14,32 @@ const resultsMeta = document.getElementById("resultsMeta");
 const resultsSignal = document.getElementById("resultsSignal");
 const personalizedMeta = document.getElementById("personalizedMeta");
 const personalizedSignal = document.getElementById("personalizedSignal");
+const commandDeck = document.getElementById("commandDeck");
+const commandDeckSignal = document.getElementById("commandDeckSignal");
+const savedRail = document.getElementById("savedRail");
+const savedSignal = document.getElementById("savedSignal");
+const recentRail = document.getElementById("recentRail");
+const recentSignal = document.getElementById("recentSignal");
 const marketPulseTrack = document.getElementById("marketPulseTrack");
 const pulseTitle = document.getElementById("pulseTitle");
 const pulseHeadline = document.getElementById("pulseHeadline");
 const pulseCopy = document.getElementById("pulseCopy");
 const pulseStatus = document.getElementById("pulseStatus");
 
+const STORAGE_KEYS = {
+  savedProducts: "marketplace-saved-products",
+  recentProducts: "marketplace-recent-products",
+};
+
 const state = {
   preferences: {
     interfaceLanguage: localStorage.getItem("marketplace-interface-language") || "English",
     marketplaceLanguage: localStorage.getItem("marketplace-market-language") || "All",
   },
+  catalogBooks: [],
+  personalizedBooks: [],
+  savedProducts: loadStoredCollection(STORAGE_KEYS.savedProducts),
+  recentProducts: loadStoredCollection(STORAGE_KEYS.recentProducts),
 };
 
 let revealObserver = null;
@@ -123,6 +138,38 @@ const COPY = {
     addedToCartMeta: "{message} You can continue browsing or open the cart.",
     noProductsFound: "No products found",
     noProductsFallback: "Try another filter or check back soon.",
+    commandDeckTitle: "Marketplace Command Deck",
+    commandDeckCopy: "Track saved ideas, recently viewed products, and the next revenue move from one buyer-friendly surface.",
+    commandDeckSignal: "Behavior memory live",
+    savedTitle: "Saved Ideas",
+    savedCopy: "Keep promising creator products in one place before you buy, compare, or revisit them later.",
+    savedSignalEmpty: "Empty watchlist",
+    savedSignalLive: "{count} saved",
+    recentTitle: "Recently Viewed",
+    recentCopy: "Jump back into products you explored recently without losing your discovery trail.",
+    recentSignalEmpty: "Fresh trail",
+    recentSignalLive: "{count} revisits ready",
+    commandSavedLabel: "Saved products",
+    commandRecentLabel: "Recent views",
+    commandCartLabel: "Cart-ready moves",
+    commandSavedMeta: "Products you want to compare, revisit, or buy later.",
+    commandRecentMeta: "Your latest discovery trail across the marketplace.",
+    commandCartMeta: "Use saves and recents to keep the purchase flow moving.",
+    commandSavedCta: "Open saved rail",
+    commandRecentCta: "Open recent rail",
+    commandCartCta: "Open cart",
+    saveProduct: "Save",
+    savedProduct: "Saved",
+    removeSaved: "Remove",
+    openProduct: "Open",
+    memoryEmptySavedTitle: "No saved products yet",
+    memoryEmptySavedCopy: "Tap Save on products you want to compare or buy later and they will stay here.",
+    memoryEmptyRecentTitle: "No recent views yet",
+    memoryEmptyRecentCopy: "Open a few products and your recent discovery trail will appear here.",
+    savedToast: "Saved to your marketplace list.",
+    removedSavedToast: "Removed from saved products.",
+    viewedNow: "Viewed just now",
+    viewedAt: "Viewed {time}",
   },
   Hindi: {
     heroEyebrow: "स्टूडेंट्स, क्रिएटर्स, टीचर्स और फ्रीलांसर्स के लिए AI मार्केटप्लेस",
@@ -286,7 +333,60 @@ Object.assign(COPY.Hindi, {
   addedToCartMeta: "{message} आप browsing जारी रख सकते हैं या cart खोल सकते हैं।",
   noProductsFound: "कोई product नहीं मिला",
   noProductsFallback: "दूसरा filter आज़माएँ या बाद में फिर देखें।",
+  commandDeckTitle: "Marketplace Command Deck",
+  commandDeckCopy: "Saved ideas, recent product views, aur अगला buying move ek hi jagah track kijiye.",
+  commandDeckSignal: "Behavior memory live",
+  savedTitle: "Saved Ideas",
+  savedCopy: "Jo creator products aapko promising lagte hain unhe buy karne se pehle yahin save rakhiye.",
+  savedSignalEmpty: "Saved list empty",
+  savedSignalLive: "{count} saved",
+  recentTitle: "Recently Viewed",
+  recentCopy: "Jo products aapne abhi dekhe the un par bina trail खोए jaldi wapas jaiye.",
+  recentSignalEmpty: "Fresh trail",
+  recentSignalLive: "{count} revisits ready",
+  commandSavedLabel: "Saved products",
+  commandRecentLabel: "Recent views",
+  commandCartLabel: "Cart-ready moves",
+  commandSavedMeta: "Compare, revisit, ya baad me buy karne ke liye products yahan rakhiye.",
+  commandRecentMeta: "Marketplace me aapka latest discovery trail.",
+  commandCartMeta: "Saves aur recents se purchase flow ko fast rakhiye.",
+  commandSavedCta: "Saved rail kholo",
+  commandRecentCta: "Recent rail kholo",
+  commandCartCta: "Cart kholo",
+  saveProduct: "Save",
+  savedProduct: "Saved",
+  removeSaved: "Hataiye",
+  memoryEmptySavedTitle: "Abhi koi saved product nahin hai",
+  memoryEmptySavedCopy: "Jin products ko baad me compare ya buy karna hai unpar Save tap kijiye.",
+  memoryEmptyRecentTitle: "Abhi koi recent view nahin hai",
+  memoryEmptyRecentCopy: "Kuch products kholo aur recent discovery trail yahan dikhne lagega.",
+  savedToast: "Product aapki saved list me aa gaya.",
+  removedSavedToast: "Product saved list se hata diya gaya.",
+  viewedNow: "Abhi dekha gaya",
+  viewedAt: "{time} par dekha gaya",
 });
+
+function loadStoredCollection(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistStoredCollection(key, items) {
+  try {
+    localStorage.setItem(key, JSON.stringify(items));
+  } catch (error) {
+    console.error(`Could not persist ${key}:`, error);
+  }
+}
 
 document.addEventListener("DOMContentLoaded", initExplore);
 
@@ -294,6 +394,7 @@ async function initExplore() {
   initMotionSystem();
   armRevealElements(document);
   bindEvents();
+  renderMarketplaceMemory();
   await loadPreferences();
   applyInterfaceLanguage(state.preferences.interfaceLanguage);
   if (languageSelect) {
@@ -401,7 +502,13 @@ function applyInterfaceLanguage(language) {
   setText("statTotalProductsLabel", t("statTotalProductsLabel"));
   setText("statPaidProductsLabel", t("statPaidProductsLabel"));
   setText("statCategoriesLabel", t("statCategoriesLabel"));
+  setText("commandDeckTitle", t("commandDeckTitle"));
+  setText("commandDeckCopy", t("commandDeckCopy"));
   setText("forYouTitle", t("forYouTitle"));
+  setText("savedTitle", t("savedTitle"));
+  setText("savedCopy", t("savedCopy"));
+  setText("recentTitle", t("recentTitle"));
+  setText("recentCopy", t("recentCopy"));
   setText("filtersTitle", t("filtersTitle"));
   setText("filtersCopy", t("filtersCopy"));
   setText("searchLabel", t("searchLabel"));
@@ -446,6 +553,146 @@ function applyInterfaceLanguage(language) {
       "active",
       String(button.dataset.interfaceLanguage || "") === selectedLanguage
     );
+  });
+
+  renderMarketplaceMemory();
+}
+
+function buildBookSnapshot(book) {
+  if (!book?._id) {
+    return null;
+  }
+
+  return {
+    _id: String(book._id),
+    title: book.title || "Product",
+    type: book.type || "Product",
+    category: book.category || "Book",
+    language: book.language || "",
+    price: Number(book.discountPrice || book.price || 0),
+    originalPrice: Number(book.originalPrice || book.price || 0),
+    authorName: book.authorName || "Creator",
+    bookAuthor: book.bookAuthor || "",
+    coverImage: book.coverUrl || book.cover || book.coverImage || "assets/covers/Ebook_AI.png",
+    isPremium: Boolean(book.isPremium),
+    isFeatured: Boolean(book.isFeatured),
+    ratingAverage: Number(book.ratingAverage || 0),
+    ratingCount: Number(book.ratingCount || 0),
+    recommendationReason: book.recommendationReason || "",
+    viewedAt: new Date().toISOString(),
+  };
+}
+
+function mergeSnapshotWithLiveBook(snapshot, liveBook) {
+  if (!liveBook) {
+    return snapshot;
+  }
+
+  return {
+    ...snapshot,
+    ...buildBookSnapshot({ ...snapshot, ...liveBook }),
+    viewedAt: snapshot?.viewedAt || new Date().toISOString(),
+  };
+}
+
+function syncMemoryWithLiveBooks(books = []) {
+  if (!Array.isArray(books) || !books.length) {
+    return;
+  }
+
+  const liveMap = new Map(
+    books
+      .filter((book) => book?._id)
+      .map((book) => [String(book._id), buildBookSnapshot(book)])
+  );
+
+  state.savedProducts = state.savedProducts
+    .map((snapshot) => mergeSnapshotWithLiveBook(snapshot, liveMap.get(String(snapshot?._id || ""))))
+    .filter((snapshot) => snapshot?._id);
+
+  state.recentProducts = state.recentProducts
+    .map((snapshot) => mergeSnapshotWithLiveBook(snapshot, liveMap.get(String(snapshot?._id || ""))))
+    .filter((snapshot) => snapshot?._id);
+
+  persistStoredCollection(STORAGE_KEYS.savedProducts, state.savedProducts);
+  persistStoredCollection(STORAGE_KEYS.recentProducts, state.recentProducts);
+}
+
+function isBookSaved(bookId) {
+  const safeId = String(bookId || "").trim();
+  return state.savedProducts.some((book) => String(book?._id || "") === safeId);
+}
+
+function saveBookToMemory(book) {
+  const snapshot = buildBookSnapshot(book);
+  if (!snapshot) {
+    return;
+  }
+
+  state.savedProducts = [
+    snapshot,
+    ...state.savedProducts.filter((item) => String(item?._id || "") !== snapshot._id),
+  ].slice(0, 18);
+  persistStoredCollection(STORAGE_KEYS.savedProducts, state.savedProducts);
+}
+
+function removeSavedBook(bookId) {
+  const safeId = String(bookId || "").trim();
+  state.savedProducts = state.savedProducts.filter((item) => String(item?._id || "") !== safeId);
+  persistStoredCollection(STORAGE_KEYS.savedProducts, state.savedProducts);
+}
+
+function toggleSavedBook(book) {
+  const safeId = String(book?._id || "").trim();
+  if (!safeId) {
+    return;
+  }
+
+  if (isBookSaved(safeId)) {
+    removeSavedBook(safeId);
+    resultsSignal.textContent = t("savedProduct");
+    resultsMeta.textContent = t("removedSavedToast");
+  } else {
+    saveBookToMemory(book);
+    resultsSignal.textContent = t("savedProduct");
+    resultsMeta.textContent = t("savedToast");
+  }
+
+  renderMarketplaceMemory();
+  rerenderActiveGrids();
+}
+
+function pushRecentBook(book) {
+  const snapshot = buildBookSnapshot(book);
+  if (!snapshot) {
+    return;
+  }
+
+  state.recentProducts = [
+    snapshot,
+    ...state.recentProducts.filter((item) => String(item?._id || "") !== snapshot._id),
+  ].slice(0, 10);
+  persistStoredCollection(STORAGE_KEYS.recentProducts, state.recentProducts);
+}
+
+function recordProductView(book) {
+  pushRecentBook(book);
+  renderMarketplaceMemory();
+}
+
+function rerenderActiveGrids() {
+  if (token) {
+    renderProductGrid(personalizedGrid, state.personalizedBooks, {
+      variant: "personalized",
+      emptyTitle: t("noPersonalizedTitle"),
+      emptyMessage: t("noPersonalizedMessage"),
+    });
+  }
+
+  renderProductGrid(booksGrid, state.catalogBooks, {
+    variant: "catalog",
+    emptyTitle: t("noProductsTitle"),
+    emptyMessage: t("noProductsMessage"),
   });
 }
 
@@ -499,6 +746,9 @@ async function loadPersonalizedFeed() {
     }
 
     const books = filterOfficialPreviewBooks(Array.isArray(data.books) ? data.books : []);
+    state.personalizedBooks = books;
+    syncMemoryWithLiveBooks(books);
+    renderMarketplaceMemory();
     if (!books.length) {
       personalizedMeta.textContent = t("feedLearningMeta");
       personalizedSignal.textContent = t("feedLearningStatus");
@@ -518,6 +768,7 @@ async function loadPersonalizedFeed() {
       emptyMessage: t("noPersonalizedMessage"),
     });
   } catch (error) {
+    state.personalizedBooks = [];
     personalizedMeta.textContent = error.message || t("personalizedUnavailableMessage");
     personalizedSignal.textContent = t("personalizedUnavailableStatus");
     renderProductGrid(personalizedGrid, [], {
@@ -572,6 +823,9 @@ async function loadBooks() {
     }
 
     const books = filterOfficialPreviewBooks(Array.isArray(data.books) ? data.books : []);
+    state.catalogBooks = books;
+    syncMemoryWithLiveBooks(books);
+    renderMarketplaceMemory();
     renderCategoryOptions(data.filters?.categories || []);
     renderQuickFilters(data.filters?.categories || []);
     renderMarketplaceSummary({
@@ -591,6 +845,7 @@ async function loadBooks() {
       emptyMessage: t("noProductsMessage"),
     });
   } catch (error) {
+    state.catalogBooks = [];
     renderProductGrid(booksGrid, [], {
       variant: "catalog",
       emptyTitle: t("marketplaceUnavailableTitle"),
@@ -698,6 +953,158 @@ function renderMarketplaceSummary(data) {
     topCategory,
     totalCategories,
   });
+}
+
+function renderMarketplaceMemory() {
+  renderCommandDeck();
+  renderMemoryRail(savedRail, state.savedProducts, {
+    mode: "saved",
+    emptyTitle: t("memoryEmptySavedTitle"),
+    emptyMessage: t("memoryEmptySavedCopy"),
+    signalEmpty: t("savedSignalEmpty"),
+    signalLive: fillTemplate(t("savedSignalLive"), { count: state.savedProducts.length }),
+  });
+  renderMemoryRail(recentRail, state.recentProducts, {
+    mode: "recent",
+    emptyTitle: t("memoryEmptyRecentTitle"),
+    emptyMessage: t("memoryEmptyRecentCopy"),
+    signalEmpty: t("recentSignalEmpty"),
+    signalLive: fillTemplate(t("recentSignalLive"), { count: state.recentProducts.length }),
+  });
+}
+
+function renderCommandDeck() {
+  if (!commandDeck) {
+    return;
+  }
+
+  const cartCountText = document.querySelector("[data-cart-count]")?.textContent?.trim() || "0";
+
+  const cards = [
+    {
+      label: t("commandSavedLabel"),
+      value: Number(state.savedProducts.length || 0).toLocaleString("en-IN"),
+      meta: t("commandSavedMeta"),
+      href: "#savedTitle",
+      cta: t("commandSavedCta"),
+      tone: "saved",
+    },
+    {
+      label: t("commandRecentLabel"),
+      value: Number(state.recentProducts.length || 0).toLocaleString("en-IN"),
+      meta: t("commandRecentMeta"),
+      href: "#recentTitle",
+      cta: t("commandRecentCta"),
+      tone: "recent",
+    },
+    {
+      label: t("commandCartLabel"),
+      value: cartCountText,
+      meta: t("commandCartMeta"),
+      href: "cart.html",
+      cta: t("commandCartCta"),
+      tone: "cart",
+    },
+  ];
+
+  commandDeck.innerHTML = cards.map((card, index) => `
+    <article class="command-card reveal-on-scroll ${escapeAttribute(card.tone)}" style="--reveal-delay:${Math.min(index, 4) * 75}ms;">
+      <span>${escapeHTML(card.label)}</span>
+      <strong>${escapeHTML(card.value)}</strong>
+      <p>${escapeHTML(card.meta)}</p>
+      <a class="marketplace-ghost-button" href="${escapeAttribute(card.href)}">${escapeHTML(card.cta)}</a>
+    </article>
+  `).join("");
+
+  if (commandDeckSignal) {
+    commandDeckSignal.textContent = t("commandDeckSignal");
+  }
+
+  armRevealElements(commandDeck);
+}
+
+function renderMemoryRail(container, items, options = {}) {
+  if (!container) {
+    return;
+  }
+
+  const {
+    mode = "saved",
+    emptyTitle,
+    emptyMessage,
+    signalEmpty,
+    signalLive,
+  } = options;
+
+  if (mode === "saved" && savedSignal) {
+    savedSignal.textContent = items.length ? signalLive : signalEmpty;
+  }
+  if (mode === "recent" && recentSignal) {
+    recentSignal.textContent = items.length ? signalLive : signalEmpty;
+  }
+
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="empty-panel memory-empty-panel">
+        <h2>${escapeHTML(emptyTitle)}</h2>
+        <p>${escapeHTML(emptyMessage)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = "";
+  items.forEach((book, index) => {
+    container.appendChild(buildMemoryCard(book, mode, index));
+  });
+  armRevealElements(container);
+}
+
+function buildMemoryCard(book, mode = "saved", index = 0) {
+  const cover = resolveAssetUrl(book.coverImage, "assets/covers/Ebook_AI.png");
+  const isPaid = Number(book.price || 0) > 0;
+  const viewedAtText = book.viewedAt
+    ? fillTemplate(t("viewedAt"), { time: formatRelativeTime(book.viewedAt) })
+    : t("viewedNow");
+  const article = document.createElement("article");
+  article.className = `memory-card reveal-on-scroll ${mode === "saved" ? "saved" : "recent"}`;
+  article.style.setProperty("--reveal-delay", `${Math.min(index, 5) * 65}ms`);
+  article.innerHTML = `
+    <div class="memory-cover">
+      <img src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title)}" />
+    </div>
+    <div class="memory-copy">
+      <div class="product-badges">
+        <span class="product-badge">${escapeHTML(book.type || "Product")}</span>
+        <span class="product-badge">${escapeHTML(book.category || "Book")}</span>
+        ${book.language ? `<span class="product-badge language">${escapeHTML(book.language)}</span>` : ""}
+      </div>
+      <h3>${escapeHTML(book.title)}</h3>
+      <p>${escapeHTML(book.bookAuthor || book.authorName || "Creator resource")}</p>
+      <div class="memory-meta">
+        <strong>${isPaid ? `Rs. ${Number(book.price || 0).toLocaleString("en-IN")}` : escapeHTML(t("freeAccess"))}</strong>
+        <span>${escapeHTML(mode === "recent" ? viewedAtText : t("savedProduct"))}</span>
+      </div>
+      <div class="memory-actions">
+        <a class="marketplace-ghost-button" href="book_view.html?id=${encodeURIComponent(book._id)}" data-memory-open="${escapeAttribute(book._id)}">${escapeHTML(t("openProduct"))}</a>
+        ${mode === "saved"
+          ? `<button class="marketplace-button" type="button" data-memory-remove="${escapeAttribute(book._id)}">${escapeHTML(t("removeSaved"))}</button>`
+          : `<button class="marketplace-button" type="button" data-memory-save="${escapeAttribute(book._id)}">${escapeHTML(isBookSaved(book._id) ? t("savedProduct") : t("saveProduct"))}</button>`}
+      </div>
+    </div>
+  `;
+
+  article.querySelector("[data-memory-open]")?.addEventListener("click", () => recordProductView(book));
+  article.querySelector("[data-memory-remove]")?.addEventListener("click", () => {
+    removeSavedBook(book._id);
+    renderMarketplaceMemory();
+    rerenderActiveGrids();
+    resultsSignal.textContent = t("savedProduct");
+    resultsMeta.textContent = t("removedSavedToast");
+  });
+  article.querySelector("[data-memory-save]")?.addEventListener("click", () => toggleSavedBook(book));
+
+  return article;
 }
 
 function renderProductGrid(container, books, options = {}) {
@@ -1087,7 +1494,10 @@ function buildProductCard(book, options = {}, index = 0) {
         ${hiddenBadgeCount > 0 ? `<span class="product-badge">+${hiddenBadgeCount}</span>` : ""}
       </div>
       <div class="product-copy">
-        <span class="product-kicker">${escapeHTML(kicker)}</span>
+        <div class="product-titlebar">
+          <span class="product-kicker">${escapeHTML(kicker)}</span>
+          <button class="product-save-btn${isBookSaved(book._id) ? " is-saved" : ""}" type="button" data-save-product="${escapeAttribute(book._id)}">${escapeHTML(isBookSaved(book._id) ? t("savedProduct") : t("saveProduct"))}</button>
+        </div>
         <h3>${escapeHTML(book.title)}</h3>
         <p class="product-seller">${escapeHTML(book.bookAuthor || `${book.type || "Digital product"} by creator`)} - Sold by ${authorMarkup}</p>
         <p class="product-description">${escapeHTML(description)}</p>
@@ -1104,15 +1514,19 @@ function buildProductCard(book, options = {}, index = 0) {
         <span class="marketplace-chip subtle">${escapeHTML(book.isFeatured ? `${t("featuredPrefix")} - ${ratingSignal}` : ratingSignal)}</span>
       </div>
       <div class="product-actions">
-        <a class="marketplace-ghost-button" href="book_view.html?id=${encodeURIComponent(book._id)}">${escapeHTML(t("viewDetails"))}</a>
+        <a class="marketplace-ghost-button" href="book_view.html?id=${encodeURIComponent(book._id)}" data-open-product="${escapeAttribute(book._id)}">${escapeHTML(t("viewDetails"))}</a>
         ${isPaid
           ? `<button class="marketplace-button" type="button" data-add-cart="${escapeAttribute(book._id)}">${escapeHTML(token ? t("addToCart") : t("signInToBuy"))}</button>`
-          : `<a class="marketplace-button" href="book_view.html?id=${encodeURIComponent(book._id)}">${escapeHTML(t("openFreeProduct"))}</a>`
+          : `<a class="marketplace-button" href="book_view.html?id=${encodeURIComponent(book._id)}" data-open-product="${escapeAttribute(book._id)}">${escapeHTML(t("openFreeProduct"))}</a>`
         }
       </div>
     </div>
   `;
 
+  card.querySelectorAll("[data-open-product]").forEach((link) => {
+    link.addEventListener("click", () => recordProductView(book));
+  });
+  card.querySelector("[data-save-product]")?.addEventListener("click", () => toggleSavedBook(book));
   card.querySelector("[data-add-cart]")?.addEventListener("click", () => addToCart(book._id));
   return card;
 }
@@ -1151,6 +1565,9 @@ async function addToCart(bookId) {
     });
     shell.refreshCartCount?.();
     shell.refreshNotifications?.();
+    setTimeout(() => {
+      renderCommandDeck();
+    }, 200);
   } catch (error) {
     resultsSignal.textContent = t("cartFailedSignal");
     resultsMeta.textContent = error.message || t("cartFailedSignal");
@@ -1164,6 +1581,29 @@ function buildCreatorLink(username) {
   }
 
   return `creator/creator.html?username=${encodeURIComponent(safeUsername)}`;
+}
+
+function formatRelativeTime(value) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) {
+    return "";
+  }
+
+  const diffMinutes = Math.max(0, Math.round((Date.now() - timestamp) / 60000));
+  if (diffMinutes < 1) {
+    return "just now";
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`;
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays}d ago`;
 }
 
 function fillTemplate(template, values = {}) {

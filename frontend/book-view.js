@@ -1,5 +1,6 @@
 const API_BASE = window.API_BASE || "";
 const CHECKOUT_NOTICE_KEY = "ebook-market-checkout-notice";
+const RECENT_PRODUCTS_KEY = "marketplace-recent-products";
 const bookViewState = {
   bookId: "",
   book: null,
@@ -103,6 +104,9 @@ const COPY = {
     startingDirectCheckout: "Preparing secure checkout...",
     directCheckoutUnavailable: "Secure checkout is not available right now.",
     directCheckoutFallback: "Stripe card checkout is temporarily unavailable. Redirecting you to manual proof checkout for this product.",
+    creatorUnlockedMessage: "You are viewing this product with creator access, so it is unlocked for you. Buyers still need to complete payment before download.",
+    adminUnlockedMessage: "You are viewing this product with admin access, so it is unlocked for moderation. Buyers still need to complete payment before download.",
+    buyerFlowProtected: "Buyer checkout remains protected",
     openFreeProduct: "Open Free Product",
     unlockFreeContent: "Unlock Free Content",
     downloadFree: "Download Free",
@@ -220,6 +224,9 @@ const COPY = {
     startingDirectCheckout: "Secure checkout prepare ho raha hai...",
     directCheckoutUnavailable: "Secure checkout abhi available nahin hai.",
     directCheckoutFallback: "Stripe card checkout abhi unavailable hai. Is product ke liye aapko manual proof checkout par bheja ja raha hai.",
+    creatorUnlockedMessage: "Aap is product ko creator access ke saath dekh rahe hain, isliye yeh aapke liye unlocked hai. Buyers ko download se pehle payment complete karna hoga.",
+    adminUnlockedMessage: "Aap is product ko admin access ke saath dekh rahe hain, isliye yeh moderation ke liye unlocked hai. Buyers ko download se pehle payment complete karna hoga.",
+    buyerFlowProtected: "Buyer checkout protected rahega",
     openFreeProduct: "Free product kholiye",
     unlockFreeContent: "Free content unlock kijiye",
     downloadFree: "Free download",
@@ -266,6 +273,42 @@ function getCurrentUser() {
     return JSON.parse(localStorage.getItem("user") || "null");
   } catch {
     return null;
+  }
+}
+
+function rememberRecentProduct(book) {
+  if (!book?._id) {
+    return;
+  }
+
+  const snapshot = {
+    _id: String(book._id),
+    title: book.title || "Product",
+    type: book.type || "Product",
+    category: book.category || "Book",
+    language: book.language || "",
+    price: Number(book.discountPrice || book.price || 0),
+    originalPrice: Number(book.originalPrice || book.price || 0),
+    authorName: book.authorName || "Creator",
+    bookAuthor: book.bookAuthor || "",
+    coverImage: book.coverUrl || book.cover || book.coverImage || "assets/covers/Ebook_AI.png",
+    isPremium: Boolean(book.isPremium),
+    isFeatured: Boolean(book.isFeatured),
+    ratingAverage: Number(book.ratingAverage || 0),
+    ratingCount: Number(book.ratingCount || 0),
+    recommendationReason: book.recommendationReason || "",
+    viewedAt: new Date().toISOString(),
+  };
+
+  try {
+    const current = JSON.parse(localStorage.getItem(RECENT_PRODUCTS_KEY) || "[]");
+    const next = [
+      snapshot,
+      ...(Array.isArray(current) ? current : []).filter((item) => String(item?._id || "") !== snapshot._id),
+    ].slice(0, 10);
+    localStorage.setItem(RECENT_PRODUCTS_KEY, JSON.stringify(next));
+  } catch (error) {
+    console.error("Could not remember recent product:", error);
   }
 }
 
@@ -1020,12 +1063,20 @@ function renderBook(book, access) {
   const isPaid = Number(book.price || 0) > 0;
   const canDownload = Boolean(access?.canDownload);
   const canPreview = Boolean(access?.canPreview);
+  const hasPrivilegedAccess = Boolean(
+    isPaid
+    && canDownload
+    && !access?.isPurchased
+    && (access?.isOwner || access?.isAdmin)
+  );
   const creatorLink = buildCreatorLink(book.authorUsername);
   const cover = resolveAssetUrl(book.coverUrl || book.coverImage || "assets/covers/Ebook_AI.png");
   const previewUrl = canPreview
     ? (resolveApiUrl(book.previewAccessUrl) || buildProtectedUrl(book.previewPath))
     : "";
-  const downloadUrl = resolveApiUrl(book.downloadAccessUrl) || buildProtectedUrl(book.downloadUrl || `/api/books/${book._id}/download`);
+  const downloadUrl = canDownload
+    ? (resolveApiUrl(book.downloadAccessUrl) || buildProtectedUrl(book.downloadUrl || `/api/books/${book._id}/download`))
+    : "";
   const delivery = book.delivery || {};
   const textPreview = canDownload
     ? (delivery.unlockedText || delivery.previewText || "")
@@ -1038,6 +1089,7 @@ function renderBook(book, access) {
     : `${escapeHTML(book.type || "Book")} &middot; ${escapeHTML(book.category || "Book")} &middot; ${escapeHTML(t("by"))} ${escapeHTML(book.authorName || t("unknown"))}`;
   price.textContent = isPaid ? formatCurrency(book.price) : t("free");
   description.textContent = book.description || "";
+  rememberRecentProduct(book);
   renderDeliveryPanel(book, access);
 
   if (isTextPreviewable) {
@@ -1133,7 +1185,14 @@ function renderBook(book, access) {
     secondaryBtn.onclick = redirectToLogin;
   }
 
-  setActionStatus("", "info");
+  if (hasPrivilegedAccess) {
+    setActionStatus(
+      `${access?.isAdmin ? t("adminUnlockedMessage") : t("creatorUnlockedMessage")} ${t("buyerFlowProtected")}`,
+      "info"
+    );
+  } else {
+    setActionStatus("", "info");
+  }
 }
 
 async function submitReview(event) {

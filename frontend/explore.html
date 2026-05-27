@@ -8,10 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="marketplace.css" />
-  <script src="config.js"></script>
-  <script src="seo.js"></script>
-  <script src="marketplace-shell.js"></script>
+  <link rel="stylesheet" href="marketplace.css?v=20260527-market-real" />
+  <script src="config.js?v=20260527-market-real"></script>
+  <script src="seo.js?v=20260527-market-real"></script>
+  <script src="marketplace-shell.js?v=20260527-market-real"></script>
 </head>
 <body class="marketplace-body">
   <div class="marketplace-page">
@@ -96,6 +96,18 @@
         <section class="surface-panel reveal-on-scroll" data-reveal>
           <div class="panel-header">
             <div>
+              <h2 id="commandDeckTitle">Marketplace Command Deck</h2>
+              <p id="commandDeckCopy">Track saved ideas, recently viewed products, and the next revenue move from one buyer-friendly surface.</p>
+            </div>
+            <span class="marketplace-chip subtle" id="commandDeckSignal">Behavior memory live</span>
+          </div>
+
+          <div id="commandDeck" class="command-deck"></div>
+        </section>
+
+        <section class="surface-panel reveal-on-scroll" data-reveal>
+          <div class="panel-header">
+            <div>
               <h2 id="forYouTitle">For You</h2>
               <p id="personalizedMeta">Unlock AI recommendations tailored to your browsing and purchase history.</p>
             </div>
@@ -103,6 +115,30 @@
           </div>
 
           <div id="personalizedGrid" class="results-grid" style="margin-top:20px;"></div>
+        </section>
+
+        <section class="surface-panel reveal-on-scroll" data-reveal>
+          <div class="panel-header">
+            <div>
+              <h2 id="savedTitle">Saved Ideas</h2>
+              <p id="savedCopy">Keep promising creator products in one place before you buy, compare, or revisit them later.</p>
+            </div>
+            <span class="marketplace-chip subtle" id="savedSignal">Empty watchlist</span>
+          </div>
+
+          <div id="savedRail" class="memory-rail"></div>
+        </section>
+
+        <section class="surface-panel reveal-on-scroll" data-reveal>
+          <div class="panel-header">
+            <div>
+              <h2 id="recentTitle">Recently Viewed</h2>
+              <p id="recentCopy">Jump back into products you explored recently without losing your discovery trail.</p>
+            </div>
+            <span class="marketplace-chip subtle" id="recentSignal">Fresh trail</span>
+          </div>
+
+          <div id="recentRail" class="memory-rail"></div>
         </section>
 
         <section class="surface-panel reveal-on-scroll" data-reveal>
@@ -165,6 +201,6 @@
     </main>
   </div>
 
-  <script src="explore.js"></script>
+  <script src="explore.js?v=20260527-market-real"></script>
 </body>
 </html>

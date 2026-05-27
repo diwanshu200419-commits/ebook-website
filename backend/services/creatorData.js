@@ -5,6 +5,7 @@ const Book = require("../models/book");
 const Payment = require("../models/Payment");
 const { createNotification } = require("./notifications");
 const { buildAbsoluteUrl, serializeBook } = require("./bookData");
+const { buildSignedBookAccessUrls } = require("./bookAccess");
 const { roundMoney } = require("../utils/revenue");
 
 function isCreatorRole(role) {
@@ -294,14 +295,37 @@ function buildCreatorIdentity(user, backendBaseUrl = "", stats = {}) {
   };
 }
 
-function buildCreatorCollections(books, backendBaseUrl = "") {
+function normalizeCreatorCollectionAccess(access = {}, book = null) {
+  const hasPreview = Boolean(book?.previewPath);
+  return {
+    canPreview: Boolean(access.canPreview || hasPreview),
+    canDownload: Boolean(access.canDownload),
+    isOwner: Boolean(access.isOwner),
+    isAdmin: Boolean(access.isAdmin),
+    isPurchased: Boolean(access.isPurchased),
+  };
+}
+
+function buildCreatorCollections(books, backendBaseUrl = "", access = {}) {
   const serialized = books.map((book) =>
-    serializeBook(book, {
-      backendBaseUrl,
-      includeFilePath: false,
-      previewUrl: book.previewPath ? `/api/books/${book._id}/preview` : "",
-      downloadUrl: `/api/books/${book._id}/download`,
-    })
+    {
+      const safeAccess = normalizeCreatorCollectionAccess(access, book);
+      const accessUrls = buildSignedBookAccessUrls(book, safeAccess);
+
+      return serializeBook(book, {
+        backendBaseUrl,
+        includeFilePath: false,
+        previewUrl: safeAccess.canPreview && book.previewPath
+          ? `/api/books/${book._id}/preview`
+          : "",
+        downloadUrl: safeAccess.canDownload
+          ? `/api/books/${book._id}/download`
+          : "",
+        previewAccessUrl: accessUrls.previewAccessUrl,
+        downloadAccessUrl: accessUrls.downloadAccessUrl,
+        access: safeAccess,
+      });
+    }
   );
 
   const trending = [...serialized]
@@ -438,9 +462,15 @@ async function buildPublicCreatorProfile({
   ]);
 
   const creatorIdentity = buildCreatorIdentity(creator, backendBaseUrl, analytics);
-  const collections = buildCreatorCollections(books, backendBaseUrl);
   const safeViewerId = String(viewerId || "");
   const isSelf = safeViewerId && safeViewerId === String(creator._id);
+  const collections = buildCreatorCollections(books, backendBaseUrl, {
+    canPreview: true,
+    canDownload: Boolean(isSelf),
+    isOwner: Boolean(isSelf),
+    isAdmin: false,
+    isPurchased: false,
+  });
   const followers = Array.isArray(creator.followers) ? creator.followers : [];
   const following = Array.isArray(creator.following) ? creator.following : [];
   const isFollowing = safeViewerId

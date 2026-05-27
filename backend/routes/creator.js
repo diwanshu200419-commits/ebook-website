@@ -158,7 +158,13 @@ router.get("/me/profile", protect, async (req, res) => {
         .populate("author", "name username")
         .sort({ publishedAt: -1, createdAt: -1 }),
     ]);
-    const collections = buildCreatorCollections(approvedBooks, backendBaseUrl);
+    const collections = buildCreatorCollections(approvedBooks, backendBaseUrl, {
+      canPreview: true,
+      canDownload: true,
+      isOwner: true,
+      isAdmin: req.user.role === "admin",
+      isPurchased: false,
+    });
     const featuredShowcase = (
       collections.trending.length
         ? collections.trending
