@@ -197,10 +197,28 @@ const COPY = {
 };
 
 async function initCart() {
+  setLoadingState();
   await loadPreferences();
   await loadPaymentConfig();
   applyInterfaceLanguage(state.preferences.interfaceLanguage);
   await render();
+}
+
+function setLoadingState() {
+  cartItemsCount.textContent = "--";
+  cartPaidCount.textContent = "--";
+  cartSubtotal.textContent = "--";
+  cartTotal.textContent = "--";
+  cartSummaryTotal.textContent = "--";
+  cartSummaryCount.textContent = "--";
+  cartList.innerHTML = `
+    <div class="empty-panel">
+      <h2>Loading your cart...</h2>
+      <p>Fetching your latest products and checkout totals.</p>
+    </div>
+  `;
+  setCheckoutState(false);
+  setStatus("Loading your cart...");
 }
 
 async function loadPreferences() {

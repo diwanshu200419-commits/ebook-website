@@ -230,6 +230,7 @@ let selectedBookIds = new Set();
 let isDirectCheckout = false;
 
 async function initCheckout() {
+  setLoadingState();
   await loadPreferences();
   await loadPaymentConfig();
   applyInterfaceLanguage(state.preferences.interfaceLanguage);
@@ -240,6 +241,23 @@ async function initCheckout() {
   } catch (error) {
     setStatus(error.message || t("loadFailed"), "error");
   }
+}
+
+function setLoadingState() {
+  selectedCountEl.textContent = "--";
+  selectedTotalEl.textContent = "--";
+  checkoutItems.innerHTML = `
+    <div class="empty-panel">
+      <h2>Preparing checkout...</h2>
+      <p>Loading your paid products, founder payment rails, and manual proof options.</p>
+    </div>
+  `;
+  orderHint.textContent = "Loading paid products from your cart...";
+  amountInfo.textContent = "Loading selected products...";
+  payInfo.textContent = "Loading payment instructions...";
+  paymentMethodState.textContent = "Preparing your payment rail...";
+  submitBtn.disabled = true;
+  copyUpiBtn.disabled = true;
 }
 
 async function loadPreferences() {
