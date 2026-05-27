@@ -1563,7 +1563,7 @@ async function addToCart(bookId) {
     resultsMeta.textContent = fillTemplate(t("addedToCartMeta"), {
       message: data.message || "Product added to cart.",
     });
-    shell.refreshCartCount?.();
+    await shell.refreshCartCount?.();
     shell.refreshNotifications?.();
     setTimeout(() => {
       renderCommandDeck();

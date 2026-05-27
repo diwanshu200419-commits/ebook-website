@@ -428,9 +428,9 @@
   function decorateShell() {
     const nav = document.querySelector("[data-shell-nav]");
     const toggle = document.querySelector("[data-shell-toggle]");
-    const authLink = document.querySelector("[data-shell-auth]");
-    const dashboardLink = document.querySelector("[data-shell-dashboard]");
-    const userPill = document.querySelector("[data-shell-user]");
+    const authLinks = Array.from(document.querySelectorAll("[data-shell-auth]"));
+    const dashboardLinks = Array.from(document.querySelectorAll("[data-shell-dashboard]"));
+    const userPills = Array.from(document.querySelectorAll("[data-shell-user]"));
     const actions = document.querySelector(".marketplace-actions");
 
     toggle?.addEventListener("click", () => {
@@ -438,18 +438,18 @@
       toggle.classList.toggle("active");
     });
 
-    dashboardLink?.setAttribute("href", getDashboardHref());
-    if (dashboardLink) {
+    dashboardLinks.forEach((dashboardLink) => {
+      dashboardLink.setAttribute("href", getDashboardHref());
       dashboardLink.textContent = getDashboardLabel();
-    }
+    });
 
-    if (userPill) {
+    userPills.forEach((userPill) => {
       userPill.textContent = token
         ? `${user.name || user.username || "Member"}`
         : "Guest Mode";
-    }
+    });
 
-    if (authLink) {
+    authLinks.forEach((authLink) => {
       if (token) {
         authLink.textContent = "Logout";
         authLink.setAttribute("href", "#");
@@ -461,7 +461,7 @@
         authLink.textContent = "Sign In";
         authLink.setAttribute("href", "login.html");
       }
-    }
+    });
 
     buildNotificationShell(actions);
   }

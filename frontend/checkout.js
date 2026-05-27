@@ -810,7 +810,7 @@ async function submitManualPayment() {
       renderAmountInfo();
     } else {
       await loadBooksForCheckout();
-      shell.refreshCartCount?.();
+      await shell.refreshCartCount?.();
     }
   } catch (error) {
     setStatus(error.message || t("submissionFailed"), "error");

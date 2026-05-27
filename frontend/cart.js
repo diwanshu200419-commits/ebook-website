@@ -386,7 +386,7 @@ async function render() {
 
     cartList.innerHTML = "";
     setSummary(items, total);
-    shell.refreshCartCount?.();
+    await shell.refreshCartCount?.();
 
     if (!items.length) {
       cartList.innerHTML = `
