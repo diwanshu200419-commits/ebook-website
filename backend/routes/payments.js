@@ -20,6 +20,10 @@ const {
   hasStripeEnabled,
 } = require("../services/globalMarkets");
 const {
+  buildRuntimePaymentConfig,
+  getFounderPaymentSettingsSnapshot,
+} = require("../services/paymentSettings");
+const {
   ensureUploadDir,
   buildPublicUploadPath,
   resolvePublicUploadPath,
@@ -544,14 +548,24 @@ function normalizePaymentMethod(value) {
   return "Other";
 }
 
-router.get("/config", (req, res) => {
-  return res.json({
-    success: true,
-    ...getPaymentConfig({
+router.get("/config", async (req, res) => {
+  try {
+    const config = await buildRuntimePaymentConfig({
       country: req.query?.country,
       currency: req.query?.currency,
-    }),
-  });
+    });
+
+    return res.json({
+      success: true,
+      ...config,
+    });
+  } catch (error) {
+    console.error("Payment Config Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load payment config",
+    });
+  }
 });
 
 /* =====================================
@@ -585,9 +599,13 @@ router.post("/create-checkout", protect, async (req, res) => {
 
     const successUrl = buildFrontendPageUrl("success.html");
     const cancelUrl = buildFrontendPageUrl("cancel.html");
+    const founderPaymentSettings = await getFounderPaymentSettingsSnapshot();
     const checkoutAmount = buildCheckoutAmount(book.price, { country, currency });
     const manualFallback = buildManualFallbackPayload({
-      market: checkoutAmount.market,
+      market: {
+        ...checkoutAmount.market,
+        manualCheckoutEnabled: Boolean(checkoutAmount.market?.manualCheckoutEnabled) && founderPaymentSettings.manualCheckoutEnabled,
+      },
       bookId: book._id,
       scope: "single",
     });
@@ -640,12 +658,16 @@ router.post("/create-checkout", protect, async (req, res) => {
     if (mongoose.Types.ObjectId.isValid(bookId)) {
       const book = await Book.findById(bookId).select("_id price");
       if (book) {
+        const founderPaymentSettings = await getFounderPaymentSettingsSnapshot();
         const checkoutAmount = buildCheckoutAmount(book.price, {
           country: req.body?.country,
           currency: req.body?.currency,
         });
         const manualFallback = buildManualFallbackPayload({
-          market: checkoutAmount.market,
+          market: {
+            ...checkoutAmount.market,
+            manualCheckoutEnabled: Boolean(checkoutAmount.market?.manualCheckoutEnabled) && founderPaymentSettings.manualCheckoutEnabled,
+          },
           bookId: book._id,
           scope: "single",
         });
@@ -701,9 +723,13 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
       country: req.body?.country,
       currency: req.body?.currency,
     };
+    const founderPaymentSettings = await getFounderPaymentSettingsSnapshot();
     const marketSnapshot = buildCheckoutAmount(payableBooks[0]?.price || 0, checkoutSelection).market;
     const manualFallback = buildManualFallbackPayload({
-      market: marketSnapshot,
+      market: {
+        ...marketSnapshot,
+        manualCheckoutEnabled: Boolean(marketSnapshot?.manualCheckoutEnabled) && founderPaymentSettings.manualCheckoutEnabled,
+      },
       scope: "cart",
     });
 
@@ -772,12 +798,16 @@ router.post("/create-checkout-cart", protect, async (req, res) => {
       }).select("price isPaid");
 
       if (sampleBook && isPaidProduct(sampleBook) && Number(sampleBook.price || 0) > 0) {
+        const founderPaymentSettings = await getFounderPaymentSettingsSnapshot();
         const marketSnapshot = buildCheckoutAmount(sampleBook.price || 0, {
           country: req.body?.country,
           currency: req.body?.currency,
         }).market;
         const manualFallback = buildManualFallbackPayload({
-          market: marketSnapshot,
+          market: {
+            ...marketSnapshot,
+            manualCheckoutEnabled: Boolean(marketSnapshot?.manualCheckoutEnabled) && founderPaymentSettings.manualCheckoutEnabled,
+          },
           scope: "cart",
         });
         if (manualFallback) {

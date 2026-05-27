@@ -786,6 +786,16 @@ button {
   gap: 8px;
 }
 
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.payment-settings-wide {
+  grid-column: 1 / -1;
+}
+
 .crm-lab-field span,
 .crm-lab-check span {
   color: var(--muted);
@@ -807,11 +817,26 @@ button {
   flex-wrap: wrap;
 }
 
+.settings-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .crm-lab-status,
 .crm-lab-empty {
   color: var(--muted);
   font-size: 0.88rem;
   line-height: 1.6;
+}
+
+.success-text {
+  color: #a7f3d0;
+}
+
+.error-text {
+  color: #fecdd3;
 }
 
 .crm-lab-output {
@@ -943,6 +968,10 @@ button {
   }
 
   .overview-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-form-grid {
     grid-template-columns: 1fr;
   }
 }

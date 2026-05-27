@@ -513,6 +513,54 @@
           <div id="settingsOverviewStats" class="admin-stats"></div>
         </div>
 
+        <div class="surface-panel">
+          <div class="panel-header">
+            <div>
+              <p class="panel-kicker">Founder payments</p>
+              <h3>Live Payment Rails</h3>
+              <p>Control the UPI IDs, QR targets, and manual-checkout availability that buyers see across cart and checkout.</p>
+            </div>
+          </div>
+          <form id="paymentSettingsForm" class="settings-form-grid">
+            <label class="crm-lab-field">
+              <span>Merchant name</span>
+              <input id="paymentMerchantName" type="text" placeholder="E-Book Market" />
+            </label>
+            <label class="crm-lab-field">
+              <span>UPI ID</span>
+              <input id="paymentUpiId" type="text" placeholder="name@upi" />
+            </label>
+            <label class="crm-lab-field">
+              <span>UPI QR image</span>
+              <input id="paymentUpiQrImage" type="text" placeholder="assets/payment/gpay-qr.PNG or https://..." />
+            </label>
+            <label class="crm-lab-field">
+              <span>Google Pay UPI ID</span>
+              <input id="paymentGpayUpiId" type="text" placeholder="Optional Google Pay UPI ID" />
+            </label>
+            <label class="crm-lab-field">
+              <span>Google Pay QR image</span>
+              <input id="paymentGpayQrImage" type="text" placeholder="assets/payment/gpay-qr.PNG or https://..." />
+            </label>
+            <label class="crm-lab-field">
+              <span>PayPal QR image</span>
+              <input id="paymentPaypalQrImage" type="text" placeholder="assets/payment/paypal-qr.PNG or https://..." />
+            </label>
+            <label class="crm-lab-field payment-settings-wide">
+              <span>Buyer support note</span>
+              <textarea id="paymentSupportNote" rows="4" placeholder="Add a short note buyers should see during checkout."></textarea>
+            </label>
+            <label class="crm-lab-check payment-settings-wide">
+              <input id="paymentManualCheckoutEnabled" type="checkbox" />
+              <span>Keep manual proof / UPI checkout live for supported markets</span>
+            </label>
+            <div class="settings-form-actions payment-settings-wide">
+              <button id="savePaymentSettingsBtn" class="approve" type="submit">Save Payment Settings</button>
+              <span id="paymentSettingsStatus" class="crm-lab-status">Load the founder payment profile and save your real earning rails here.</span>
+            </div>
+          </form>
+        </div>
+
         <div class="overview-columns">
           <div class="surface-panel">
             <div class="panel-header">

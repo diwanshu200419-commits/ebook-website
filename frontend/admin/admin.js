@@ -71,6 +71,17 @@ const crmLabRunResult = document.getElementById("crmLabRunResult");
 const settingsOverviewStats = document.getElementById("settingsOverviewStats");
 const settingsRuntimeList = document.getElementById("settingsRuntimeList");
 const settingsOpsList = document.getElementById("settingsOpsList");
+const paymentSettingsForm = document.getElementById("paymentSettingsForm");
+const paymentMerchantName = document.getElementById("paymentMerchantName");
+const paymentUpiId = document.getElementById("paymentUpiId");
+const paymentUpiQrImage = document.getElementById("paymentUpiQrImage");
+const paymentGpayUpiId = document.getElementById("paymentGpayUpiId");
+const paymentGpayQrImage = document.getElementById("paymentGpayQrImage");
+const paymentPaypalQrImage = document.getElementById("paymentPaypalQrImage");
+const paymentSupportNote = document.getElementById("paymentSupportNote");
+const paymentManualCheckoutEnabled = document.getElementById("paymentManualCheckoutEnabled");
+const savePaymentSettingsBtn = document.getElementById("savePaymentSettingsBtn");
+const paymentSettingsStatus = document.getElementById("paymentSettingsStatus");
 let lifecycleLabConfig = null;
 let activeSection = "overview";
 let sectionChangeNonce = 0;
@@ -94,6 +105,7 @@ const adminCollections = {
   creatorOverview: null,
   settingsHealth: null,
   settingsAi: null,
+  paymentSettings: null,
 };
 
 const HEADERS = {
@@ -154,6 +166,7 @@ crmLabPreviewBtn?.addEventListener("click", previewLifecycleExperiment);
 crmLabRunBtn?.addEventListener("click", runLifecycleExperiment);
 captureLifecycleSnapshotBtn?.addEventListener("click", captureLifecycleSnapshot);
 refreshAdminBtn?.addEventListener("click", refreshActiveSection);
+paymentSettingsForm?.addEventListener("submit", savePaymentSettings);
 contentSearchInput?.addEventListener("input", applyPendingBookFilters);
 contentTypeFilter?.addEventListener("change", applyPendingBookFilters);
 contentAiFilter?.addEventListener("change", applyPendingBookFilters);
@@ -740,15 +753,24 @@ async function loadSettingsOverview() {
   if (settingsOpsList) {
     settingsOpsList.innerHTML = `<div class="empty-state"><p>Loading founder actions...</p></div>`;
   }
+  setPaymentSettingsStatus("Loading founder payment profile...");
+  setPaymentSettingsFormEnabled(false);
 
-  const [healthResult, aiResult] = await Promise.allSettled([
+  const [healthResult, aiResult, paymentSettingsResult] = await Promise.allSettled([
     fetch(`${API_BASE}/api/health`).then((response) => response.json()),
     fetch(`${API_BASE}/api/ai/status`).then((response) => response.json()),
+    fetch(`${API_BASE}/api/admin/payment-settings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => response.json()),
   ]);
 
   adminCollections.settingsHealth = healthResult.status === "fulfilled" ? healthResult.value : null;
   adminCollections.settingsAi = aiResult.status === "fulfilled" ? aiResult.value : null;
+  adminCollections.paymentSettings = paymentSettingsResult.status === "fulfilled" && paymentSettingsResult.value?.success
+    ? paymentSettingsResult.value.settings
+    : null;
   renderSettingsOverview(adminCollections.settingsHealth, adminCollections.settingsAi);
+  populatePaymentSettingsForm(adminCollections.paymentSettings);
   markAdminSynced();
 }
 
@@ -1293,6 +1315,152 @@ function renderSettingsOverview(health = null, aiStatus = null) {
     settingsOpsList.querySelector('[data-settings-action="refresh-settings"]')?.addEventListener("click", () => {
       void loadSettingsOverview();
     });
+  }
+}
+
+function defaultPaymentSettings() {
+  return {
+    merchantName: "E-Book Market",
+    supportNote: "",
+    manualCheckoutEnabled: true,
+    methods: {
+      UPI: {
+        label: "UPI Payment",
+        details: "Pay using any UPI app and upload the payment screenshot for admin verification.",
+        upiId: "",
+        qrImage: "",
+      },
+      GPay: {
+        label: "Google Pay",
+        details: "Scan the Google Pay QR and upload the payment screenshot after paying.",
+        upiId: "",
+        qrImage: "",
+      },
+      PayPal: {
+        label: "PayPal",
+        details: "Scan the PayPal QR and upload the payment screenshot after paying.",
+        upiId: "",
+        qrImage: "",
+      },
+    },
+  };
+}
+
+function setPaymentSettingsStatus(message, tone = "muted") {
+  if (!paymentSettingsStatus) {
+    return;
+  }
+
+  paymentSettingsStatus.textContent = message || "";
+  paymentSettingsStatus.classList.remove("error-text", "success-text");
+  if (tone === "error") {
+    paymentSettingsStatus.classList.add("error-text");
+  }
+  if (tone === "success") {
+    paymentSettingsStatus.classList.add("success-text");
+  }
+}
+
+function setPaymentSettingsFormEnabled(enabled) {
+  [
+    paymentMerchantName,
+    paymentUpiId,
+    paymentUpiQrImage,
+    paymentGpayUpiId,
+    paymentGpayQrImage,
+    paymentPaypalQrImage,
+    paymentSupportNote,
+    paymentManualCheckoutEnabled,
+    savePaymentSettingsBtn,
+  ].forEach((element) => {
+    if (element) {
+      element.disabled = !enabled;
+    }
+  });
+}
+
+function populatePaymentSettingsForm(settings = null) {
+  const snapshot = {
+    ...defaultPaymentSettings(),
+    ...(settings || {}),
+    methods: {
+      ...defaultPaymentSettings().methods,
+      ...(settings?.methods || {}),
+    },
+  };
+
+  if (paymentMerchantName) {
+    paymentMerchantName.value = snapshot.merchantName || "";
+  }
+  if (paymentUpiId) {
+    paymentUpiId.value = snapshot.methods?.UPI?.upiId || "";
+  }
+  if (paymentUpiQrImage) {
+    paymentUpiQrImage.value = snapshot.methods?.UPI?.qrImage || "";
+  }
+  if (paymentGpayUpiId) {
+    paymentGpayUpiId.value = snapshot.methods?.GPay?.upiId || "";
+  }
+  if (paymentGpayQrImage) {
+    paymentGpayQrImage.value = snapshot.methods?.GPay?.qrImage || "";
+  }
+  if (paymentPaypalQrImage) {
+    paymentPaypalQrImage.value = snapshot.methods?.PayPal?.qrImage || "";
+  }
+  if (paymentSupportNote) {
+    paymentSupportNote.value = snapshot.supportNote || "";
+  }
+  if (paymentManualCheckoutEnabled) {
+    paymentManualCheckoutEnabled.checked = snapshot.manualCheckoutEnabled !== false;
+  }
+
+  setPaymentSettingsFormEnabled(true);
+  setPaymentSettingsStatus("Founder payment profile loaded. Save real UPI and QR values here.");
+}
+
+async function savePaymentSettings(event) {
+  event?.preventDefault();
+  setPaymentSettingsStatus("Saving founder payment settings...");
+  setPaymentSettingsFormEnabled(false);
+
+  try {
+    const response = await fetch(`${API_BASE}/api/admin/payment-settings`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        merchantName: paymentMerchantName?.value || "",
+        supportNote: paymentSupportNote?.value || "",
+        manualCheckoutEnabled: Boolean(paymentManualCheckoutEnabled?.checked),
+        methods: {
+          UPI: {
+            upiId: paymentUpiId?.value || "",
+            qrImage: paymentUpiQrImage?.value || "",
+          },
+          GPay: {
+            upiId: paymentGpayUpiId?.value || "",
+            qrImage: paymentGpayQrImage?.value || "",
+          },
+          PayPal: {
+            qrImage: paymentPaypalQrImage?.value || "",
+          },
+        },
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Failed to save payment settings");
+    }
+
+    adminCollections.paymentSettings = data.settings || null;
+    populatePaymentSettingsForm(adminCollections.paymentSettings);
+    setPaymentSettingsStatus(data.message || "Payment settings saved", "success");
+  } catch (error) {
+    console.error("Save Payment Settings Error:", error.message);
+    setPaymentSettingsFormEnabled(true);
+    setPaymentSettingsStatus(error.message || "Could not save payment settings", "error");
   }
 }
 

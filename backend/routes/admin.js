@@ -16,6 +16,10 @@ const {
   updateLifecycleStrategy,
 } = require("../services/lifecycleStrategies");
 const { getLaunchReadinessSummary } = require("../services/platformReadiness");
+const {
+  getFounderPaymentSettingsSnapshot,
+  updateFounderPaymentSettings,
+} = require("../services/paymentSettings");
 const { syncBookAndCreatorRatings } = require("../services/reviewData");
 const { normalizeBooleanFlag } = require("../utils/bookCatalog");
 const { roundMoney } = require("../utils/revenue");
@@ -134,6 +138,31 @@ router.get("/review-reports", protect, authorize("admin"), async (req, res) => {
   } catch (err) {
     console.error("Get Review Reports Error:", err.message);
     return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.get("/payment-settings", protect, authorize("admin"), async (req, res) => {
+  try {
+    const settings = await getFounderPaymentSettingsSnapshot();
+    return res.json({ success: true, settings });
+  } catch (err) {
+    console.error("Get Payment Settings Error:", err.message);
+    return res.status(500).json({ success: false, message: "Could not load payment settings" });
+  }
+});
+
+router.put("/payment-settings", protect, authorize("admin"), async (req, res) => {
+  try {
+    const settings = await updateFounderPaymentSettings(req.body || {});
+    const snapshot = await getFounderPaymentSettingsSnapshot(settings);
+    return res.json({
+      success: true,
+      message: "Payment settings updated",
+      settings: snapshot,
+    });
+  } catch (err) {
+    console.error("Update Payment Settings Error:", err.message);
+    return res.status(500).json({ success: false, message: "Could not update payment settings" });
   }
 });
 
