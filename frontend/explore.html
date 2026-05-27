@@ -45,7 +45,7 @@
     </header>
 
     <main class="marketplace-main">
-      <section class="hero-panel">
+      <section class="hero-panel reveal-on-scroll" data-reveal>
         <div>
           <span class="hero-eyebrow" id="heroEyebrow">AI marketplace for students, creators, teachers, and freelancers</span>
           <h1 class="hero-title" id="heroTitle">Discover digital products built for <span>earning online</span>.</h1>
@@ -62,24 +62,38 @@
           </div>
         </div>
 
-        <div class="hero-stats">
-          <article class="hero-stat-card">
-            <span>Total live products</span>
-            <strong id="statTotalProducts">0</strong>
+        <div class="hero-rail">
+          <article class="hero-signal-card">
+            <div class="hero-signal-head">
+              <div>
+                <span class="hero-signal-kicker" id="pulseTitle">Marketplace Pulse</span>
+                <h2 class="hero-signal-title" id="pulseHeadline">Live demand is moving toward creator-ready digital products.</h2>
+              </div>
+              <span class="marketplace-chip subtle" id="pulseStatus">Market live</span>
+            </div>
+            <p class="hero-signal-copy" id="pulseCopy">We surface the strongest categories, pricing lanes, and language demand from the live catalog.</p>
+            <div class="hero-signal-track" id="marketPulseTrack"></div>
           </article>
-          <article class="hero-stat-card">
-            <span>Paid earning assets</span>
-            <strong id="statPaidProducts">0</strong>
-          </article>
-          <article class="hero-stat-card">
-            <span>Categories live</span>
-            <strong id="statCategories">0</strong>
-          </article>
+
+          <div class="hero-stats">
+            <article class="hero-stat-card">
+              <span id="statTotalProductsLabel">Total live products</span>
+              <strong id="statTotalProducts">0</strong>
+            </article>
+            <article class="hero-stat-card">
+              <span id="statPaidProductsLabel">Paid earning assets</span>
+              <strong id="statPaidProducts">0</strong>
+            </article>
+            <article class="hero-stat-card">
+              <span id="statCategoriesLabel">Categories live</span>
+              <strong id="statCategories">0</strong>
+            </article>
+          </div>
         </div>
       </section>
 
       <div class="section-stack">
-        <section class="surface-panel">
+        <section class="surface-panel reveal-on-scroll" data-reveal>
           <div class="panel-header">
             <div>
               <h2 id="forYouTitle">For You</h2>
@@ -91,7 +105,7 @@
           <div id="personalizedGrid" class="results-grid" style="margin-top:20px;"></div>
         </section>
 
-        <section class="surface-panel">
+        <section class="surface-panel reveal-on-scroll" data-reveal>
           <div class="panel-header">
             <div>
               <h2 id="filtersTitle">Marketplace Filters</h2>
@@ -136,7 +150,7 @@
           <div class="quick-filter-row" id="quickFilterRow" aria-label="Quick marketplace filters"></div>
         </section>
 
-        <section class="surface-panel">
+        <section class="surface-panel reveal-on-scroll" data-reveal>
           <div class="results-bar">
             <div>
               <h3 class="section-title" id="resultsTitle">Live Marketplace</h3>

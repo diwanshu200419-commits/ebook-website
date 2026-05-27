@@ -14,6 +14,11 @@ const resultsMeta = document.getElementById("resultsMeta");
 const resultsSignal = document.getElementById("resultsSignal");
 const personalizedMeta = document.getElementById("personalizedMeta");
 const personalizedSignal = document.getElementById("personalizedSignal");
+const marketPulseTrack = document.getElementById("marketPulseTrack");
+const pulseTitle = document.getElementById("pulseTitle");
+const pulseHeadline = document.getElementById("pulseHeadline");
+const pulseCopy = document.getElementById("pulseCopy");
+const pulseStatus = document.getElementById("pulseStatus");
 
 const state = {
   preferences: {
@@ -22,6 +27,8 @@ const state = {
   },
 };
 
+let revealObserver = null;
+
 const COPY = {
   English: {
     heroEyebrow: "AI marketplace for students, creators, teachers, and freelancers",
@@ -29,6 +36,16 @@ const COPY = {
     heroCopy: "Explore notes, ebooks, prompts, templates, and creator-made knowledge products with an India-ready purchase flow and real monetization rails.",
     heroCartCta: "Go To Cart",
     heroDashboardCta: "Launch Creator Hub",
+    pulseTitle: "Marketplace Pulse",
+    pulseDefaultHeadline: "Live demand is moving toward creator-ready digital products.",
+    pulseFilteredHeadline: "Your filters are shaping a sharper marketplace lane.",
+    pulseSearchHeadline: "Search is narrowing the catalog to high-intent products.",
+    pulseCopy: "We surface the strongest categories, pricing lanes, and language demand from the live catalog.",
+    pulseStatusLive: "Market live",
+    pulseStatusFiltered: "Filter active",
+    statTotalProductsLabel: "Total live products",
+    statPaidProductsLabel: "Paid earning assets",
+    statCategoriesLabel: "Categories live",
     forYouTitle: "For You",
     filtersTitle: "Marketplace Filters",
     filtersCopy: "Find high-intent student products, creator resources, and trending digital assets.",
@@ -76,6 +93,16 @@ const COPY = {
     sortNewestStatus: "Newest drops",
     sortPriceLowStatus: "Budget-first",
     sortPriceHighStatus: "Premium-first",
+    pulseCardFree: "Free library",
+    pulseCardPremium: "Premium stock",
+    pulseCardTopCategory: "Leading category",
+    pulseCardLanguage: "Language lane",
+    pulseCardFreeMeta: "Free products creators can use for reach and trust.",
+    pulseCardPremiumMeta: "Paid products ready for monetization.",
+    pulseCardTopCategoryMeta: "Most stocked lane in the live marketplace.",
+    pulseCardLanguageMeta: "Catalog filtered to {language}.",
+    pulseCardLanguageAllMeta: "Catalog open across all supported languages.",
+    pulseCardSearchMeta: "Search focus: {search}",
     viewDetails: "View Details",
     addToCart: "Add To Cart",
     signInToBuy: "Sign In To Buy",
@@ -85,6 +112,12 @@ const COPY = {
     reviewsSuffix: "reviews",
     featuredPrefix: "Featured creator pick",
     followedReason: "From a creator you follow",
+    aiRankedMatch: "AI-ranked match",
+    marketplaceListing: "Marketplace listing",
+    salesSuffix: "sales",
+    viewsSuffix: "views",
+    readySuffix: "ready",
+    ratingChipSuffix: "rating",
     addedToCartSignal: "Added to cart",
     cartFailedSignal: "Cart update failed",
     addedToCartMeta: "{message} You can continue browsing or open the cart.",
@@ -160,9 +193,106 @@ const COPY = {
   },
 };
 
+Object.assign(COPY.Hindi, {
+  heroEyebrow: "स्टूडेंट्स, क्रिएटर्स, टीचर्स और फ्रीलांसर्स के लिए AI मार्केटप्लेस",
+  heroTitle: "डिजिटल प्रोडक्ट खोजें जो <span>ऑनलाइन कमाई</span> के लिए बने हैं।",
+  heroCopy: "नोट्स, ईबुक्स, प्रॉम्प्ट्स, टेम्पलेट्स और creator-made knowledge products को India-ready payment flow और real monetization rails के साथ खोजें।",
+  heroCartCta: "कार्ट खोलें",
+  heroDashboardCta: "क्रिएटर हब शुरू करें",
+  pulseTitle: "मार्केटप्लेस पल्स",
+  pulseDefaultHeadline: "लाइव डिमांड creator-ready digital products की तरफ बढ़ रही है।",
+  pulseFilteredHeadline: "आपके filters अब marketplace को और sharper बना रहे हैं।",
+  pulseSearchHeadline: "Search अब catalog को high-intent products तक सीमित कर रही है।",
+  pulseCopy: "हम live catalog से strongest categories, pricing lanes और language demand surface करते हैं।",
+  pulseStatusLive: "मार्केट लाइव",
+  pulseStatusFiltered: "फ़िल्टर सक्रिय",
+  statTotalProductsLabel: "कुल लाइव प्रोडक्ट्स",
+  statPaidProductsLabel: "पेड earning assets",
+  statCategoriesLabel: "लाइव categories",
+  forYouTitle: "आपके लिए",
+  filtersTitle: "मार्केटप्लेस फ़िल्टर्स",
+  filtersCopy: "High-intent student products, creator resources और trending digital assets खोजें।",
+  searchLabel: "खोजें",
+  categoryLabel: "कैटेगरी",
+  languageLabel: "भाषा",
+  sortLabel: "सॉर्ट",
+  applyBtn: "फ़िल्टर लागू करें",
+  searchPlaceholder: "प्रॉम्प्ट्स, नोट्स, AI टेम्पलेट्स, exam guides खोजें...",
+  resultsTitle: "लाइव मार्केटप्लेस",
+  allCategories: "सभी कैटेगरी",
+  allLanguages: "सभी भाषाएँ",
+  quickAll: "सभी",
+  sortTrending: "ट्रेंडिंग",
+  sortNewest: "नवीनतम",
+  sortPriceLow: "कम कीमत पहले",
+  sortPriceHigh: "ज़्यादा कीमत पहले",
+  signInRequired: "साइन इन ज़रूरी",
+  guestFeedTitle: "आपकी AI discovery feed तैयार है",
+  guestFeedMessage: "लॉग इन करके notes, prompts, templates और creator-made study products की personalized recommendations देखें।",
+  signInForAiPicks: "AI Picks के लिए Sign In",
+  becomeCreator: "Creator बनें",
+  loadingRecommendations: "AI discovery layer से recommendations लोड हो रही हैं...",
+  feedLearningSignal: "Signal सीख रहा है",
+  noPersonalizedTitle: "अभी personalized picks नहीं हैं",
+  noPersonalizedMessage: "Recommendation engine को बेहतर ranking के लिए आपकी थोड़ी और browsing history चाहिए।",
+  feedLearningMeta: "कुछ live products browse करें और feed आपके interests के हिसाब से adapt होने लगेगी।",
+  feedLearningStatus: "और activity चाहिए",
+  personalizedLiveMeta: "आपके account signals के आधार पर AI-ranked picks।",
+  personalizedLiveStatus: "Personalized live",
+  personalizedUnavailableTitle: "Personalized feed उपलब्ध नहीं है",
+  personalizedUnavailableMessage: "थोड़ी देर में फिर कोशिश करें।",
+  personalizedUnavailableStatus: "Feed retry चाहिए",
+  loadingCatalogMeta: "मार्केटप्लेस inventory refresh हो रही है...",
+  loadingCatalogStatus: "Live catalog scan हो रहा है",
+  noProductsTitle: "कोई product match नहीं हुआ",
+  noProductsMessage: "थोड़ी broader search करें, दूसरी category चुनें, या sort बदलकर और creator products खोजें।",
+  marketplaceUnavailableTitle: "मार्केटप्लेस उपलब्ध नहीं है",
+  marketplaceUnavailableMeta: "अभी live products लोड नहीं हो पाए।",
+  marketplaceUnavailableStatus: "Retry चाहिए",
+  productsSummary: "{total} products creator categories में live हैं",
+  searchSummary: "\"{search}\" के लिए {total} matching products",
+  languageSummary: "{language} में {total} products live हैं",
+  sortTrendingStatus: "अभी ट्रेंडिंग",
+  sortNewestStatus: "नए drops",
+  sortPriceLowStatus: "Budget-first",
+  sortPriceHighStatus: "Premium-first",
+  pulseCardFree: "Free library",
+  pulseCardPremium: "Premium stock",
+  pulseCardTopCategory: "Leading category",
+  pulseCardLanguage: "Language lane",
+  pulseCardFreeMeta: "ऐसे free products जो reach और trust बनाने में मदद करते हैं।",
+  pulseCardPremiumMeta: "Monetization के लिए ready paid products।",
+  pulseCardTopCategoryMeta: "Live marketplace की सबसे stocked lane।",
+  pulseCardLanguageMeta: "Catalog अभी {language} पर filtered है।",
+  pulseCardLanguageAllMeta: "Catalog सभी supported languages में खुला है।",
+  pulseCardSearchMeta: "Search focus: {search}",
+  viewDetails: "डिटेल्स देखें",
+  addToCart: "कार्ट में जोड़ें",
+  signInToBuy: "खरीदने के लिए Sign In",
+  openFreeProduct: "फ्री प्रोडक्ट खोलें",
+  freeAccess: "फ्री एक्सेस",
+  newListing: "नई marketplace listing",
+  reviewsSuffix: "reviews",
+  featuredPrefix: "Featured creator pick",
+  followedReason: "जिस creator को आप follow करते हैं उससे",
+  aiRankedMatch: "AI-ranked match",
+  marketplaceListing: "Marketplace listing",
+  salesSuffix: "sales",
+  viewsSuffix: "views",
+  readySuffix: "ready",
+  ratingChipSuffix: "rating",
+  addedToCartSignal: "कार्ट में जुड़ गया",
+  cartFailedSignal: "कार्ट अपडेट नहीं हो पाया",
+  addedToCartMeta: "{message} आप browsing जारी रख सकते हैं या cart खोल सकते हैं।",
+  noProductsFound: "कोई product नहीं मिला",
+  noProductsFallback: "दूसरा filter आज़माएँ या बाद में फिर देखें।",
+});
+
 document.addEventListener("DOMContentLoaded", initExplore);
 
 async function initExplore() {
+  initMotionSystem();
+  armRevealElements(document);
   bindEvents();
   await loadPreferences();
   applyInterfaceLanguage(state.preferences.interfaceLanguage);
@@ -257,12 +387,20 @@ function applyInterfaceLanguage(language) {
   const selectedLanguage = language === "Hindi" ? "Hindi" : "English";
   state.preferences.interfaceLanguage = selectedLanguage;
   persistLocalPreferences();
+  document.documentElement.lang = selectedLanguage === "Hindi" ? "hi" : "en";
 
   setText("heroEyebrow", t("heroEyebrow"));
   setHTML("heroTitle", t("heroTitle"));
   setText("heroCopy", t("heroCopy"));
   setText("heroCartCta", t("heroCartCta"));
   setText("heroDashboardCta", t("heroDashboardCta"));
+  setText("pulseTitle", t("pulseTitle"));
+  setText("pulseHeadline", t("pulseDefaultHeadline"));
+  setText("pulseCopy", t("pulseCopy"));
+  setText("pulseStatus", t("pulseStatusLive"));
+  setText("statTotalProductsLabel", t("statTotalProductsLabel"));
+  setText("statPaidProductsLabel", t("statPaidProductsLabel"));
+  setText("statCategoriesLabel", t("statCategoriesLabel"));
   setText("forYouTitle", t("forYouTitle"));
   setText("filtersTitle", t("filtersTitle"));
   setText("filtersCopy", t("filtersCopy"));
@@ -347,6 +485,10 @@ async function loadPersonalizedFeed() {
   try {
     personalizedMeta.textContent = t("loadingRecommendations");
     personalizedSignal.textContent = t("feedLearningSignal");
+    renderLoadingGrid(personalizedGrid, {
+      variant: "personalized",
+      count: 3,
+    });
 
     const response = await fetch(`${API_BASE}/api/ai/recommendations?limit=6`, {
       headers: getAuthHeaders(),
@@ -394,6 +536,10 @@ async function loadBooks() {
 
     resultsMeta.textContent = t("loadingCatalogMeta");
     resultsSignal.textContent = t("loadingCatalogStatus");
+    renderLoadingGrid(booksGrid, {
+      variant: "catalog",
+      count: 6,
+    });
 
     const search = searchInput?.value.trim() || "";
     const category = categorySelect?.value.trim() || "";
@@ -513,9 +659,17 @@ function renderQuickFilters(categories) {
 
 function renderMarketplaceSummary(data) {
   const summary = data.summary || {};
-  setText("statTotalProducts", Number(summary.totalApprovedBooks || data.total || 0).toLocaleString("en-IN"));
-  setText("statPaidProducts", Number(summary.totalPaidBooks || 0).toLocaleString("en-IN"));
-  setText("statCategories", Number(summary.totalCategories || 0).toLocaleString("en-IN"));
+  const totalApprovedBooks = Number(summary.totalApprovedBooks || data.total || 0);
+  const totalPaidBooks = Number(summary.totalPaidBooks || 0);
+  const totalFreeBooks = Number(summary.totalFreeBooks || Math.max(totalApprovedBooks - totalPaidBooks, 0));
+  const totalCategories = Number(summary.totalCategories || data.filters?.categories?.length || 0);
+  const topCategory = Array.isArray(data.filters?.categories) && data.filters.categories.length
+    ? data.filters.categories[0]
+    : null;
+
+  animateMetricValue("statTotalProducts", totalApprovedBooks);
+  animateMetricValue("statPaidProducts", totalPaidBooks);
+  animateMetricValue("statCategories", totalCategories);
 
   const total = Number(data.total || 0).toLocaleString("en-IN");
   const search = searchInput?.value.trim() || "";
@@ -534,6 +688,16 @@ function renderMarketplaceSummary(data) {
     "price-high": t("sortPriceHighStatus"),
   };
   resultsSignal.textContent = sortLabelMap[sort] || t("sortTrendingStatus");
+
+  renderMarketPulse({
+    search,
+    sort,
+    appliedLanguage,
+    totalFreeBooks,
+    totalPaidBooks,
+    topCategory,
+    totalCategories,
+  });
 }
 
 function renderProductGrid(container, books, options = {}) {
@@ -573,7 +737,208 @@ function renderProductGrid(container, books, options = {}) {
       spotlight: variant === "personalized"
         ? index === 0
         : books.length === 1 && index === 0,
+    }, index));
+  });
+
+  armRevealElements(container);
+}
+
+function renderLoadingGrid(container, options = {}) {
+  if (!container) {
+    return;
+  }
+
+  const {
+    variant = "catalog",
+    count = variant === "personalized" ? 3 : 6,
+  } = options;
+
+  container.innerHTML = "";
+  container.className = "results-grid";
+  container.classList.add(variant === "personalized" ? "is-personalized" : "is-catalog");
+  if (count === 2) {
+    container.classList.add("is-sparse");
+  }
+  if (count === 1) {
+    container.classList.add("is-single");
+  }
+
+  Array.from({ length: count }).forEach((_, index) => {
+    container.appendChild(buildLoadingCard({
+      spotlight: variant === "personalized" && index === 0,
+      index,
     }));
+  });
+
+  armRevealElements(container);
+}
+
+function buildLoadingCard(options = {}) {
+  const { spotlight = false, index = 0 } = options;
+  const card = document.createElement("article");
+  card.className = `product-card is-loading-card${spotlight ? " is-spotlight" : ""} reveal-on-scroll`;
+  card.style.setProperty("--reveal-delay", `${Math.min(index, 6) * 70}ms`);
+  card.innerHTML = `
+    <div class="product-cover skeleton-block"></div>
+    <div class="product-body">
+      <div class="product-badges">
+        <span class="skeleton-badge"></span>
+        <span class="skeleton-badge short"></span>
+        <span class="skeleton-badge short"></span>
+      </div>
+      <div class="product-copy">
+        <span class="skeleton-line short"></span>
+        <span class="skeleton-line medium"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line long"></span>
+      </div>
+      <div class="product-signal-row">
+        <span class="skeleton-badge"></span>
+        <span class="skeleton-badge short"></span>
+        <span class="skeleton-badge short"></span>
+      </div>
+      <div class="product-meta">
+        <div class="price-stack">
+          <span class="skeleton-line short"></span>
+          <span class="skeleton-line tiny"></span>
+        </div>
+        <span class="skeleton-badge medium"></span>
+      </div>
+      <div class="product-actions">
+        <span class="skeleton-button"></span>
+        <span class="skeleton-button"></span>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+function renderMarketPulse(context = {}) {
+  if (!marketPulseTrack) {
+    return;
+  }
+
+  const {
+    search = "",
+    appliedLanguage = "All",
+    totalFreeBooks = 0,
+    totalPaidBooks = 0,
+    topCategory = null,
+    totalCategories = 0,
+  } = context;
+
+  const languageMeta = appliedLanguage && appliedLanguage !== "All"
+    ? fillTemplate(t("pulseCardLanguageMeta"), { language: appliedLanguage })
+    : t("pulseCardLanguageAllMeta");
+  const headline = search
+    ? t("pulseSearchHeadline")
+    : appliedLanguage !== "All"
+      ? t("pulseFilteredHeadline")
+      : t("pulseDefaultHeadline");
+
+  setText("pulseHeadline", headline);
+  setText("pulseCopy", search ? fillTemplate(t("pulseCardSearchMeta"), { search }) : t("pulseCopy"));
+  setText("pulseStatus", search || appliedLanguage !== "All" ? t("pulseStatusFiltered") : t("pulseStatusLive"));
+
+  const cards = [
+    {
+      label: t("pulseCardFree"),
+      value: Number(totalFreeBooks || 0).toLocaleString("en-IN"),
+      meta: t("pulseCardFreeMeta"),
+    },
+    {
+      label: t("pulseCardPremium"),
+      value: Number(totalPaidBooks || 0).toLocaleString("en-IN"),
+      meta: t("pulseCardPremiumMeta"),
+    },
+    {
+      label: t("pulseCardTopCategory"),
+      value: topCategory?.name || Number(totalCategories || 0).toLocaleString("en-IN"),
+      meta: t("pulseCardTopCategoryMeta"),
+    },
+    {
+      label: t("pulseCardLanguage"),
+      value: appliedLanguage && appliedLanguage !== "All" ? appliedLanguage : "All",
+      meta: languageMeta,
+    },
+  ];
+
+  marketPulseTrack.innerHTML = cards.map((card, index) => `
+    <article class="pulse-card reveal-on-scroll" style="--reveal-delay:${Math.min(index, 5) * 80}ms;">
+      <span>${escapeHTML(card.label)}</span>
+      <strong>${escapeHTML(card.value)}</strong>
+      <small>${escapeHTML(card.meta)}</small>
+    </article>
+  `).join("");
+
+  armRevealElements(marketPulseTrack);
+}
+
+function animateMetricValue(id, value) {
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
+
+  const nextValue = Number(value || 0);
+  const previousValue = Number(element.dataset.metricValue || 0);
+  element.dataset.metricValue = String(nextValue);
+
+  if (previousValue === nextValue) {
+    element.textContent = nextValue.toLocaleString("en-IN");
+    return;
+  }
+
+  const startedAt = performance.now();
+  const duration = 650;
+
+  const step = (now) => {
+    const progress = Math.min((now - startedAt) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const currentValue = Math.round(previousValue + ((nextValue - previousValue) * eased));
+    element.textContent = currentValue.toLocaleString("en-IN");
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  };
+
+  window.requestAnimationFrame(step);
+}
+
+function initMotionSystem() {
+  if (revealObserver || typeof window.IntersectionObserver !== "function") {
+    return;
+  }
+
+  revealObserver = new window.IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) {
+        return;
+      }
+      entry.target.classList.add("is-visible");
+      revealObserver.unobserve(entry.target);
+    });
+  }, {
+    threshold: 0.18,
+    rootMargin: "0px 0px -30px 0px",
+  });
+}
+
+function armRevealElements(root = document) {
+  if (!root?.querySelectorAll) {
+    return;
+  }
+
+  root.querySelectorAll(".reveal-on-scroll").forEach((element) => {
+    if (element.dataset.revealBound === "true") {
+      return;
+    }
+    element.dataset.revealBound = "true";
+    if (revealObserver) {
+      revealObserver.observe(element);
+    } else {
+      element.classList.add("is-visible");
+    }
   });
 }
 
@@ -654,7 +1019,7 @@ function legacyBuildProductCard(book) {
   return card;
 }
 
-function buildProductCard(book, options = {}) {
+function buildProductCard(book, options = {}, index = 0) {
   const { variant = "catalog", spotlight = false } = options;
   const cover = resolveAssetUrl(
     book.coverUrl || book.cover || book.coverImage,
@@ -680,16 +1045,21 @@ function buildProductCard(book, options = {}) {
   const kicker = book.isFeatured
     ? t("featuredPrefix")
     : variant === "personalized"
-      ? "AI-ranked match"
-      : "Marketplace listing";
+      ? t("aiRankedMatch")
+      : t("marketplaceListing");
   const statChips = [
-    Number(book.salesCount || 0) > 0 ? `${Number(book.salesCount || 0).toLocaleString("en-IN")} sales` : "New drop",
-    Number(book.views || 0) > 0 ? `${Number(book.views || 0).toLocaleString("en-IN")} views` : `${book.language || "English"} ready`,
-    ratingCount > 0 ? `${ratingAverage.toFixed(1)}* rating` : `${book.type || "Product"}`,
+    Number(book.salesCount || 0) > 0
+      ? `${Number(book.salesCount || 0).toLocaleString("en-IN")} ${t("salesSuffix")}`
+      : t("sortNewestStatus"),
+    Number(book.views || 0) > 0
+      ? `${Number(book.views || 0).toLocaleString("en-IN")} ${t("viewsSuffix")}`
+      : `${book.language || "English"} ${t("readySuffix")}`,
+    ratingCount > 0 ? `${ratingAverage.toFixed(1)}★ ${t("ratingChipSuffix")}` : `${book.type || "Product"}`,
   ];
 
   const card = document.createElement("article");
-  card.className = `product-card${spotlight ? " is-spotlight" : ""}`;
+  card.className = `product-card${spotlight ? " is-spotlight" : ""} reveal-on-scroll`;
+  card.style.setProperty("--reveal-delay", `${Math.min(index, 7) * 70}ms`);
   card.innerHTML = `
     <div class="product-cover">
       <img src="${escapeAttribute(cover)}" alt="${escapeAttribute(book.title)}" />
