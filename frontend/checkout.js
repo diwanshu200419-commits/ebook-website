@@ -65,6 +65,8 @@ const paymentMethodState = document.getElementById("paymentMethodState");
 const upiIdLabel = document.getElementById("upiIdLabel");
 const copyUpiBtn = document.getElementById("copyUpiBtn");
 const qrImage = document.getElementById("qrImage");
+const payNowBtn = document.getElementById("payNowBtn");
+const payNowHint = document.getElementById("payNowHint");
 const transactionIdInput = document.getElementById("transactionId");
 const screenshotInput = document.getElementById("screenshot");
 const submitBtn = document.getElementById("submitBtn");
@@ -150,6 +152,10 @@ const COPY = {
     manualDisabledFounder: "Manual proof checkout is paused by founder settings right now.",
     manualDisabledRails: "Manual proof checkout is unavailable until the founder adds at least one payment QR or UPI rail.",
     noConfiguredMethods: "No payment method is configured yet. Open admin settings and upload a QR or add a payment handle first.",
+    payNow: "Pay {amount} in {method}",
+    payNowGeneric: "Pay exact amount in selected app",
+    payNowHint: "Use this on mobile to open the payment app with the exact amount filled in.",
+    payNowUnavailable: "Direct app payment is unavailable for this method. Use the QR and pay the exact total shown above.",
   },
   Hindi: {
     title: "Manual Checkout | E-Book Market",
@@ -212,6 +218,10 @@ const COPY = {
     manualDisabledFounder: "Manual proof checkout abhi founder settings se pause hai.",
     manualDisabledRails: "Manual proof checkout tab tak unavailable rahega jab tak founder kam se kam ek payment QR ya UPI rail add nahin karta.",
     noConfiguredMethods: "Abhi koi payment method configure nahin hai. Pehle admin settings me QR upload kijiye ya payment handle add kijiye.",
+    payNow: "{method} me {amount} pay kijiye",
+    payNowGeneric: "Selected app me exact amount pay kijiye",
+    payNowHint: "Mobile par yeh button payment app ko exact amount ke saath kholne ki koshish karega.",
+    payNowUnavailable: "Is method ke liye direct app payment available nahin hai. QR use kijiye aur upar dikhaya gaya exact total pay kijiye.",
   },
 };
 
@@ -358,6 +368,44 @@ function getManualCheckoutReasonMessage() {
   return fillTemplate(t("marketNoteGlobal"), { country: state.market.countryName });
 }
 
+function getSelectedTotalInInr() {
+  return getSelectedBooks().reduce((sum, book) => sum + Number(book.price || 0), 0);
+}
+
+function getSelectedPaymentConfig() {
+  const method = String(methodSelect?.value || "").trim();
+  return {
+    method,
+    config: state.paymentConfig?.methods?.[method] || null,
+  };
+}
+
+function formatInrAmountForUpi(value) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) ? amount.toFixed(2) : "0.00";
+}
+
+function buildUpiIntentUrl({ upiId = "", merchantName = "", amount = 0, note = "" } = {}) {
+  const cleanUpiId = String(upiId || "").trim();
+  if (!cleanUpiId) {
+    return "";
+  }
+
+  const params = new URLSearchParams({
+    pa: cleanUpiId,
+    pn: String(merchantName || state.paymentConfig?.founder?.merchantName || "E-Book Market").trim(),
+    am: formatInrAmountForUpi(amount),
+    cu: "INR",
+  });
+
+  const cleanNote = String(note || "").trim();
+  if (cleanNote) {
+    params.set("tn", cleanNote);
+  }
+
+  return `upi://pay?${params.toString()}`;
+}
+
 function renderMethodOptions() {
   if (!methodSelect) {
     return;
@@ -381,6 +429,49 @@ function renderMethodOptions() {
   methodSelect.value = nextValue;
 }
 
+function updatePayNowAction() {
+  if (!payNowBtn || !payNowHint) {
+    return;
+  }
+
+  const { method, config } = getSelectedPaymentConfig();
+  const totalInInr = getSelectedTotalInInr();
+  const manualEnabled = Boolean(state.paymentConfig?.manualCheckout?.enabled && state.market.manualCheckoutEnabled);
+  const canLaunchUpi = Boolean(manualEnabled && config?.upiId && totalInInr > 0 && (method === "UPI" || method === "GPay"));
+  const methodLabel = method === "GPay" ? "Google Pay" : method || "UPI";
+
+  if (canLaunchUpi) {
+    const productCount = getSelectedBooks().length;
+    const note = productCount === 1
+      ? `E-Book Market order for ${getSelectedBooks()[0]?.title || "product"}`
+      : `E-Book Market order for ${productCount} products`;
+    payNowBtn.href = buildUpiIntentUrl({
+      upiId: config.upiId,
+      merchantName: state.paymentConfig?.founder?.merchantName,
+      amount: totalInInr,
+      note,
+    });
+    payNowBtn.setAttribute("aria-disabled", "false");
+    payNowBtn.classList.remove("marketplace-ghost-button");
+    payNowBtn.classList.add("marketplace-button");
+    payNowBtn.textContent = fillTemplate(t("payNow"), {
+      amount: formatMarketCurrency(totalInInr),
+      method: methodLabel,
+    });
+    payNowHint.textContent = t("payNowHint");
+    return;
+  }
+
+  payNowBtn.href = "#";
+  payNowBtn.setAttribute("aria-disabled", "true");
+  payNowBtn.classList.remove("marketplace-button");
+  payNowBtn.classList.add("marketplace-ghost-button");
+  payNowBtn.textContent = t("payNowGeneric");
+  payNowHint.textContent = !manualEnabled
+    ? getManualCheckoutReasonMessage()
+    : t("payNowUnavailable");
+}
+
 function applyInterfaceLanguage(language) {
   state.preferences.interfaceLanguage = language === "Hindi" ? "Hindi" : "English";
   persistLocalPreferences();
@@ -401,6 +492,8 @@ function applyInterfaceLanguage(language) {
   setText("transactionLabel", t("transactionLabel"));
   setText("screenshotLabel", t("screenshotLabel"));
   setText("copyUpiBtn", t("copyUpi"));
+  setText("payNowBtn", t("payNowGeneric"));
+  setText("payNowHint", t("payNowHint"));
   setText("submitBtn", t("submitProof"));
   setText("proofTip", t("proofTip"));
 
@@ -411,6 +504,7 @@ function applyInterfaceLanguage(language) {
   renderMarketContext();
   renderMethodOptions();
   renderPaymentMethod();
+  updatePayNowAction();
 }
 
 async function fetchCart() {
@@ -585,6 +679,7 @@ function renderPaymentMethod() {
     copyUpiBtn.disabled = true;
     qrImage.hidden = true;
     qrImage.removeAttribute("src");
+    updatePayNowAction();
     return;
   }
 
@@ -611,6 +706,7 @@ function renderPaymentMethod() {
     ? `UPI ID: ${config.upiId}`
     : t("upiIncludedInQr");
   copyUpiBtn.disabled = !config.upiId;
+  updatePayNowAction();
 }
 
 function renderAmountInfo() {
@@ -625,18 +721,21 @@ function renderAmountInfo() {
   if (!selectedBooks.length) {
     amountInfo.textContent = t("selectAtLeastOne");
     submitBtn.disabled = true;
+    updatePayNowAction();
     return;
   }
 
   if (!manualEnabled) {
     amountInfo.textContent = getManualCheckoutReasonMessage();
     submitBtn.disabled = true;
+    updatePayNowAction();
     return;
   }
 
   if (!configuredMethods.length) {
     amountInfo.textContent = t("noConfiguredMethods");
     submitBtn.disabled = true;
+    updatePayNowAction();
     return;
   }
 
@@ -646,6 +745,7 @@ function renderAmountInfo() {
     suffix: selectedBooks.length === 1 ? "" : "s",
   });
   submitBtn.disabled = false;
+  updatePayNowAction();
 }
 
 function getSelectedBooks() {
@@ -774,6 +874,13 @@ function formatMarketCurrency(value) {
 
 methodSelect.addEventListener("change", renderPaymentMethod);
 submitBtn.addEventListener("click", submitManualPayment);
+payNowBtn?.addEventListener("click", (event) => {
+  const href = String(payNowBtn.getAttribute("href") || "").trim();
+  if (!href || href === "#") {
+    event.preventDefault();
+    setStatus(payNowHint?.textContent || t("payNowUnavailable"), "warning");
+  }
+});
 copyUpiBtn.addEventListener("click", async () => {
   const method = methodSelect.value;
   const upiId = (state.paymentConfig.methods?.[method] || state.paymentConfig.methods?.UPI || DEFAULT_PAYMENT_CONFIG.methods.UPI).upiId;
