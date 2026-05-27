@@ -388,6 +388,13 @@ function persistStoredCollection(key, items) {
   }
 }
 
+function bumpVisibleCartCount(delta = 1) {
+  document.querySelectorAll("[data-cart-count]").forEach((node) => {
+    const current = Number(node.textContent || 0);
+    node.textContent = String(Math.max(current + Number(delta || 0), 0));
+  });
+}
+
 document.addEventListener("DOMContentLoaded", initExplore);
 
 async function initExplore() {
@@ -1563,6 +1570,7 @@ async function addToCart(bookId) {
     resultsMeta.textContent = fillTemplate(t("addedToCartMeta"), {
       message: data.message || "Product added to cart.",
     });
+    bumpVisibleCartCount(1);
     await shell.refreshCartCount?.();
     shell.refreshNotifications?.();
     setTimeout(() => {

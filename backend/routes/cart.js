@@ -19,12 +19,50 @@ async function getOrCreateCart(userId) {
   return cart;
 }
 
+async function buildCartItems(cart) {
+  const rawItems = Array.isArray(cart?.items)
+    ? cart.items.map((item) => ({
+        bookId: String(item?.book || "").trim(),
+        priceAtAdd: Number(item?.priceAtAdd || 0),
+        addedAt: item?.addedAt || null,
+      }))
+    : [];
+
+  const validBookIds = rawItems
+    .map((item) => item.bookId)
+    .filter((bookId) => mongoose.Types.ObjectId.isValid(bookId));
+
+  if (!validBookIds.length) {
+    return [];
+  }
+
+  const books = await Book.find({ _id: { $in: validBookIds } })
+    .select("title type language price coverImage cover status category authorName bookAuthor isPaid isArchived");
+
+  const booksById = new Map(
+    books.map((book) => [String(book._id), book])
+  );
+
+  return rawItems
+    .map((item) => {
+      const book = booksById.get(item.bookId);
+      if (!book || book.isArchived || (book.status || "") !== "Approved") {
+        return null;
+      }
+
+      return {
+        book,
+        priceAtAdd: item.priceAtAdd || Number(book.price || 0),
+        addedAt: item.addedAt,
+      };
+    })
+    .filter(Boolean);
+}
+
 router.get("/", protect, async (req, res) => {
   try {
     const cart = await getOrCreateCart(req.user.id);
-    await cart.populate("items.book", "title price coverImage cover status category authorName bookAuthor isPaid");
-
-    const items = (cart.items || []).filter((item) => item.book);
+    const items = await buildCartItems(cart);
     const total = items.reduce((sum, item) => sum + (item.priceAtAdd || 0), 0);
     res.json({ success: true, items, total });
   } catch (err) {

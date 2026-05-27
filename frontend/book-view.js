@@ -312,6 +312,13 @@ function rememberRecentProduct(book) {
   }
 }
 
+function bumpVisibleCartCount(delta = 1) {
+  document.querySelectorAll("[data-cart-count]").forEach((node) => {
+    const current = Number(node.textContent || 0);
+    node.textContent = String(Math.max(current + Number(delta || 0), 0));
+  });
+}
+
 async function loadViewerPreferences() {
   const token = getToken();
   if (!token) {
@@ -930,6 +937,7 @@ async function addToCart(bookId) {
       throw new Error(data.message || t("unableToAddToCart"));
     }
 
+    bumpVisibleCartCount(1);
     setActionStatus(t("addedToCart"), "success");
     window.setTimeout(() => {
       window.location.href = "cart.html";
