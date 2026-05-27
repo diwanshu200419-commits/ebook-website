@@ -1025,6 +1025,7 @@ async function syncProjectCatalogToMarketplace(options = {}) {
 
 module.exports = {
   BUILTIN_LIBRARY,
+  ensureCatalogBookIsStored,
   getImportableLibraryCatalog,
   importBuiltinLibraryForCreator,
   syncProjectCatalogToMarketplace,

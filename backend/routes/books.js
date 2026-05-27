@@ -26,6 +26,7 @@ const {
   syncBookAndCreatorRatings,
 } = require("../services/reviewData");
 const {
+  ensureCatalogBookIsStored,
   getImportableLibraryCatalog,
   importBuiltinLibraryForCreator,
 } = require("../services/catalogImport");
@@ -485,12 +486,13 @@ async function getBookAccess(book, user) {
 async function ensurePreviewAsset(book) {
   const existingPreviewPath = resolvePublicUploadPath(book.previewPath);
   const previewExists = Boolean(existingPreviewPath && fs.existsSync(existingPreviewPath));
-  const sourceFilePath = resolvePublicUploadPath(book.filePath);
-  const sourceExists = Boolean(sourceFilePath && fs.existsSync(sourceFilePath));
   const paidProduct = isPaidProduct(book);
   const desiredPreviewPages = paidProduct
     ? Math.min(normalizePreviewPages(book.previewPages || 3), 3)
     : normalizePreviewPages(book.previewPages || 3);
+  let sourcePublicPath = String(book.filePath || "").trim();
+  let sourceFilePath = resolvePublicUploadPath(sourcePublicPath);
+  let sourceExists = Boolean(sourceFilePath && fs.existsSync(sourceFilePath));
 
   if (previewExists && (!paidProduct || Number(book.previewPages || 0) === desiredPreviewPages)) {
     return {
@@ -500,7 +502,23 @@ async function ensurePreviewAsset(book) {
     };
   }
 
-  if (!sourceExists || !isPdfLikeFile({ originalname: book.filePath || "", mimetype: "application/pdf" })) {
+  if (!sourceExists && book.catalogKey) {
+    const catalogEntry = getImportableLibraryCatalog().find(
+      (entry) => String(entry.catalogKey || "") === String(book.catalogKey || "")
+    );
+    if (catalogEntry?.sourceAbsolutePath && fs.existsSync(catalogEntry.sourceAbsolutePath)) {
+      sourcePublicPath = ensureCatalogBookIsStored(catalogEntry);
+      sourceFilePath = resolvePublicUploadPath(sourcePublicPath);
+      sourceExists = Boolean(sourceFilePath && fs.existsSync(sourceFilePath));
+
+      if (sourceExists && sourcePublicPath !== String(book.filePath || "")) {
+        book.filePath = sourcePublicPath;
+        await book.save();
+      }
+    }
+  }
+
+  if (!sourceExists || !isPdfLikeFile({ originalname: sourcePublicPath || book.filePath || "", mimetype: "application/pdf" })) {
     return {
       targetPath: previewExists ? existingPreviewPath : "",
       previewPages: Number(book.previewPages || 0),
@@ -510,7 +528,7 @@ async function ensurePreviewAsset(book) {
 
   try {
     const preview = await createBookPreview({
-      sourcePublicPath: book.filePath,
+      sourcePublicPath,
       title: book.title,
       isPaid: paidProduct,
       previewPages: desiredPreviewPages,
