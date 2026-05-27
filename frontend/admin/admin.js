@@ -78,6 +78,21 @@ const paymentUpiQrImage = document.getElementById("paymentUpiQrImage");
 const paymentGpayUpiId = document.getElementById("paymentGpayUpiId");
 const paymentGpayQrImage = document.getElementById("paymentGpayQrImage");
 const paymentPaypalQrImage = document.getElementById("paymentPaypalQrImage");
+const paymentUpiQrFile = document.getElementById("paymentUpiQrFile");
+const paymentGpayQrFile = document.getElementById("paymentGpayQrFile");
+const paymentPaypalQrFile = document.getElementById("paymentPaypalQrFile");
+const paymentUpiQrUploadBtn = document.getElementById("paymentUpiQrUploadBtn");
+const paymentGpayQrUploadBtn = document.getElementById("paymentGpayQrUploadBtn");
+const paymentPaypalQrUploadBtn = document.getElementById("paymentPaypalQrUploadBtn");
+const paymentUpiQrClearBtn = document.getElementById("paymentUpiQrClearBtn");
+const paymentGpayQrClearBtn = document.getElementById("paymentGpayQrClearBtn");
+const paymentPaypalQrClearBtn = document.getElementById("paymentPaypalQrClearBtn");
+const paymentUpiQrPreview = document.getElementById("paymentUpiQrPreview");
+const paymentGpayQrPreview = document.getElementById("paymentGpayQrPreview");
+const paymentPaypalQrPreview = document.getElementById("paymentPaypalQrPreview");
+const paymentUpiQrEmpty = document.getElementById("paymentUpiQrEmpty");
+const paymentGpayQrEmpty = document.getElementById("paymentGpayQrEmpty");
+const paymentPaypalQrEmpty = document.getElementById("paymentPaypalQrEmpty");
 const paymentSupportNote = document.getElementById("paymentSupportNote");
 const paymentManualCheckoutEnabled = document.getElementById("paymentManualCheckoutEnabled");
 const savePaymentSettingsBtn = document.getElementById("savePaymentSettingsBtn");
@@ -85,6 +100,13 @@ const paymentSettingsStatus = document.getElementById("paymentSettingsStatus");
 let lifecycleLabConfig = null;
 let activeSection = "overview";
 let sectionChangeNonce = 0;
+let paymentSettingsFormInteractive = false;
+const PAYMENT_METHOD_KEYS = ["UPI", "GPay", "PayPal"];
+const paymentRailUploadState = {
+  UPI: false,
+  GPay: false,
+  PayPal: false,
+};
 const adminState = {
   lastSyncedAt: null,
   flaggedBooksCount: 0,
@@ -167,6 +189,7 @@ crmLabRunBtn?.addEventListener("click", runLifecycleExperiment);
 captureLifecycleSnapshotBtn?.addEventListener("click", captureLifecycleSnapshot);
 refreshAdminBtn?.addEventListener("click", refreshActiveSection);
 paymentSettingsForm?.addEventListener("submit", savePaymentSettings);
+wirePaymentRailUploadButtons();
 contentSearchInput?.addEventListener("input", applyPendingBookFilters);
 contentTypeFilter?.addEventListener("change", applyPendingBookFilters);
 contentAiFilter?.addEventListener("change", applyPendingBookFilters);
@@ -1346,22 +1369,154 @@ function defaultPaymentSettings() {
   };
 }
 
+function getPaymentRailDom(methodKey) {
+  if (methodKey === "UPI") {
+    return {
+      input: paymentUpiQrImage,
+      fileInput: paymentUpiQrFile,
+      uploadBtn: paymentUpiQrUploadBtn,
+      clearBtn: paymentUpiQrClearBtn,
+      preview: paymentUpiQrPreview,
+      empty: paymentUpiQrEmpty,
+    };
+  }
+
+  if (methodKey === "GPay") {
+    return {
+      input: paymentGpayQrImage,
+      fileInput: paymentGpayQrFile,
+      uploadBtn: paymentGpayQrUploadBtn,
+      clearBtn: paymentGpayQrClearBtn,
+      preview: paymentGpayQrPreview,
+      empty: paymentGpayQrEmpty,
+    };
+  }
+
+  return {
+    input: paymentPaypalQrImage,
+    fileInput: paymentPaypalQrFile,
+    uploadBtn: paymentPaypalQrUploadBtn,
+    clearBtn: paymentPaypalQrClearBtn,
+    preview: paymentPaypalQrPreview,
+    empty: paymentPaypalQrEmpty,
+  };
+}
+
+function getPaymentMethodLabel(methodKey) {
+  if (methodKey === "UPI") {
+    return "UPI";
+  }
+  if (methodKey === "GPay") {
+    return "Google Pay";
+  }
+  return "PayPal";
+}
+
+function updatePaymentRailPreview(methodKey, source) {
+  const rail = getPaymentRailDom(methodKey);
+  if (!rail.preview || !rail.empty) {
+    return;
+  }
+
+  const resolved = resolveAssetUrl(source, "");
+  if (resolved) {
+    rail.preview.src = resolved;
+    rail.preview.hidden = false;
+    rail.empty.hidden = true;
+  } else {
+    rail.preview.removeAttribute("src");
+    rail.preview.hidden = true;
+    rail.empty.hidden = false;
+    rail.empty.textContent = `No ${getPaymentMethodLabel(methodKey)} QR uploaded yet`;
+  }
+}
+
+function syncPaymentRailButtons() {
+  PAYMENT_METHOD_KEYS.forEach((methodKey) => {
+    const rail = getPaymentRailDom(methodKey);
+    const uploading = Boolean(paymentRailUploadState[methodKey]);
+    const hasValue = Boolean(String(rail.input?.value || "").trim());
+
+    if (rail.input) {
+      rail.input.disabled = !paymentSettingsFormInteractive || uploading;
+    }
+    if (rail.fileInput) {
+      rail.fileInput.disabled = !paymentSettingsFormInteractive || uploading;
+    }
+    if (rail.uploadBtn) {
+      rail.uploadBtn.disabled = !paymentSettingsFormInteractive || uploading;
+      rail.uploadBtn.textContent = uploading ? "Uploading..." : "Upload QR";
+    }
+    if (rail.clearBtn) {
+      rail.clearBtn.disabled = !paymentSettingsFormInteractive || uploading || !hasValue;
+    }
+  });
+}
+
+function setPaymentRailUploadState(methodKey, uploading) {
+  paymentRailUploadState[methodKey] = Boolean(uploading);
+  syncPaymentRailButtons();
+}
+
+function wirePaymentRailUploadButtons() {
+  PAYMENT_METHOD_KEYS.forEach((methodKey) => {
+    const rail = getPaymentRailDom(methodKey);
+    if (!rail.input) {
+      return;
+    }
+
+    rail.uploadBtn?.addEventListener("click", () => {
+      if (paymentSettingsFormInteractive) {
+        rail.fileInput?.click();
+      }
+    });
+
+    rail.fileInput?.addEventListener("change", () => {
+      const file = rail.fileInput?.files?.[0];
+      if (file) {
+        void uploadFounderPaymentRail(methodKey, file);
+      }
+    });
+
+    rail.clearBtn?.addEventListener("click", () => {
+      if (rail.input) {
+        rail.input.value = "";
+      }
+      if (rail.fileInput) {
+        rail.fileInput.value = "";
+      }
+      updatePaymentRailPreview(methodKey, "");
+      syncPaymentRailButtons();
+      setPaymentSettingsStatus(`${getPaymentMethodLabel(methodKey)} QR cleared in the form. Save payment settings to remove it from checkout.`, "warning");
+    });
+
+    rail.input.addEventListener("input", () => {
+      updatePaymentRailPreview(methodKey, rail.input?.value || "");
+      syncPaymentRailButtons();
+    });
+  });
+}
+
 function setPaymentSettingsStatus(message, tone = "muted") {
   if (!paymentSettingsStatus) {
     return;
   }
 
   paymentSettingsStatus.textContent = message || "";
-  paymentSettingsStatus.classList.remove("error-text", "success-text");
+  paymentSettingsStatus.classList.remove("error-text", "success-text", "warning-text");
   if (tone === "error") {
     paymentSettingsStatus.classList.add("error-text");
   }
   if (tone === "success") {
     paymentSettingsStatus.classList.add("success-text");
   }
+  if (tone === "warning") {
+    paymentSettingsStatus.classList.add("warning-text");
+  }
 }
 
 function setPaymentSettingsFormEnabled(enabled) {
+  paymentSettingsFormInteractive = Boolean(enabled);
   [
     paymentMerchantName,
     paymentUpiId,
@@ -1377,6 +1532,7 @@ function setPaymentSettingsFormEnabled(enabled) {
       element.disabled = !enabled;
     }
   });
+  syncPaymentRailButtons();
 }
 
 function populatePaymentSettingsForm(settings = null) {
@@ -1414,8 +1570,51 @@ function populatePaymentSettingsForm(settings = null) {
     paymentManualCheckoutEnabled.checked = snapshot.manualCheckoutEnabled !== false;
   }
 
+  updatePaymentRailPreview("UPI", snapshot.methods?.UPI?.qrImage || "");
+  updatePaymentRailPreview("GPay", snapshot.methods?.GPay?.qrImage || "");
+  updatePaymentRailPreview("PayPal", snapshot.methods?.PayPal?.qrImage || "");
   setPaymentSettingsFormEnabled(true);
   setPaymentSettingsStatus("Founder payment profile loaded. Save real UPI and QR values here.");
+}
+
+async function uploadFounderPaymentRail(methodKey, file) {
+  if (!file) {
+    return;
+  }
+
+  setPaymentRailUploadState(methodKey, true);
+  setPaymentSettingsStatus(`Uploading ${getPaymentMethodLabel(methodKey)} QR...`);
+
+  try {
+    const formData = new FormData();
+    formData.append("methodKey", methodKey);
+    formData.append("qrImage", file);
+
+    const response = await fetch(`${API_BASE}/api/admin/payment-settings/assets`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Failed to upload QR image");
+    }
+
+    adminCollections.paymentSettings = data.settings || adminCollections.paymentSettings;
+    populatePaymentSettingsForm(adminCollections.paymentSettings);
+    setPaymentSettingsStatus(data.message || `${getPaymentMethodLabel(methodKey)} QR uploaded`, "success");
+  } catch (error) {
+    console.error("Upload Founder Payment Rail Error:", error.message);
+    setPaymentSettingsStatus(error.message || "Could not upload QR image", "error");
+  } finally {
+    const rail = getPaymentRailDom(methodKey);
+    if (rail.fileInput) {
+      rail.fileInput.value = "";
+    }
+    setPaymentRailUploadState(methodKey, false);
+  }
 }
 
 async function savePaymentSettings(event) {

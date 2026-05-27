@@ -1293,6 +1293,26 @@ select {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.payment-founder-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(129, 140, 248, 0.08));
+  border: 1px solid rgba(96, 165, 250, 0.14);
+}
+
+.hero-eyebrow.compact {
+  width: fit-content;
+  margin-bottom: 0;
+  font-size: 0.72rem;
+  padding: 7px 10px;
+}
+
+.payment-founder-card strong {
+  font-size: 1rem;
+}
+
 .payment-qr-frame {
   width: min(100%, 270px);
   border-radius: 22px;

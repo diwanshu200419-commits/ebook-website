@@ -25,24 +25,35 @@ const DEFAULT_PAYMENT_CONFIG = {
       details: "Pay from any UPI app using the QR below.",
       upiId: "",
       qrImage: "assets/payment/gpay-qr.PNG",
+      configured: true,
     },
     GPay: {
       label: "Google Pay",
       details: "Scan this QR in Google Pay and confirm the exact order total.",
       upiId: "",
       qrImage: "assets/payment/gpay-qr.PNG",
+      configured: true,
     },
     PayPal: {
       label: "PayPal",
       details: "Scan the PayPal QR or pay from the linked merchant account.",
       upiId: "",
       qrImage: "assets/payment/paypal-qr.PNG",
+      configured: true,
     },
+  },
+  founder: {
+    merchantName: "E-Book Market",
+    supportNote: "",
+    availableMethods: ["UPI", "GPay", "PayPal"],
   },
   selectedMarket: DEFAULT_MARKET,
   manualCheckout: {
     enabled: true,
     note: DEFAULT_MARKET.manualCheckoutNote,
+    availableMethods: ["UPI", "GPay", "PayPal"],
+    hasConfiguredRail: true,
+    reasonCode: "enabled",
   },
 };
 
@@ -50,6 +61,7 @@ const checkoutItems = document.getElementById("checkoutItems");
 const methodSelect = document.getElementById("methodSelect");
 const payInfo = document.getElementById("payInfo");
 const amountInfo = document.getElementById("amountInfo");
+const paymentMethodState = document.getElementById("paymentMethodState");
 const upiIdLabel = document.getElementById("upiIdLabel");
 const copyUpiBtn = document.getElementById("copyUpiBtn");
 const qrImage = document.getElementById("qrImage");
@@ -63,6 +75,8 @@ const selectedTotalEl = document.getElementById("selectedTotal");
 const checkoutMarketBadge = document.getElementById("checkoutMarketBadge");
 const checkoutMarketMode = document.getElementById("checkoutMarketMode");
 const checkoutMarketNote = document.getElementById("checkoutMarketNote");
+const checkoutFounderMerchant = document.getElementById("checkoutFounderMerchant");
+const checkoutFounderSupport = document.getElementById("checkoutFounderSupport");
 const CHECKOUT_NOTICE_KEY = "ebook-market-checkout-notice";
 
 const state = {
@@ -129,6 +143,13 @@ const COPY = {
     manualDisabledAmount: "This buyer market uses Stripe card checkout instead of manual proof approval.",
     manualDisabledSubmit: "Manual proof checkout is not available for this buyer market.",
     stripeFallbackNotice: "Stripe card checkout is temporarily unavailable right now, so you were redirected to manual proof checkout for this market.",
+    founderPaymentOwner: "Founder payment owner",
+    founderSupportFallback: "This payment goes to the founder-managed marketplace rail configured in admin settings.",
+    paymentMethodReady: "Ready for proof checkout",
+    paymentMethodMissing: "This payment method is not configured yet.",
+    manualDisabledFounder: "Manual proof checkout is paused by founder settings right now.",
+    manualDisabledRails: "Manual proof checkout is unavailable until the founder adds at least one payment QR or UPI rail.",
+    noConfiguredMethods: "No payment method is configured yet. Open admin settings and upload a QR or add a payment handle first.",
   },
   Hindi: {
     title: "Manual Checkout | E-Book Market",
@@ -184,6 +205,13 @@ const COPY = {
     manualDisabledAmount: "Is buyer market me manual proof approval ke bajay Stripe card checkout use hota hai.",
     manualDisabledSubmit: "Is buyer market ke liye manual proof checkout available nahin hai.",
     stripeFallbackNotice: "Stripe card checkout abhi temporarily unavailable hai, isliye aapko is market ke liye manual proof checkout par redirect kiya gaya hai.",
+    founderPaymentOwner: "Founder payment owner",
+    founderSupportFallback: "Yeh payment admin settings me configured founder-managed marketplace rail par jaata hai.",
+    paymentMethodReady: "Proof checkout ke liye ready",
+    paymentMethodMissing: "Yeh payment method abhi configure nahin hai.",
+    manualDisabledFounder: "Manual proof checkout abhi founder settings se pause hai.",
+    manualDisabledRails: "Manual proof checkout tab tak unavailable rahega jab tak founder kam se kam ek payment QR ya UPI rail add nahin karta.",
+    noConfiguredMethods: "Abhi koi payment method configure nahin hai. Pehle admin settings me QR upload kijiye ya payment handle add kijiye.",
   },
 };
 
@@ -245,9 +273,17 @@ async function loadPaymentConfig() {
     state.paymentConfig = {
       ...DEFAULT_PAYMENT_CONFIG,
       ...data,
+      founder: {
+        ...DEFAULT_PAYMENT_CONFIG.founder,
+        ...(data.founder || {}),
+      },
       methods: {
         ...DEFAULT_PAYMENT_CONFIG.methods,
         ...(data.methods || {}),
+      },
+      manualCheckout: {
+        ...DEFAULT_PAYMENT_CONFIG.manualCheckout,
+        ...(data.manualCheckout || {}),
       },
     };
     state.market = normalizeMarket(data.selectedMarket || state.market);
@@ -258,6 +294,7 @@ async function loadPaymentConfig() {
   }
 
   persistLocalPreferences();
+  renderMethodOptions();
 }
 
 function loadStoredMarket() {
@@ -298,6 +335,52 @@ function persistLocalPreferences() {
   localStorage.setItem("marketplace-market-currency", state.market.currency || "INR");
 }
 
+function getConfiguredPaymentMethodKeys() {
+  const methods = state.paymentConfig?.methods || {};
+  return Object.keys(methods).filter((methodKey) => {
+    const method = methods[methodKey] || {};
+    if (method.configured === false) {
+      return false;
+    }
+
+    return Boolean(String(method.upiId || "").trim() || String(method.qrImage || "").trim());
+  });
+}
+
+function getManualCheckoutReasonMessage() {
+  const reasonCode = String(state.paymentConfig?.manualCheckout?.reasonCode || "").trim().toLowerCase();
+  if (reasonCode === "founder_paused") {
+    return t("manualDisabledFounder");
+  }
+  if (reasonCode === "no_payment_rails") {
+    return t("manualDisabledRails");
+  }
+  return fillTemplate(t("marketNoteGlobal"), { country: state.market.countryName });
+}
+
+function renderMethodOptions() {
+  if (!methodSelect) {
+    return;
+  }
+
+  const availableMethods = getConfiguredPaymentMethodKeys();
+  const previousValue = String(methodSelect.value || "").trim();
+
+  if (!availableMethods.length) {
+    methodSelect.innerHTML = `<option value="">${escapeHTML(t("noConfiguredMethods"))}</option>`;
+    methodSelect.disabled = true;
+    return;
+  }
+
+  methodSelect.disabled = false;
+  methodSelect.innerHTML = availableMethods.map((methodKey) => (
+    `<option value="${escapeAttribute(methodKey)}">${escapeHTML(methodKey === "GPay" ? "Google Pay" : methodKey)}</option>`
+  )).join("");
+
+  const nextValue = availableMethods.includes(previousValue) ? previousValue : availableMethods[0];
+  methodSelect.value = nextValue;
+}
+
 function applyInterfaceLanguage(language) {
   state.preferences.interfaceLanguage = language === "Hindi" ? "Hindi" : "English";
   persistLocalPreferences();
@@ -326,6 +409,8 @@ function applyInterfaceLanguage(language) {
   }
 
   renderMarketContext();
+  renderMethodOptions();
+  renderPaymentMethod();
 }
 
 async function fetchCart() {
@@ -478,16 +563,50 @@ function renderMarketContext() {
     "checkoutMarketNote",
     manualEnabled
       ? t("marketNoteIndia")
-      : fillTemplate(t("marketNoteGlobal"), { country: state.market.countryName })
+      : getManualCheckoutReasonMessage()
   );
+  setText("checkoutFounderMerchant", state.paymentConfig?.founder?.merchantName || DEFAULT_PAYMENT_CONFIG.founder.merchantName);
+  setText("checkoutFounderSupport", state.paymentConfig?.founder?.supportNote || t("founderSupportFallback"));
 }
 
 function renderPaymentMethod() {
-  const method = methodSelect.value;
-  const config = state.paymentConfig.methods?.[method] || state.paymentConfig.methods?.UPI || DEFAULT_PAYMENT_CONFIG.methods.UPI;
+  const method = String(methodSelect?.value || "").trim();
+  const config = state.paymentConfig.methods?.[method];
+  const configuredMethods = getConfiguredPaymentMethodKeys();
+  const manualEnabled = Boolean(state.paymentConfig?.manualCheckout?.enabled && state.market.manualCheckoutEnabled);
+
+  if (!config || !configuredMethods.length) {
+    payInfo.textContent = t("noConfiguredMethods");
+    amountInfo.textContent = t("manualDisabledRails");
+    if (paymentMethodState) {
+      paymentMethodState.textContent = t("paymentMethodMissing");
+    }
+    upiIdLabel.textContent = "";
+    copyUpiBtn.disabled = true;
+    qrImage.hidden = true;
+    qrImage.removeAttribute("src");
+    return;
+  }
+
   payInfo.textContent = `${config.label}: ${config.details}`;
-  qrImage.src = resolveAssetUrl(config.qrImage, "assets/payment/gpay-qr.PNG");
-  qrImage.alt = fillTemplate(t("paymentQrAlt"), { label: config.label || "Payment" });
+  if (paymentMethodState) {
+    paymentMethodState.textContent = !manualEnabled
+      ? getManualCheckoutReasonMessage()
+      : config.configured === false
+        ? t("paymentMethodMissing")
+        : t("paymentMethodReady");
+  }
+
+  const qrSource = resolveAssetUrl(config.qrImage, "");
+  if (qrSource) {
+    qrImage.hidden = false;
+    qrImage.src = qrSource;
+    qrImage.alt = fillTemplate(t("paymentQrAlt"), { label: config.label || "Payment" });
+  } else {
+    qrImage.hidden = true;
+    qrImage.removeAttribute("src");
+  }
+
   upiIdLabel.textContent = config.upiId
     ? `UPI ID: ${config.upiId}`
     : t("upiIncludedInQr");
@@ -498,6 +617,7 @@ function renderAmountInfo() {
   const selectedBooks = getSelectedBooks();
   const total = selectedBooks.reduce((sum, book) => sum + Number(book.price || 0), 0);
   const manualEnabled = Boolean(state.paymentConfig?.manualCheckout?.enabled && state.market.manualCheckoutEnabled);
+  const configuredMethods = getConfiguredPaymentMethodKeys();
 
   selectedCountEl.textContent = String(selectedBooks.length);
   selectedTotalEl.textContent = formatMarketCurrency(total);
@@ -509,7 +629,13 @@ function renderAmountInfo() {
   }
 
   if (!manualEnabled) {
-    amountInfo.textContent = t("manualDisabledAmount");
+    amountInfo.textContent = getManualCheckoutReasonMessage();
+    submitBtn.disabled = true;
+    return;
+  }
+
+  if (!configuredMethods.length) {
+    amountInfo.textContent = t("noConfiguredMethods");
     submitBtn.disabled = true;
     return;
   }
@@ -533,7 +659,10 @@ async function submitManualPayment() {
   const screenshot = screenshotInput.files[0];
 
   if (!state.paymentConfig?.manualCheckout?.enabled || !state.market.manualCheckoutEnabled) {
-    return setStatus(t("manualDisabledSubmit"), "warning");
+    return setStatus(getManualCheckoutReasonMessage(), "warning");
+  }
+  if (!paymentMethod || !getConfiguredPaymentMethodKeys().length) {
+    return setStatus(t("noConfiguredMethods"), "warning");
   }
   if (!selectedBooks.length) {
     return setStatus(t("selectProductWarning"), "warning");

@@ -4,7 +4,7 @@ const path = require("path");
 const uploadsRoot = path.resolve(
   process.env.UPLOAD_ROOT || path.join(__dirname, "..", "uploads")
 );
-const publicUploadFolders = Object.freeze(["covers", "creators"]);
+const publicUploadFolders = Object.freeze(["covers", "creators", "payment-rails"]);
 const privateUploadFolders = Object.freeze(["books", "previews", "payments"]);
 
 function normalizeSegment(segment) {

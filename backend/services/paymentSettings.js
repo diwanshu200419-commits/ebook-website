@@ -27,6 +27,13 @@ function normalizeText(value, fallback = "") {
   return normalized || fallback;
 }
 
+function hasConfiguredManualMethod(method = {}) {
+  return Boolean(
+    normalizeText(method?.upiId)
+    || normalizeText(method?.qrImage)
+  );
+}
+
 function buildSettingsSnapshot(settings = null) {
   return {
     merchantName: normalizeText(settings?.merchantName, "E-Book Market"),
@@ -108,6 +115,7 @@ async function updateFounderPaymentSettings(payload = {}) {
 function applyFounderPaymentSettings(config, settingsSnapshot) {
   const baseConfig = JSON.parse(JSON.stringify(config || {}));
   const settings = buildSettingsSnapshot(settingsSnapshot);
+  const availableMethods = [];
 
   baseConfig.founder = {
     merchantName: settings.merchantName,
@@ -116,20 +124,48 @@ function applyFounderPaymentSettings(config, settingsSnapshot) {
 
   baseConfig.methods = baseConfig.methods || {};
   ["UPI", "GPay", "PayPal"].forEach((methodKey) => {
-    baseConfig.methods[methodKey] = {
+    const mergedMethod = {
       ...(baseConfig.methods[methodKey] || {}),
       ...settings.methods[methodKey],
     };
+    mergedMethod.configured = hasConfiguredManualMethod(mergedMethod);
+    if (mergedMethod.configured) {
+      availableMethods.push(methodKey);
+    }
+    baseConfig.methods[methodKey] = {
+      ...mergedMethod,
+    };
   });
+
+  const marketAllowsManual = Boolean(baseConfig.manualCheckout?.enabled);
+  const founderAllowsManual = settings.manualCheckoutEnabled;
+  const hasConfiguredRail = availableMethods.length > 0;
+  const manualCheckoutEnabled = marketAllowsManual && founderAllowsManual && hasConfiguredRail;
+
+  let manualReasonCode = "enabled";
+  let manualNote = settings.supportNote || baseConfig.manualCheckout?.note || "";
+
+  if (!marketAllowsManual) {
+    manualReasonCode = "market_disabled";
+  } else if (!founderAllowsManual) {
+    manualReasonCode = "founder_paused";
+    manualNote = "Manual proof checkout is currently paused by the founder settings. Use Stripe card checkout until it is re-enabled.";
+  } else if (!hasConfiguredRail) {
+    manualReasonCode = "no_payment_rails";
+    manualNote = "Founder payment rails are not configured yet. Add a UPI ID or QR code in admin settings before using manual proof checkout.";
+  }
 
   baseConfig.manualCheckout = {
     ...(baseConfig.manualCheckout || {}),
-    enabled: Boolean(baseConfig.manualCheckout?.enabled) && settings.manualCheckoutEnabled,
-    founderToggleEnabled: settings.manualCheckoutEnabled,
-    note: settings.manualCheckoutEnabled
-      ? (settings.supportNote || baseConfig.manualCheckout?.note || "")
-      : "Manual proof checkout is currently paused by the founder settings. Use Stripe card checkout until it is re-enabled.",
+    enabled: manualCheckoutEnabled,
+    founderToggleEnabled: founderAllowsManual,
+    hasConfiguredRail,
+    availableMethods,
+    reasonCode: manualReasonCode,
+    note: manualNote,
   };
+
+  baseConfig.founder.availableMethods = availableMethods;
 
   return baseConfig;
 }

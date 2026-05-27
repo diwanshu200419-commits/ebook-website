@@ -5,7 +5,7 @@
   <title>Admin Command Center | E-Book Market</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Founder-grade admin command center for moderation, payouts, AI signals, creator verification, and marketplace growth operations." />
-  <link rel="stylesheet" href="admin.css?v=20260525-admin2" />
+  <link rel="stylesheet" href="admin.css?v=20260527-founder-rails" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
@@ -531,21 +531,63 @@
               <input id="paymentUpiId" type="text" placeholder="name@upi" />
             </label>
             <label class="crm-lab-field">
-              <span>UPI QR image</span>
-              <input id="paymentUpiQrImage" type="text" placeholder="assets/payment/gpay-qr.PNG or https://..." />
-            </label>
-            <label class="crm-lab-field">
               <span>Google Pay UPI ID</span>
               <input id="paymentGpayUpiId" type="text" placeholder="Optional Google Pay UPI ID" />
             </label>
-            <label class="crm-lab-field">
+            <div class="crm-lab-field payment-rail-card">
+              <span>UPI QR image</span>
+              <div class="payment-qr-admin-preview">
+                <div class="payment-qr-admin-frame">
+                  <img id="paymentUpiQrPreview" alt="UPI QR preview" hidden />
+                  <div id="paymentUpiQrEmpty" class="payment-qr-admin-empty">No UPI QR uploaded yet</div>
+                </div>
+                <div class="payment-qr-admin-actions">
+                  <div class="payment-qr-admin-buttons">
+                    <input id="paymentUpiQrFile" type="file" hidden accept="image/png,image/jpeg,image/webp" />
+                    <button id="paymentUpiQrUploadBtn" class="changes" type="button">Upload QR</button>
+                    <button id="paymentUpiQrClearBtn" class="ghost-action" type="button">Clear</button>
+                  </div>
+                  <input id="paymentUpiQrImage" type="text" placeholder="assets/payment/gpay-qr.PNG or https://..." />
+                  <small class="crm-lab-status">Use a direct image URL or upload a PNG/JPG/WEBP QR from your device.</small>
+                </div>
+              </div>
+            </div>
+            <div class="crm-lab-field payment-rail-card">
               <span>Google Pay QR image</span>
-              <input id="paymentGpayQrImage" type="text" placeholder="assets/payment/gpay-qr.PNG or https://..." />
-            </label>
-            <label class="crm-lab-field">
+              <div class="payment-qr-admin-preview">
+                <div class="payment-qr-admin-frame">
+                  <img id="paymentGpayQrPreview" alt="Google Pay QR preview" hidden />
+                  <div id="paymentGpayQrEmpty" class="payment-qr-admin-empty">No Google Pay QR uploaded yet</div>
+                </div>
+                <div class="payment-qr-admin-actions">
+                  <div class="payment-qr-admin-buttons">
+                    <input id="paymentGpayQrFile" type="file" hidden accept="image/png,image/jpeg,image/webp" />
+                    <button id="paymentGpayQrUploadBtn" class="changes" type="button">Upload QR</button>
+                    <button id="paymentGpayQrClearBtn" class="ghost-action" type="button">Clear</button>
+                  </div>
+                  <input id="paymentGpayQrImage" type="text" placeholder="assets/payment/gpay-qr.PNG or https://..." />
+                  <small class="crm-lab-status">Use a direct image URL or upload a Google Pay QR image from your device.</small>
+                </div>
+              </div>
+            </div>
+            <div class="crm-lab-field payment-rail-card payment-settings-wide">
               <span>PayPal QR image</span>
-              <input id="paymentPaypalQrImage" type="text" placeholder="assets/payment/paypal-qr.PNG or https://..." />
-            </label>
+              <div class="payment-qr-admin-preview">
+                <div class="payment-qr-admin-frame">
+                  <img id="paymentPaypalQrPreview" alt="PayPal QR preview" hidden />
+                  <div id="paymentPaypalQrEmpty" class="payment-qr-admin-empty">No PayPal QR uploaded yet</div>
+                </div>
+                <div class="payment-qr-admin-actions">
+                  <div class="payment-qr-admin-buttons">
+                    <input id="paymentPaypalQrFile" type="file" hidden accept="image/png,image/jpeg,image/webp" />
+                    <button id="paymentPaypalQrUploadBtn" class="changes" type="button">Upload QR</button>
+                    <button id="paymentPaypalQrClearBtn" class="ghost-action" type="button">Clear</button>
+                  </div>
+                  <input id="paymentPaypalQrImage" type="text" placeholder="assets/payment/paypal-qr.PNG or https://..." />
+                  <small class="crm-lab-status">Use a direct image URL or upload a PayPal QR image from your device.</small>
+                </div>
+              </div>
+            </div>
             <label class="crm-lab-field payment-settings-wide">
               <span>Buyer support note</span>
               <textarea id="paymentSupportNote" rows="4" placeholder="Add a short note buyers should see during checkout."></textarea>
@@ -586,8 +628,8 @@
     </main>
   </div>
 
-  <script src="../config.js?v=20260525-admin2"></script>
-  <script src="../auth.js?v=20260525-admin2"></script>
-  <script src="admin.js?v=20260525-admin2"></script>
+  <script src="../config.js?v=20260527-founder-rails"></script>
+  <script src="../auth.js?v=20260527-founder-rails"></script>
+  <script src="admin.js?v=20260527-founder-rails"></script>
 </body>
 </html>

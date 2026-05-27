@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="marketplace.css" />
-  <script src="config.js"></script>
-  <script src="marketplace-shell.js"></script>
+  <link rel="stylesheet" href="marketplace.css?v=20260527-founder-rails" />
+  <script src="config.js?v=20260527-founder-rails"></script>
+  <script src="marketplace-shell.js?v=20260527-founder-rails"></script>
 </head>
 <body class="marketplace-body">
   <div class="marketplace-page">
@@ -94,6 +94,12 @@
             </div>
             <p class="inline-note" id="checkoutMarketNote">Manual proof checkout is designed for India-first orders. Global buyers should use Stripe card checkout from the cart or product page.</p>
 
+            <div class="payment-founder-card">
+              <span class="hero-eyebrow compact">Founder payment owner</span>
+              <strong id="checkoutFounderMerchant">E-Book Market</strong>
+              <p class="inline-note" id="checkoutFounderSupport">Save your real founder payment note from admin settings so buyers know where they are paying.</p>
+            </div>
+
             <div class="field-shell">
               <label for="methodSelect" id="paymentMethodLabel">Payment method</label>
               <select id="methodSelect">
@@ -106,6 +112,7 @@
             <div class="payment-preview">
               <div>
                 <strong id="payInfo">Loading payment instructions...</strong>
+                <p class="inline-note" id="paymentMethodState"></p>
                 <p class="inline-note" id="amountInfo">Pay exact amount: ₹0</p>
               </div>
 
@@ -141,6 +148,6 @@
     </main>
   </div>
 
-  <script src="checkout.js"></script>
+  <script src="checkout.js?v=20260527-founder-rails"></script>
 </body>
 </html>

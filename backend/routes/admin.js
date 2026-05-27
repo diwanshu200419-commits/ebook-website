@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
 const { protect, authorize } = require("../middleware/auth");
 const Book = require("../models/book");
 const BookReview = require("../models/BookReview");
@@ -17,12 +19,73 @@ const {
 } = require("../services/lifecycleStrategies");
 const { getLaunchReadinessSummary } = require("../services/platformReadiness");
 const {
+  getFounderPaymentSettings,
   getFounderPaymentSettingsSnapshot,
   updateFounderPaymentSettings,
 } = require("../services/paymentSettings");
 const { syncBookAndCreatorRatings } = require("../services/reviewData");
 const { normalizeBooleanFlag } = require("../utils/bookCatalog");
 const { roundMoney } = require("../utils/revenue");
+const {
+  buildPublicUploadPath,
+  ensureUploadDir,
+  safeDeletePublicFile,
+} = require("../utils/uploads");
+
+const founderPaymentRailsUploadPath = ensureUploadDir("payment-rails");
+const founderPaymentMethodKeys = new Set(["UPI", "GPay", "PayPal"]);
+
+function safeFounderPaymentFilename(originalname, methodKey) {
+  const extension = path.extname(String(originalname || "")).toLowerCase();
+  const baseName = path
+    .basename(String(originalname || ""), extension)
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "")
+    .slice(0, 60);
+
+  const prefix = String(methodKey || "payment")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 20) || "payment";
+
+  return `${Date.now()}-${prefix}-${baseName || "qr"}${extension}`;
+}
+
+function isFounderPaymentRailPath(source) {
+  return /^\/uploads\/payment-rails\//i.test(String(source || "").trim());
+}
+
+function cleanupRetiredFounderPaymentRail(previousPath, nextPath = "") {
+  const currentPath = String(previousPath || "").trim();
+  if (!currentPath || currentPath === String(nextPath || "").trim()) {
+    return;
+  }
+
+  if (isFounderPaymentRailPath(currentPath)) {
+    safeDeletePublicFile(currentPath);
+  }
+}
+
+const founderPaymentAssetUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, founderPaymentRailsUploadPath),
+    filename: (req, file, cb) => {
+      const methodKey = String(req.body?.methodKey || "payment").trim();
+      cb(null, safeFounderPaymentFilename(file.originalname, methodKey));
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(String(file?.originalname || "")).toLowerCase();
+    const isImage = Boolean(file?.mimetype?.startsWith("image/"))
+      || [".jpg", ".jpeg", ".png", ".webp"].includes(extension);
+
+    if (!isImage) {
+      return cb(new Error("Only PNG, JPG, or WEBP QR images are allowed"), false);
+    }
+
+    return cb(null, true);
+  },
+}).single("qrImage");
 
 function buildTypeBreakdown(books = []) {
   const breakdown = books.reduce((accumulator, book) => {
@@ -151,10 +214,75 @@ router.get("/payment-settings", protect, authorize("admin"), async (req, res) =>
   }
 });
 
+router.post("/payment-settings/assets", protect, authorize("admin"), (req, res) => {
+  founderPaymentAssetUpload(req, res, async (uploadError) => {
+    if (uploadError instanceof multer.MulterError) {
+      return res.status(400).json({ success: false, message: uploadError.message });
+    }
+
+    if (uploadError) {
+      return res.status(400).json({ success: false, message: uploadError.message || "QR image upload failed" });
+    }
+
+    const methodKey = String(req.body?.methodKey || "").trim();
+    if (!founderPaymentMethodKeys.has(methodKey)) {
+      if (req.file?.filename) {
+        safeDeletePublicFile(buildPublicUploadPath("payment-rails", req.file.filename));
+      }
+      return res.status(400).json({ success: false, message: "Invalid payment method for QR upload" });
+    }
+
+    if (!req.file?.filename) {
+      return res.status(400).json({ success: false, message: "Upload a QR image first" });
+    }
+
+    try {
+      const settings = await getFounderPaymentSettings();
+      if (!settings) {
+        throw new Error("Could not load founder payment settings");
+      }
+
+      const previousQrImage = String(settings.methods?.[methodKey]?.qrImage || "").trim();
+      const nextQrImage = buildPublicUploadPath("payment-rails", req.file.filename);
+
+      settings.methods = settings.methods || {};
+      settings.methods[methodKey] = settings.methods[methodKey] || {};
+      settings.methods[methodKey].qrImage = nextQrImage;
+      await settings.save();
+
+      cleanupRetiredFounderPaymentRail(previousQrImage, nextQrImage);
+
+      const snapshot = await getFounderPaymentSettingsSnapshot(settings);
+      return res.json({
+        success: true,
+        message: `${methodKey} QR uploaded`,
+        asset: {
+          methodKey,
+          qrImage: nextQrImage,
+        },
+        settings: snapshot,
+      });
+    } catch (err) {
+      if (req.file?.filename) {
+        safeDeletePublicFile(buildPublicUploadPath("payment-rails", req.file.filename));
+      }
+      console.error("Upload Payment Asset Error:", err.message);
+      return res.status(500).json({ success: false, message: "Could not upload payment QR" });
+    }
+  });
+});
+
 router.put("/payment-settings", protect, authorize("admin"), async (req, res) => {
   try {
+    const previousSettings = await getFounderPaymentSettingsSnapshot();
     const settings = await updateFounderPaymentSettings(req.body || {});
     const snapshot = await getFounderPaymentSettingsSnapshot(settings);
+    founderPaymentMethodKeys.forEach((methodKey) => {
+      cleanupRetiredFounderPaymentRail(
+        previousSettings?.methods?.[methodKey]?.qrImage,
+        snapshot?.methods?.[methodKey]?.qrImage
+      );
+    });
     return res.json({
       success: true,
       message: "Payment settings updated",
