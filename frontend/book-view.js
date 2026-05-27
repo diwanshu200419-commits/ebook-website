@@ -36,6 +36,21 @@ const COPY = {
     bookPreview: "Book preview",
     showingCoverInstead: "Showing the book cover instead.",
     instantPreview: "Instant preview",
+    animatedPreview: "Animated preview",
+    previewModeBadge: "Preview mode",
+    previewUnlockedBadge: "Full access unlocked",
+    previewFreeBadge: "Open preview",
+    previewTextBadge: "Live sample",
+    previewLockedAccessBadge: "Full unlock after payment",
+    previewOpenAccessBadge: "Preview open now",
+    previewPagesBadge: "{count}-page preview",
+    previewAllPagesBadge: "Full reading view",
+    previewPagesSupport: "Previewing the first {count} of {total} pages. Buy the product to unlock the complete file.",
+    previewPagesSupportUnknown: "Previewing the opening {count} pages only. Buy the product to unlock the complete file.",
+    previewUnlockedSupport: "You have full access to this product, including the complete file and preview reader.",
+    previewFreeSupport: "This product is free to access, so the full preview is available inside the reader.",
+    previewTextSupport: "This product shows a live text sample before purchase. The full text unlocks after payment.",
+    previewFallbackSupport: "The preview reader is unavailable right now, so the cover is shown instead while access stays protected.",
     previewCouldNotLoad: "Preview could not be loaded, so the book thumbnail is shown instead.",
     ratingsPlaceholder: "Ratings and written reviews will appear here once the live product loads.",
     reviewSignalWarming: "Review signal warming up",
@@ -156,6 +171,21 @@ const COPY = {
     bookPreview: "Book preview",
     showingCoverInstead: "Filhaal book cover dikhaya ja raha hai.",
     instantPreview: "Instant preview",
+    animatedPreview: "Animated preview",
+    previewModeBadge: "Preview mode",
+    previewUnlockedBadge: "Full access unlocked",
+    previewFreeBadge: "Open preview",
+    previewTextBadge: "Live sample",
+    previewLockedAccessBadge: "Payment ke baad full unlock",
+    previewOpenAccessBadge: "Preview abhi open hai",
+    previewPagesBadge: "{count}-page preview",
+    previewAllPagesBadge: "Full reading view",
+    previewPagesSupport: "Pehle {count} of {total} pages preview me dikh rahe hain. Puri file unlock karne ke liye product buy kijiye.",
+    previewPagesSupportUnknown: "Sirf shuru ke {count} pages preview me dikh rahe hain. Puri file unlock karne ke liye product buy kijiye.",
+    previewUnlockedSupport: "Aapke paas is product ka full access hai, isliye complete file aur preview reader dono available hain.",
+    previewFreeSupport: "Yeh product free access me hai, isliye full preview reader ke andar available hai.",
+    previewTextSupport: "Yeh product purchase se pehle live text sample dikhata hai. Full text payment ke baad unlock hoga.",
+    previewFallbackSupport: "Preview reader abhi unavailable hai, isliye cover dikhaya ja raha hai aur access protected rahega.",
     previewCouldNotLoad: "Preview load nahin hua, isliye book thumbnail dikhaya ja raha hai.",
     ratingsPlaceholder: "Live product load hone ke baad ratings aur written reviews yahan dikhengi.",
     reviewSignalWarming: "Review signal warming up",
@@ -896,6 +926,17 @@ function renderManualBook() {
     fallbackKicker: t("previewUnavailable"),
     fallbackMessage: t("previewUnavailableNow"),
   });
+  renderPreviewChrome({
+    mode: "pdf",
+    book: {
+      price: 0,
+      previewPages: 3,
+      pageCount: 3,
+    },
+    access: {
+      canDownload: true,
+    },
+  });
   renderReviewPlaceholder({
     summaryText: t("demoReviewSummary"),
     scoreText: t("demoMode"),
@@ -1084,7 +1125,7 @@ function renderBook(book, access) {
   const creatorLink = buildCreatorLink(book.authorUsername);
   const cover = resolveAssetUrl(book.coverUrl || book.coverImage || "assets/covers/Ebook_AI.png");
   const previewUrl = canPreview
-    ? (resolveApiUrl(book.previewAccessUrl) || buildProtectedUrl(book.previewPath))
+    ? (resolveApiUrl(book.previewAccessUrl) || buildProtectedUrl(book.previewPath || `/api/books/${book._id}/preview`))
     : "";
   const downloadUrl = canDownload
     ? (resolveApiUrl(book.downloadAccessUrl) || buildProtectedUrl(book.downloadUrl || `/api/books/${book._id}/download`))
@@ -1109,22 +1150,17 @@ function renderBook(book, access) {
       kicker: canDownload ? t("unlockedContent") : t("previewExcerpt"),
       content: textPreview,
     });
+    renderPreviewChrome({
+      mode: "text",
+      book,
+      access,
+    });
     setBookNote(
       canDownload
         ? t("instantAccessUnlocked")
         : t("buyToUnlockFullContent"),
       "info"
     );
-  } else if (isPaid && !canDownload) {
-    renderViewerFallback({
-      cover,
-      kicker: token ? t("paymentRequired") : t("signInToPurchase"),
-      title: book.title || t("bookCover"),
-      message: token
-        ? t("paidTitleMessage")
-        : t("paidBookSignInMessage"),
-    });
-    setBookNote(t("lockedUntilPurchase"), "info");
   } else if (previewUrl) {
     renderViewerPdf({
       src: previewUrl,
@@ -1135,10 +1171,17 @@ function renderBook(book, access) {
         ? t("previewFallbackDownload")
         : t("previewFallbackCover"),
     });
+    renderPreviewChrome({
+      mode: "pdf",
+      book,
+      access,
+    });
     setBookNote(
       canDownload
         ? t("previewReadyDownload")
-        : t("previewReady"),
+        : isPaid
+          ? (token ? t("paidTitleMessage") : t("paidBookSignInMessage"))
+          : t("previewReady"),
       "info"
     );
   } else {
@@ -1149,6 +1192,11 @@ function renderBook(book, access) {
       message: canDownload
         ? t("missingPreviewDownload")
         : t("previewUnavailableCover"),
+    });
+    renderPreviewChrome({
+      mode: "fallback",
+      book,
+      access,
     });
     setBookNote(t("previewUnavailableNote"), "warning");
   }
@@ -1205,6 +1253,64 @@ function renderBook(book, access) {
   } else {
     setActionStatus("", "info");
   }
+}
+
+function renderPreviewChrome({
+  mode = "fallback",
+  book = {},
+  access = {},
+}) {
+  const modeBadge = document.getElementById("previewModeBadge");
+  const pageBadge = document.getElementById("previewPageBadge");
+  const accessBadge = document.getElementById("previewAccessBadge");
+  const supportCopy = document.getElementById("previewSupportCopy");
+
+  if (!modeBadge || !pageBadge || !accessBadge || !supportCopy) {
+    return;
+  }
+
+  const isPaid = Number(book.price || 0) > 0;
+  const canDownload = Boolean(access?.canDownload);
+  const previewPages = Math.max(Number(book.previewPages || 0), 0);
+  const pageCount = Math.max(Number(book.pageCount || 0), 0);
+
+  if (mode === "text") {
+    modeBadge.textContent = t("previewTextBadge");
+    pageBadge.textContent = t("animatedPreview");
+    accessBadge.textContent = canDownload ? t("previewUnlockedBadge") : t("previewLockedAccessBadge");
+    supportCopy.textContent = t("previewTextSupport");
+    return;
+  }
+
+  if (mode === "pdf") {
+    modeBadge.textContent = canDownload
+      ? t("previewUnlockedBadge")
+      : isPaid
+        ? t("previewModeBadge")
+        : t("previewFreeBadge");
+    pageBadge.textContent = previewPages > 0
+      ? fillTemplate(t("previewPagesBadge"), { count: previewPages })
+      : t("previewAllPagesBadge");
+    accessBadge.textContent = canDownload
+      ? t("previewOpenAccessBadge")
+      : isPaid
+        ? t("previewLockedAccessBadge")
+        : t("previewOpenAccessBadge");
+    supportCopy.textContent = canDownload
+      ? t("previewUnlockedSupport")
+      : previewPages > 0
+        ? fillTemplate(
+          pageCount > 0 ? t("previewPagesSupport") : t("previewPagesSupportUnknown"),
+          { count: previewPages, total: pageCount }
+        )
+        : t("previewFreeSupport");
+    return;
+  }
+
+  modeBadge.textContent = t("previewUnavailable");
+  pageBadge.textContent = t("animatedPreview");
+  accessBadge.textContent = canDownload ? t("previewUnlockedBadge") : t("previewLockedAccessBadge");
+  supportCopy.textContent = t("previewFallbackSupport");
 }
 
 async function submitReview(event) {

@@ -3,6 +3,7 @@ const Joi = require("joi");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
 const router = express.Router();
 
@@ -287,10 +288,14 @@ function buildCatalogFields(payload = {}) {
 
 function buildBookPayload(book, access) {
   const accessUrls = buildSignedBookAccessUrls(book, access);
+  const hasInlinePreviewAsset = isPdfLikeFile({
+    originalname: book.previewPath || book.filePath || "",
+    mimetype: "application/pdf",
+  });
   return serializeBook(book, {
     backendBaseUrl,
     includeFilePath: false,
-    previewUrl: access.canPreview && book.previewPath ? `/api/books/${book._id}/preview` : "",
+    previewUrl: access.canPreview && hasInlinePreviewAsset ? `/api/books/${book._id}/preview` : "",
     downloadUrl: access.canDownload ? `/api/books/${book._id}/download` : "",
     previewAccessUrl: accessUrls.previewAccessUrl,
     downloadAccessUrl: accessUrls.downloadAccessUrl,
@@ -424,8 +429,13 @@ async function getBookAccess(book, user) {
   const userId = user?._id || user?.id;
   const isOwner = Boolean(userId) && String(book.author) === String(userId);
   const isAdmin = user?.role === "admin";
-  const hasPublicPreview = Boolean(book.previewPath);
   const paidProduct = isPaidProduct(book);
+  const hasPreviewablePdf = isPdfLikeFile({
+    originalname: book.previewPath || book.filePath || "",
+    mimetype: "application/pdf",
+  });
+  const hasInlineTextPreview = Boolean(String(book.delivery?.previewText || book.delivery?.textContent || "").trim());
+  const hasPublicPreview = Boolean(book.previewPath || hasInlineTextPreview || hasPreviewablePdf);
 
   if (!paidProduct) {
     return {
@@ -470,6 +480,78 @@ async function getBookAccess(book, user) {
     canPreview: Boolean(purchaseExists) || hasPublicPreview,
     canDownload: Boolean(purchaseExists),
   };
+}
+
+async function ensurePreviewAsset(book) {
+  const existingPreviewPath = resolvePublicUploadPath(book.previewPath);
+  const previewExists = Boolean(existingPreviewPath && fs.existsSync(existingPreviewPath));
+  const sourceFilePath = resolvePublicUploadPath(book.filePath);
+  const sourceExists = Boolean(sourceFilePath && fs.existsSync(sourceFilePath));
+  const paidProduct = isPaidProduct(book);
+  const desiredPreviewPages = paidProduct
+    ? Math.min(normalizePreviewPages(book.previewPages || 3), 3)
+    : normalizePreviewPages(book.previewPages || 3);
+
+  if (previewExists && (!paidProduct || Number(book.previewPages || 0) === desiredPreviewPages)) {
+    return {
+      targetPath: existingPreviewPath,
+      previewPages: Number(book.previewPages || desiredPreviewPages || 0),
+      pageCount: Number(book.pageCount || 0),
+    };
+  }
+
+  if (!sourceExists || !isPdfLikeFile({ originalname: book.filePath || "", mimetype: "application/pdf" })) {
+    return {
+      targetPath: previewExists ? existingPreviewPath : "",
+      previewPages: Number(book.previewPages || 0),
+      pageCount: Number(book.pageCount || 0),
+    };
+  }
+
+  try {
+    const preview = await createBookPreview({
+      sourcePublicPath: book.filePath,
+      title: book.title,
+      isPaid: paidProduct,
+      previewPages: desiredPreviewPages,
+    });
+    const regeneratedPath = resolvePublicUploadPath(preview.previewPath || book.previewPath || book.filePath);
+    if (!regeneratedPath || !fs.existsSync(regeneratedPath)) {
+      return {
+        targetPath: previewExists ? existingPreviewPath : "",
+        previewPages: Number(book.previewPages || 0),
+        pageCount: Number(book.pageCount || 0),
+      };
+    }
+
+    const nextPreviewPath = preview.previewPath || book.previewPath || "";
+    const nextPreviewPages = Number(preview.previewPages || desiredPreviewPages || 0);
+    const nextPageCount = Number(preview.pageCount || book.pageCount || 0);
+    const changed =
+      nextPreviewPath !== String(book.previewPath || "")
+      || nextPreviewPages !== Number(book.previewPages || 0)
+      || nextPageCount !== Number(book.pageCount || 0);
+
+    if (changed) {
+      book.previewPath = nextPreviewPath;
+      book.previewPages = nextPreviewPages;
+      book.pageCount = nextPageCount;
+      await book.save();
+    }
+
+    return {
+      targetPath: regeneratedPath,
+      previewPages: nextPreviewPages,
+      pageCount: nextPageCount,
+    };
+  } catch (error) {
+    console.error("Ensure Preview Asset Error:", error.message);
+    return {
+      targetPath: previewExists ? existingPreviewPath : "",
+      previewPages: Number(book.previewPages || 0),
+      pageCount: Number(book.pageCount || 0),
+    };
+  }
 }
 
 function getReviewAccess(book, access, user) {
@@ -1179,15 +1261,15 @@ router.get("/:id/preview", async (req, res) => {
       });
     }
 
-    const targetPath = resolvePublicUploadPath(book.previewPath || book.filePath);
-    if (!targetPath) {
+    const previewAsset = await ensurePreviewAsset(book);
+    if (!previewAsset.targetPath) {
       return res.status(404).json({
         success: false,
         message: "Preview file not found",
       });
     }
 
-    return res.sendFile(targetPath, {
+    return res.sendFile(previewAsset.targetPath, {
       headers: {
         "Content-Type": "application/pdf",
         "Cache-Control": "private, max-age=3600",

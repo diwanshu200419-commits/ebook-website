@@ -699,7 +699,7 @@ function collectPayload() {
     language: document.getElementById("language").value,
     price,
     originalPrice: originalPrice > 0 ? originalPrice : price,
-    previewPages: Number(previewPagesInput?.value || 5),
+    previewPages: Number(previewPagesInput?.value || 3),
     bookAuthor: bookAuthorInput?.value.trim() || "",
     promptText: promptTextInput?.value.trim() || "",
     deliveryIncludes: deliveryIncludesInput?.value.trim() || "",
@@ -1346,7 +1346,7 @@ function saveDraft() {
     language: payload.language,
     price: String(payload.price || ""),
     originalPrice: String(payload.originalPrice || ""),
-    previewPages: String(payload.previewPages || "5"),
+    previewPages: String(payload.previewPages || "3"),
     bookAuthor: payload.bookAuthor,
     promptText: payload.promptText,
     deliveryIncludes: payload.deliveryIncludes,
@@ -1379,7 +1379,7 @@ function restoreDraft() {
     document.getElementById("language").value = draft.language || "English";
     document.getElementById("price").value = draft.price || "";
     if (originalPriceInput) originalPriceInput.value = draft.originalPrice || "";
-    if (previewPagesInput) previewPagesInput.value = draft.previewPages || "5";
+    if (previewPagesInput) previewPagesInput.value = draft.previewPages || "3";
     if (bookAuthorInput) bookAuthorInput.value = draft.bookAuthor || "";
     if (promptTextInput) promptTextInput.value = draft.promptText || "";
     if (deliveryIncludesInput) deliveryIncludesInput.value = draft.deliveryIncludes || "";
@@ -1414,7 +1414,7 @@ function resetForm(options = {}) {
     fileInput.value = "";
   }
   thumbnailInput.value = "";
-  if (previewPagesInput) previewPagesInput.value = "5";
+  if (previewPagesInput) previewPagesInput.value = "3";
   renderTags();
   updateRoyalty();
   updateDescriptionCounter();
