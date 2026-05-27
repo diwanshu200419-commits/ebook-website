@@ -27,6 +27,18 @@ function normalizeText(value, fallback = "") {
   return normalized || fallback;
 }
 
+function normalizeMethodSettings(method = null) {
+  if (!method) {
+    return {};
+  }
+
+  if (typeof method.toObject === "function") {
+    return method.toObject();
+  }
+
+  return { ...method };
+}
+
 function hasConfiguredManualMethod(method = {}) {
   return Boolean(
     normalizeText(method?.upiId)
@@ -42,15 +54,15 @@ function buildSettingsSnapshot(settings = null) {
     methods: {
       UPI: {
         ...DEFAULT_METHODS.UPI,
-        ...(settings?.methods?.UPI || {}),
+        ...normalizeMethodSettings(settings?.methods?.UPI),
       },
       GPay: {
         ...DEFAULT_METHODS.GPay,
-        ...(settings?.methods?.GPay || {}),
+        ...normalizeMethodSettings(settings?.methods?.GPay),
       },
       PayPal: {
         ...DEFAULT_METHODS.PayPal,
-        ...(settings?.methods?.PayPal || {}),
+        ...normalizeMethodSettings(settings?.methods?.PayPal),
       },
     },
   };
