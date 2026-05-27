@@ -19,6 +19,10 @@ async function getOrCreateCart(userId) {
   return cart;
 }
 
+function getCartCount(cart) {
+  return Array.isArray(cart?.items) ? cart.items.length : 0;
+}
+
 async function buildCartItems(cart) {
   const rawItems = Array.isArray(cart?.items)
     ? cart.items.map((item) => ({
@@ -64,7 +68,12 @@ router.get("/", protect, async (req, res) => {
     const cart = await getOrCreateCart(req.user.id);
     const items = await buildCartItems(cart);
     const total = items.reduce((sum, item) => sum + (item.priceAtAdd || 0), 0);
-    res.json({ success: true, items, total });
+    res.json({
+      success: true,
+      items,
+      total,
+      cartCount: items.length,
+    });
   } catch (err) {
     console.error("Get Cart Error:", err.message);
     res.status(500).json({ success: false, message: "Failed to load cart" });
@@ -103,6 +112,16 @@ router.post("/add", protect, async (req, res) => {
 
     const cart = await getOrCreateCart(req.user.id);
     const alreadyAdded = cart.items.some((item) => String(item.book) === String(book._id));
+    if (alreadyAdded) {
+      return res.status(200).json({
+        success: true,
+        added: false,
+        alreadyInCart: true,
+        cartCount: getCartCount(cart),
+        message: "Book is already in cart",
+      });
+    }
+
     if (!alreadyAdded) {
       cart.items.push({
         book: book._id,
@@ -112,7 +131,13 @@ router.post("/add", protect, async (req, res) => {
       await cart.save();
     }
 
-    res.status(201).json({ success: true, message: "Book added to cart" });
+    res.status(201).json({
+      success: true,
+      added: true,
+      alreadyInCart: false,
+      cartCount: getCartCount(cart),
+      message: "Book added to cart",
+    });
   } catch (err) {
     console.error("Add Cart Error:", err.message);
     res.status(500).json({ success: false, message: "Failed to add item to cart" });
@@ -128,7 +153,11 @@ router.delete("/:bookId", protect, async (req, res) => {
     if (cart.items.length !== before) {
       await cart.save();
     }
-    res.json({ success: true, message: "Item removed from cart" });
+    res.json({
+      success: true,
+      cartCount: getCartCount(cart),
+      message: "Item removed from cart",
+    });
   } catch (err) {
     console.error("Remove Cart Item Error:", err.message);
     res.status(500).json({ success: false, message: "Failed to remove cart item" });
@@ -140,7 +169,11 @@ router.delete("/", protect, async (req, res) => {
     const cart = await getOrCreateCart(req.user.id);
     cart.items = [];
     await cart.save();
-    res.json({ success: true, message: "Cart cleared" });
+    res.json({
+      success: true,
+      cartCount: 0,
+      message: "Cart cleared",
+    });
   } catch (err) {
     console.error("Clear Cart Error:", err.message);
     res.status(500).json({ success: false, message: "Failed to clear cart" });

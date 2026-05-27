@@ -515,7 +515,9 @@ async function fetchCart() {
   if (!response.ok) {
     throw new Error(data.message || "Failed to load cart");
   }
-  return data;
+  return typeof shell.normalizeCartPayload === "function"
+    ? shell.normalizeCartPayload(data)
+    : data;
 }
 
 async function fetchBook(bookId) {

@@ -61,6 +61,158 @@
     return repaired;
   }
 
+  function pickFirstString(...values) {
+    for (const value of values) {
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed && trimmed !== "[object Object]") {
+          return trimmed;
+        }
+      }
+    }
+    return "";
+  }
+
+  function pickFirstNumber(...values) {
+    for (const value of values) {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric)) {
+        return numeric;
+      }
+    }
+    return 0;
+  }
+
+  function looksLikeBookRecord(value) {
+    return Boolean(
+      value &&
+      typeof value === "object" &&
+      (
+        value._id ||
+        value.id ||
+        value.title ||
+        value.coverImage ||
+        value.coverUrl ||
+        value.cover ||
+        value.authorName ||
+        value.bookAuthor ||
+        value.category ||
+        value.language
+      )
+    );
+  }
+
+  function extractCartBookSource(item) {
+    const candidates = [
+      item?.book,
+      item?.bookDetails,
+      item?.bookData,
+      item?.product,
+      item?.productData,
+      item?.bookId,
+      item,
+    ];
+
+    return candidates.find((candidate) => looksLikeBookRecord(candidate)) || null;
+  }
+
+  function normalizeCartItem(item = {}) {
+    const bookSource = extractCartBookSource(item) || {};
+    const bookId = pickFirstString(
+      bookSource._id,
+      bookSource.id,
+      typeof item.book === "string" ? item.book : "",
+      typeof item.bookId === "string" ? item.bookId : "",
+      typeof item.productId === "string" ? item.productId : "",
+      item._id && !item.title ? item._id : ""
+    );
+    const cover = pickFirstString(
+      bookSource.coverImage,
+      bookSource.coverUrl,
+      bookSource.cover,
+      item.coverImage,
+      item.coverUrl,
+      item.cover
+    );
+    const priceAtAdd = pickFirstNumber(
+      item.priceAtAdd,
+      item.price,
+      bookSource.price,
+      0
+    );
+
+    return {
+      ...item,
+      book: {
+        _id: bookId,
+        id: bookId,
+        title: pickFirstString(bookSource.title, item.title, "Book"),
+        type: pickFirstString(bookSource.type, item.type, "Product"),
+        category: pickFirstString(bookSource.category, item.category, "Book"),
+        language: pickFirstString(bookSource.language, item.language),
+        price: pickFirstNumber(bookSource.price, item.price, priceAtAdd),
+        bookAuthor: pickFirstString(
+          bookSource.bookAuthor,
+          bookSource.authorName,
+          item.bookAuthor,
+          item.authorName,
+          "Creator resource"
+        ),
+        authorName: pickFirstString(
+          bookSource.authorName,
+          bookSource.bookAuthor,
+          item.authorName,
+          item.bookAuthor,
+          "Creator resource"
+        ),
+        coverImage: cover,
+        coverUrl: cover,
+        cover,
+      },
+      priceAtAdd,
+      addedAt: item.addedAt || item.createdAt || null,
+    };
+  }
+
+  function normalizeCartPayload(payload = {}) {
+    const rawItems = Array.isArray(payload.items)
+      ? payload.items
+      : Array.isArray(payload.cart?.items)
+        ? payload.cart.items
+        : Array.isArray(payload.data?.items)
+          ? payload.data.items
+          : [];
+
+    const items = rawItems
+      .map((item) => normalizeCartItem(item))
+      .filter((item) => item.book && (item.book._id || item.book.title));
+
+    const totalFromPayload = pickFirstNumber(
+      payload.total,
+      payload.cart?.total,
+      payload.data?.total,
+      payload.subtotal,
+      payload.cart?.subtotal
+    );
+    const total = totalFromPayload > 0
+      ? totalFromPayload
+      : items.reduce((sum, item) => sum + pickFirstNumber(item.priceAtAdd, item.book?.price), 0);
+
+    return {
+      ...payload,
+      items,
+      total,
+      cartCount: items.length,
+    };
+  }
+
+  function setVisibleCartCount(count) {
+    const safeCount = Math.max(Number(count || 0), 0);
+    document.querySelectorAll("[data-cart-count]").forEach((node) => {
+      node.textContent = String(safeCount);
+    });
+  }
+
   function getAuthHeaders(extra = {}) {
     if (!token) {
       return extra;
@@ -473,9 +625,7 @@
     }
 
     if (!token) {
-      countNodes.forEach((node) => {
-        node.textContent = "0";
-      });
+      setVisibleCartCount(0);
       return;
     }
 
@@ -484,14 +634,10 @@
         headers: getAuthHeaders(),
       });
       const data = await response.json();
-      const count = Array.isArray(data.items) ? data.items.length : 0;
-      countNodes.forEach((node) => {
-        node.textContent = String(count);
-      });
+      const count = normalizeCartPayload(data).cartCount;
+      setVisibleCartCount(count);
     } catch (error) {
-      countNodes.forEach((node) => {
-        node.textContent = "0";
-      });
+      setVisibleCartCount(0);
     }
   }
 
@@ -508,8 +654,11 @@
     escapeHTML,
     escapeAttribute,
     resolveAssetUrl,
+    normalizeCartItem,
+    normalizeCartPayload,
     refreshCartCount,
     refreshNotifications,
+    setVisibleCartCount,
     logout,
   };
 })();

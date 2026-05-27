@@ -1570,7 +1570,11 @@ async function addToCart(bookId) {
     resultsMeta.textContent = fillTemplate(t("addedToCartMeta"), {
       message: data.message || "Product added to cart.",
     });
-    bumpVisibleCartCount(1);
+    if (typeof shell.setVisibleCartCount === "function" && Number.isFinite(Number(data.cartCount))) {
+      shell.setVisibleCartCount(Number(data.cartCount));
+    } else if (data.added !== false) {
+      bumpVisibleCartCount(1);
+    }
     await shell.refreshCartCount?.();
     shell.refreshNotifications?.();
     setTimeout(() => {

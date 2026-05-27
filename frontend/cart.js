@@ -353,7 +353,9 @@ async function fetchCart() {
   if (!response.ok) {
     throw new Error(data.message || "Failed to load cart");
   }
-  return data;
+  return typeof shell.normalizeCartPayload === "function"
+    ? shell.normalizeCartPayload(data)
+    : data;
 }
 
 async function removeItem(bookId) {
@@ -365,6 +367,7 @@ async function removeItem(bookId) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || "Failed to remove item");
   }
+  return response.json().catch(() => ({}));
 }
 
 async function clearCart() {
@@ -376,12 +379,13 @@ async function clearCart() {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || "Failed to clear cart");
   }
+  return response.json().catch(() => ({}));
 }
 
 async function render() {
   try {
     const data = await fetchCart();
-    const items = (data.items || []).filter((item) => item.book);
+    const items = Array.isArray(data.items) ? data.items : [];
     const total = Number(data.total || 0);
 
     cartList.innerHTML = "";
@@ -404,6 +408,7 @@ async function render() {
     }
 
     items.forEach((item) => {
+      const bookId = String(item.book?._id || "");
       const cover = resolveAssetUrl(
         item.book?.coverImage || item.book?.cover,
         "assets/covers/Ebook_AI.png"
@@ -427,8 +432,14 @@ async function render() {
           </div>
         </div>
         <div class="product-actions" style="justify-content:flex-end;">
-          <a class="marketplace-ghost-button" href="book_view.html?id=${encodeURIComponent(item.book?._id || "")}">${escapeHTML(t("openProduct"))}</a>
-          <button class="marketplace-button" type="button" data-book-id="${escapeAttribute(item.book?._id || "")}">${escapeHTML(t("removeProduct"))}</button>
+          ${bookId
+            ? `<a class="marketplace-ghost-button" href="book_view.html?id=${encodeURIComponent(bookId)}">${escapeHTML(t("openProduct"))}</a>`
+            : ""
+          }
+          ${bookId
+            ? `<button class="marketplace-button" type="button" data-book-id="${escapeAttribute(bookId)}">${escapeHTML(t("removeProduct"))}</button>`
+            : ""
+          }
         </div>
       `;
       cartList.appendChild(row);
@@ -437,7 +448,10 @@ async function render() {
     cartList.querySelectorAll("[data-book-id]").forEach((button) => {
       button.addEventListener("click", async () => {
         try {
-          await removeItem(button.dataset.bookId);
+          const result = await removeItem(button.dataset.bookId);
+          if (typeof shell.setVisibleCartCount === "function" && Number.isFinite(Number(result?.cartCount))) {
+            shell.setVisibleCartCount(Number(result.cartCount));
+          }
           setStatus(t("removedSuccess"), "success");
           await render();
         } catch (error) {
@@ -575,7 +589,10 @@ function formatBaseCurrency(value) {
 
 clearBtn?.addEventListener("click", async () => {
   try {
-    await clearCart();
+    const result = await clearCart();
+    if (typeof shell.setVisibleCartCount === "function" && Number.isFinite(Number(result?.cartCount))) {
+      shell.setVisibleCartCount(Number(result.cartCount));
+    }
     setStatus(t("cartCleared"), "success");
     await render();
   } catch (error) {

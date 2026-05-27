@@ -937,7 +937,11 @@ async function addToCart(bookId) {
       throw new Error(data.message || t("unableToAddToCart"));
     }
 
-    bumpVisibleCartCount(1);
+    if (typeof window.StorefrontShell?.setVisibleCartCount === "function" && Number.isFinite(Number(data.cartCount))) {
+      window.StorefrontShell.setVisibleCartCount(Number(data.cartCount));
+    } else if (data.added !== false) {
+      bumpVisibleCartCount(1);
+    }
     setActionStatus(t("addedToCart"), "success");
     window.setTimeout(() => {
       window.location.href = "cart.html";
