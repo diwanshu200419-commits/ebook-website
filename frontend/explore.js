@@ -1047,6 +1047,15 @@ function buildProductCard(book, options = {}, index = 0) {
     : variant === "personalized"
       ? t("aiRankedMatch")
       : t("marketplaceListing");
+  const badgeValues = [
+    book.type || "Product",
+    book.category || "Book",
+    book.language || "",
+    book.subcategory || "",
+    book.isPremium ? "Premium" : (!isPaid ? "Free" : ""),
+  ].filter(Boolean);
+  const visibleBadges = spotlight ? badgeValues.slice(0, 4) : badgeValues;
+  const hiddenBadgeCount = Math.max(badgeValues.length - visibleBadges.length, 0);
   const statChips = [
     Number(book.salesCount || 0) > 0
       ? `${Number(book.salesCount || 0).toLocaleString("en-IN")} ${t("salesSuffix")}`
@@ -1054,7 +1063,7 @@ function buildProductCard(book, options = {}, index = 0) {
     Number(book.views || 0) > 0
       ? `${Number(book.views || 0).toLocaleString("en-IN")} ${t("viewsSuffix")}`
       : `${book.language || "English"} ${t("readySuffix")}`,
-    ratingCount > 0 ? `${ratingAverage.toFixed(1)}★ ${t("ratingChipSuffix")}` : `${book.type || "Product"}`,
+    ratingCount > 0 ? `${ratingAverage.toFixed(1)} ${t("ratingChipSuffix")}` : `${book.type || "Product"}`,
   ];
 
   const card = document.createElement("article");
@@ -1066,12 +1075,16 @@ function buildProductCard(book, options = {}, index = 0) {
     </div>
     <div class="product-body">
       <div class="product-badges">
-        <span class="product-badge">${escapeHTML(book.type || "Product")}</span>
-        <span class="product-badge">${escapeHTML(book.category || "Book")}</span>
-        ${book.language ? `<span class="product-badge language">${escapeHTML(book.language)}</span>` : ""}
-        ${book.subcategory ? `<span class="product-badge">${escapeHTML(book.subcategory)}</span>` : ""}
-        ${book.isPremium ? `<span class="product-badge premium">Premium</span>` : ""}
-        ${!isPaid ? `<span class="product-badge free">Free</span>` : ""}
+        ${visibleBadges.map((badge) => {
+          const safeBadge = String(badge || "");
+          const modifiers = [
+            safeBadge === "Premium" ? "premium" : "",
+            safeBadge === "Free" ? "free" : "",
+            safeBadge === (book.language || "") ? "language" : "",
+          ].filter(Boolean).join(" ");
+          return `<span class="product-badge${modifiers ? ` ${modifiers}` : ""}">${escapeHTML(safeBadge)}</span>`;
+        }).join("")}
+        ${hiddenBadgeCount > 0 ? `<span class="product-badge">+${hiddenBadgeCount}</span>` : ""}
       </div>
       <div class="product-copy">
         <span class="product-kicker">${escapeHTML(kicker)}</span>
@@ -1079,7 +1092,7 @@ function buildProductCard(book, options = {}, index = 0) {
         <p class="product-seller">${escapeHTML(book.bookAuthor || `${book.type || "Digital product"} by creator`)} - Sold by ${authorMarkup}</p>
         <p class="product-description">${escapeHTML(description)}</p>
       </div>
-      ${reason ? `<div class="product-reason">${escapeHTML(reason)}</div>` : ""}
+      ${reason ? `<div class="product-reason${spotlight ? " compact" : ""}">${escapeHTML(reason)}</div>` : ""}
       <div class="product-signal-row">
         ${statChips.map((chip) => `<span class="product-signal">${escapeHTML(chip)}</span>`).join("")}
       </div>

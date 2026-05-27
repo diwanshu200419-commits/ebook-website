@@ -824,16 +824,22 @@ select {
 }
 
 .product-card.is-spotlight {
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  gap: 24px;
-  padding: 20px;
-  align-items: stretch;
+  grid-template-columns: minmax(180px, 228px) minmax(0, 1fr);
+  gap: 28px;
+  padding: 22px;
+  align-items: start;
 }
 
 .product-body {
   display: grid;
   gap: 14px;
   min-width: 0;
+}
+
+.product-card.is-spotlight .product-body {
+  gap: 16px;
+  min-height: 100%;
+  align-content: start;
 }
 
 .product-cover {
@@ -856,17 +862,52 @@ select {
 }
 
 .product-card.is-spotlight .product-cover {
-  height: 100%;
-  min-height: 320px;
+  width: 100%;
+  max-width: 228px;
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  max-height: 304px;
+  justify-self: start;
+  align-self: start;
+  box-shadow: 0 18px 40px rgba(1, 8, 17, 0.34);
 }
 
 .product-card.is-spotlight .product-copy h3 {
-  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-size: clamp(1.45rem, 2.1vw, 2.2rem);
+  line-height: 1.04;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .product-card.is-spotlight .product-description {
+  max-width: 70ch;
   font-size: 0.96rem;
-  line-height: 1.78;
+  line-height: 1.72;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.product-card.is-spotlight .product-seller {
+  font-size: 0.94rem;
+}
+
+.product-card.is-spotlight .product-reason.compact {
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.product-card.is-spotlight .product-actions {
+  margin-top: auto;
+}
+
+.product-card.is-spotlight .product-actions .marketplace-button,
+.product-card.is-spotlight .product-actions .marketplace-ghost-button {
+  flex: 1 1 200px;
 }
 
 .is-loading-card {
