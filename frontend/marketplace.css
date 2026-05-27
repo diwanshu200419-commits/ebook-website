@@ -768,12 +768,16 @@ select {
   grid-column: span 4;
 }
 
+.results-grid.is-personalized .product-card.is-spotlight {
+  grid-column: 1 / -1;
+}
+
 .results-grid.is-personalized.is-sparse:not(.is-single) .product-card:first-child {
-  grid-column: span 7;
+  grid-column: 1 / -1;
 }
 
 .results-grid.is-personalized.is-sparse:not(.is-single) .product-card:not(:first-child) {
-  grid-column: span 5;
+  grid-column: span 4;
 }
 
 .results-grid.is-catalog.is-single .product-card,
