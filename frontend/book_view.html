@@ -42,6 +42,32 @@
       margin-left: 24px;
     }
 
+    .nav nav {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .nav a:hover {
+      color: #fff;
+    }
+
+    .nav-logout {
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .nav-logout:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
     .container {
       max-width: 1200px;
       margin: 40px auto;
@@ -848,8 +874,9 @@
 <body>
   <header class="nav">
     <div class="logo">E-BOOK MARKET</div>
-    <nav>
+    <nav id="topNav">
       <a href="index.html">Home</a>
+      <a href="explore.html">Explore</a>
       <a href="login.html">Login</a>
     </nav>
   </header>
@@ -963,6 +990,6 @@
     Preview and purchase status will appear here.
   </p>
 
-  <script src="book-view.js?v=20260527-preview-real"></script>
+  <script src="book-view.js?v=20260528-paid-flow-real"></script>
 </body>
 </html>

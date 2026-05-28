@@ -9,6 +9,9 @@ const bookViewState = {
     interfaceLanguage: localStorage.getItem("marketplace-interface-language") || "English",
     marketplaceLanguage: localStorage.getItem("marketplace-market-language") || "All",
   },
+  viewerMode: {
+    forceBuyerPreview: false,
+  },
 };
 
 const COPY = {
@@ -16,6 +19,12 @@ const COPY = {
     documentTitle: "Product | E-Book Market",
     recently: "Recently",
     requestFailed: "Request failed",
+    home: "Home",
+    exploreNav: "Explore",
+    loginNav: "Login",
+    adminPanel: "Admin",
+    creatorHub: "Dashboard",
+    logoutNav: "Logout",
     recommendationTitle: "Recommended for you",
     reviewsTitle: "Learner reviews",
     reviewRatingLabel: "Rating",
@@ -122,6 +131,12 @@ const COPY = {
     creatorUnlockedMessage: "You are viewing this product with creator access, so it is unlocked for you. Buyers still need to complete payment before download.",
     adminUnlockedMessage: "You are viewing this product with admin access, so it is unlocked for moderation. Buyers still need to complete payment before download.",
     buyerFlowProtected: "Buyer checkout remains protected",
+    buyerPreviewFlow: "Buyer Preview Flow",
+    buyerPreviewModeMessage: "Buyer preview mode is active. This is the protected storefront view regular buyers see before purchase.",
+    returnToAdminAccess: "Return to Admin Access",
+    returnToCreatorAccess: "Return to Creator Access",
+    adminDownload: "Admin Download",
+    creatorDownload: "Creator Download",
     openFreeProduct: "Open Free Product",
     unlockFreeContent: "Unlock Free Content",
     downloadFree: "Download Free",
@@ -151,6 +166,12 @@ const COPY = {
     documentTitle: "Product | E-Book Market",
     recently: "Abhi haal hi me",
     requestFailed: "Request failed",
+    home: "Home",
+    exploreNav: "Explore",
+    loginNav: "Login",
+    adminPanel: "Admin",
+    creatorHub: "Dashboard",
+    logoutNav: "Logout",
     recommendationTitle: "Aapke liye recommendations",
     reviewsTitle: "Learner reviews",
     reviewRatingLabel: "Rating",
@@ -257,6 +278,12 @@ const COPY = {
     creatorUnlockedMessage: "Aap is product ko creator access ke saath dekh rahe hain, isliye yeh aapke liye unlocked hai. Buyers ko download se pehle payment complete karna hoga.",
     adminUnlockedMessage: "Aap is product ko admin access ke saath dekh rahe hain, isliye yeh moderation ke liye unlocked hai. Buyers ko download se pehle payment complete karna hoga.",
     buyerFlowProtected: "Buyer checkout protected rahega",
+    buyerPreviewFlow: "Buyer preview flow",
+    buyerPreviewModeMessage: "Buyer preview mode active hai. Yeh wahi protected storefront view hai jo regular buyers purchase se pehle dekhte hain.",
+    returnToAdminAccess: "Admin access par wapas jaiye",
+    returnToCreatorAccess: "Creator access par wapas jaiye",
+    adminDownload: "Admin download",
+    creatorDownload: "Creator download",
     openFreeProduct: "Free product kholiye",
     unlockFreeContent: "Free content unlock kijiye",
     downloadFree: "Free download",
@@ -287,15 +314,22 @@ const COPY = {
 document.addEventListener("DOMContentLoaded", initBookView);
 
 async function initBookView() {
+  const params = new URLSearchParams(window.location.search);
+  bookViewState.viewerMode.forceBuyerPreview = params.get("buyerPreview") === "1";
   setupPreviewGuard();
   setupReviewForm();
   await loadViewerPreferences();
   applyInterfaceLanguage(bookViewState.preferences.interfaceLanguage);
+  renderTopNav();
   loadBookView();
 }
 
-function getToken() {
+function getStoredToken() {
   return localStorage.getItem("token");
+}
+
+function getToken() {
+  return bookViewState.viewerMode.forceBuyerPreview ? "" : getStoredToken();
 }
 
 function getCurrentUser() {
@@ -304,6 +338,71 @@ function getCurrentUser() {
   } catch {
     return null;
   }
+}
+
+function isPrivilegedUser(user = getCurrentUser()) {
+  return Boolean(user && ["admin", "creator", "author"].includes(String(user.role || "").toLowerCase()));
+}
+
+function renderTopNav() {
+  const nav = document.getElementById("topNav");
+  if (!nav) {
+    return;
+  }
+
+  const user = getCurrentUser();
+  const links = [
+    { href: "index.html", label: t("home") },
+    { href: "explore.html", label: t("exploreNav") },
+  ];
+
+  if (user?.role === "admin") {
+    links.push({ href: "admin/admin.html", label: t("adminPanel") });
+  } else if (user) {
+    links.push({ href: "dashboard/dashboard.html", label: t("creatorHub") });
+  } else {
+    links.push({ href: "login.html", label: t("loginNav") });
+  }
+
+  nav.innerHTML = links
+    .map((link) => `<a href="${escapeAttribute(link.href)}">${escapeHTML(link.label)}</a>`)
+    .join("");
+
+  if (user) {
+    const logoutButton = document.createElement("button");
+    logoutButton.type = "button";
+    logoutButton.className = "nav-logout";
+    logoutButton.textContent = t("logoutNav");
+    logoutButton.addEventListener("click", async () => {
+      const token = getStoredToken();
+      try {
+        await fetch(`${API_BASE}/api/auth/logout`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: "include",
+          keepalive: true,
+        });
+      } catch {
+        // Local cleanup below is the important part for logout.
+      }
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    });
+    nav.appendChild(logoutButton);
+  }
+}
+
+function toggleBuyerPreviewMode(forceEnabled) {
+  const params = new URLSearchParams(window.location.search);
+  if (forceEnabled) {
+    params.set("buyerPreview", "1");
+  } else {
+    params.delete("buyerPreview");
+  }
+
+  const nextQuery = params.toString();
+  window.location.href = `book_view.html${nextQuery ? `?${nextQuery}` : ""}`;
 }
 
 function rememberRecentProduct(book) {
@@ -350,7 +449,7 @@ function bumpVisibleCartCount(delta = 1) {
 }
 
 async function loadViewerPreferences() {
-  const token = getToken();
+  const token = getStoredToken();
   if (!token) {
     return;
   }
@@ -1113,6 +1212,8 @@ function renderBook(book, access) {
 
   const token = getToken();
   const user = getCurrentUser();
+  const storedPrivilegedUser = isPrivilegedUser(user);
+  const buyerPreviewMode = Boolean(bookViewState.viewerMode.forceBuyerPreview);
   const isPaid = Number(book.price || 0) > 0;
   const canDownload = Boolean(access?.canDownload);
   const canPreview = Boolean(access?.canPreview);
@@ -1202,7 +1303,11 @@ function renderBook(book, access) {
   }
 
   if (canDownload) {
-    downloadBtn.textContent = delivery.hasExternalUrl ? t("openProduct") : delivery.hasText && !delivery.hasFile ? t("unlockText") : t("download");
+    if (hasPrivilegedAccess) {
+      downloadBtn.textContent = access?.isAdmin ? t("adminDownload") : t("creatorDownload");
+    } else {
+      downloadBtn.textContent = delivery.hasExternalUrl ? t("openProduct") : delivery.hasText && !delivery.hasFile ? t("unlockText") : t("download");
+    }
     downloadBtn.onclick = () => {
       window.location.href = downloadUrl;
     };
@@ -1228,7 +1333,15 @@ function renderBook(book, access) {
   }
 
   if (cartBtn) {
-    if (isPaid && !canDownload) {
+    if (buyerPreviewMode && storedPrivilegedUser && isPaid) {
+      cartBtn.style.display = "block";
+      cartBtn.textContent = user?.role === "admin" ? t("returnToAdminAccess") : t("returnToCreatorAccess");
+      cartBtn.onclick = () => toggleBuyerPreviewMode(false);
+    } else if (hasPrivilegedAccess) {
+      cartBtn.style.display = "block";
+      cartBtn.textContent = t("buyerPreviewFlow");
+      cartBtn.onclick = () => toggleBuyerPreviewMode(true);
+    } else if (isPaid && !canDownload) {
       cartBtn.style.display = "block";
       cartBtn.textContent = token ? t("addToCart") : t("signInToAdd");
       cartBtn.onclick = token ? () => addToCart(book._id) : redirectToLogin;
@@ -1245,7 +1358,9 @@ function renderBook(book, access) {
     secondaryBtn.onclick = redirectToLogin;
   }
 
-  if (hasPrivilegedAccess) {
+  if (buyerPreviewMode && storedPrivilegedUser && isPaid) {
+    setActionStatus(t("buyerPreviewModeMessage"), "info");
+  } else if (hasPrivilegedAccess) {
     setActionStatus(
       `${access?.isAdmin ? t("adminUnlockedMessage") : t("creatorUnlockedMessage")} ${t("buyerFlowProtected")}`,
       "info"
