@@ -21,13 +21,48 @@
       background: radial-gradient(circle at top, #0b1020, #000);
       color: #fff;
       min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      width: 380px;
+      height: 380px;
+      border-radius: 999px;
+      filter: blur(80px);
+      opacity: 0.22;
+      pointer-events: none;
+      z-index: 0;
+      animation: ambientBlob 14s ease-in-out infinite alternate;
+    }
+
+    body::before {
+      top: -120px;
+      left: -80px;
+      background: rgba(56, 189, 248, 0.6);
+    }
+
+    body::after {
+      right: -120px;
+      bottom: 10vh;
+      background: rgba(139, 92, 246, 0.52);
+      animation-delay: 2s;
     }
 
     .nav {
-      padding: 22px 60px;
+      padding: 18px 60px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(3, 7, 18, 0.72);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .logo {
@@ -70,11 +105,13 @@
 
     .container {
       max-width: 1200px;
-      margin: 40px auto;
+      margin: 28px auto;
       display: grid;
       grid-template-columns: 1fr 2fr;
       gap: 40px;
       padding: 0 40px;
+      position: relative;
+      z-index: 1;
     }
 
     .info {
@@ -82,6 +119,9 @@
       backdrop-filter: blur(16px);
       border-radius: 22px;
       padding: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 24px 70px rgba(2, 6, 23, 0.34);
+      animation: surfaceRise 650ms ease both;
     }
 
     .info h1 {
@@ -101,13 +141,129 @@
       font-weight: 700;
       color: #10b981;
       margin-bottom: 20px;
+      text-shadow: 0 0 24px rgba(16, 185, 129, 0.24);
     }
 
     .desc {
       font-size: 14px;
       line-height: 1.7;
       color: #ccc;
-      margin-bottom: 30px;
+      margin-bottom: 24px;
+    }
+
+    .signal-shell {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .signal-header span {
+      display: inline-flex;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.14);
+      color: #c7d2fe;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .signal-card {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      display: grid;
+      gap: 6px;
+      min-height: 84px;
+      transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+    }
+
+    .signal-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(125, 211, 252, 0.22);
+      box-shadow: 0 16px 30px rgba(2, 6, 23, 0.24);
+    }
+
+    .signal-card strong {
+      font-size: 24px;
+      line-height: 1;
+      color: #f8fafc;
+    }
+
+    .signal-card span {
+      color: #9fb0cb;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .confidence-shell {
+      margin-bottom: 20px;
+    }
+
+    .confidence-card {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+      border-radius: 20px;
+      background:
+        linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(99, 102, 241, 0.1)),
+        rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .confidence-copy {
+      display: grid;
+      gap: 8px;
+    }
+
+    .confidence-kicker {
+      display: inline-flex;
+      width: max-content;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #dbeafe;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .confidence-copy p {
+      color: #d7def0;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .confidence-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .confidence-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #dbeafe;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
 
     .delivery-panel {
@@ -153,6 +309,12 @@
       font-weight: 600;
       cursor: pointer;
       margin-bottom: 12px;
+      transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+    }
+
+    .actions button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(17, 24, 39, 0.28);
     }
 
     .buy {
@@ -202,6 +364,7 @@
       isolation: isolate;
       border: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 0 30px 80px rgba(2, 6, 23, 0.38);
+      animation: surfaceRise 820ms ease both;
     }
 
     .viewer::before {
@@ -282,6 +445,52 @@
       font-size: 13px;
       line-height: 1.7;
       box-shadow: 0 20px 40px rgba(2, 6, 23, 0.26);
+    }
+
+    .preview-meter {
+      width: min(460px, 100%);
+      display: grid;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.66);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 40px rgba(2, 6, 23, 0.22);
+    }
+
+    .preview-meter-copy {
+      display: grid;
+      gap: 6px;
+    }
+
+    .preview-meter-copy strong {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #dbeafe;
+    }
+
+    .preview-meter-copy span {
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .preview-meter-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .preview-meter-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #38bdf8, #8b5cf6);
+      box-shadow: 0 0 26px rgba(56, 189, 248, 0.28);
+      animation: previewFillGlow 2.8s ease-in-out infinite alternate;
     }
 
     .viewer-frame,
@@ -446,6 +655,8 @@
       max-width: 1200px;
       margin: 10px auto 60px;
       padding: 0 40px;
+      position: relative;
+      z-index: 1;
     }
 
     .recommendations h2 {
@@ -501,6 +712,8 @@
       max-width: 1200px;
       margin: 0 auto 36px;
       padding: 0 40px;
+      position: relative;
+      z-index: 1;
     }
 
     .review-shell {
@@ -771,6 +984,10 @@
         grid-template-columns: 1fr;
       }
 
+      .signal-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .viewer {
         height: auto;
         min-height: 520px;
@@ -821,6 +1038,14 @@
         width: 100%;
       }
 
+      .preview-meter {
+        width: 100%;
+      }
+
+      .signal-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
       .review-shell {
         padding: 22px;
       }
@@ -829,6 +1054,35 @@
         min-width: 0;
         width: 100%;
         text-align: left;
+      }
+    }
+
+    @keyframes surfaceRise {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes ambientBlob {
+      from {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      to {
+        transform: translate3d(24px, -20px, 0) scale(1.08);
+      }
+    }
+
+    @keyframes previewFillGlow {
+      from {
+        filter: saturate(0.95) brightness(0.95);
+      }
+      to {
+        filter: saturate(1.2) brightness(1.08);
       }
     }
 
@@ -891,6 +1145,9 @@
         Learn skills, earn online, and build income streams while studying.
       </p>
 
+      <div class="signal-shell" id="marketSignals"></div>
+      <div class="confidence-shell" id="checkoutConfidence"></div>
+
       <div class="delivery-panel hidden" id="deliveryPanel"></div>
 
       <div class="actions">
@@ -910,6 +1167,7 @@
           <span class="preview-chip delay-2" id="previewAccessBadge">Full unlock after payment</span>
         </div>
         <p class="preview-support" id="previewSupportCopy">Preview status and access details will appear here.</p>
+        <div class="preview-meter" id="previewMeter"></div>
       </div>
 
       <div class="viewer-frame" id="viewerFrame">
@@ -990,6 +1248,6 @@
     Preview and purchase status will appear here.
   </p>
 
-  <script src="book-view.js?v=20260528-paid-flow-real"></script>
+  <script src="book-view.js?v=20260528-book-view-plus"></script>
 </body>
 </html>

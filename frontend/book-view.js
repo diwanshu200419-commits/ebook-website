@@ -25,6 +25,27 @@ const COPY = {
     adminPanel: "Admin",
     creatorHub: "Dashboard",
     logoutNav: "Logout",
+    marketplaceSignals: "Marketplace signals",
+    pagesMetric: "Pages",
+    viewsMetric: "Views",
+    downloadsMetric: "Downloads",
+    aiScoreMetric: "AI score",
+    ratingMetric: "Rating",
+    checkoutConfidenceTitle: "Checkout confidence",
+    checkoutConfidencePaid: "Buyers pay first, then the full file unlocks after approval.",
+    checkoutConfidenceFree: "This free product unlocks instantly for signed-in readers.",
+    checkoutConfidenceAdmin: "You are in moderation access. Buyer paywall stays active outside this session.",
+    checkoutConfidenceCreator: "You are in creator access. Buyer paywall stays active outside this session.",
+    checkoutConfidenceBuyerPreview: "Buyer preview mode is active, so this page is showing the real pre-purchase experience.",
+    previewMeterTitle: "Preview access",
+    previewMeterBuyer: "{count} of {total} pages are open before payment.",
+    previewMeterBuyerUnknown: "{count} preview pages are open before payment.",
+    previewMeterFull: "Full file is unlocked in this session.",
+    previewMeterFree: "This product is free, so the full reading experience is available.",
+    protectedCheckoutBadge: "Protected checkout",
+    livePreviewBadge: "Live preview",
+    approvalBadge: "AI approved",
+    digitalDeliveryBadge: "Digital delivery",
     recommendationTitle: "Recommended for you",
     reviewsTitle: "Learner reviews",
     reviewRatingLabel: "Rating",
@@ -172,6 +193,27 @@ const COPY = {
     adminPanel: "Admin",
     creatorHub: "Dashboard",
     logoutNav: "Logout",
+    marketplaceSignals: "Marketplace signals",
+    pagesMetric: "Pages",
+    viewsMetric: "Views",
+    downloadsMetric: "Downloads",
+    aiScoreMetric: "AI score",
+    ratingMetric: "Rating",
+    checkoutConfidenceTitle: "Checkout confidence",
+    checkoutConfidencePaid: "Buyers pehle payment karte hain, phir approval ke baad full file unlock hoti hai.",
+    checkoutConfidenceFree: "Yeh free product signed-in readers ke liye turant unlock ho jata hai.",
+    checkoutConfidenceAdmin: "Aap moderation access me hain. Is session ke bahar buyer paywall active rahega.",
+    checkoutConfidenceCreator: "Aap creator access me hain. Is session ke bahar buyer paywall active rahega.",
+    checkoutConfidenceBuyerPreview: "Buyer preview mode active hai, isliye yeh page real pre-purchase experience dikha raha hai.",
+    previewMeterTitle: "Preview access",
+    previewMeterBuyer: "Payment se pehle {total} me se {count} pages open hain.",
+    previewMeterBuyerUnknown: "Payment se pehle {count} preview pages open hain.",
+    previewMeterFull: "Is session me full file unlocked hai.",
+    previewMeterFree: "Yeh product free hai, isliye full reading experience available hai.",
+    protectedCheckoutBadge: "Protected checkout",
+    livePreviewBadge: "Live preview",
+    approvalBadge: "AI approved",
+    digitalDeliveryBadge: "Digital delivery",
     recommendationTitle: "Aapke liye recommendations",
     reviewsTitle: "Learner reviews",
     reviewRatingLabel: "Rating",
@@ -497,6 +539,13 @@ function formatCurrency(value) {
   return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
+function formatCompactNumber(value) {
+  return Number(value || 0).toLocaleString("en-IN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+}
+
 function formatReviewDate(value) {
   const date = new Date(value || Date.now());
   if (Number.isNaN(date.getTime())) {
@@ -612,6 +661,130 @@ function setReviewReportMessage(message = "", tone = "success") {
   element.className = message
     ? `review-report-message ${tone === "error" ? "error" : "success"}`
     : "review-report-message";
+}
+
+function renderMarketplaceSignals(book = {}) {
+  const shell = document.getElementById("marketSignals");
+  if (!shell) {
+    return;
+  }
+
+  const metrics = [
+    {
+      label: t("pagesMetric"),
+      value: Number(book.pageCount || 0) > 0 ? formatCompactNumber(book.pageCount) : "--",
+    },
+    {
+      label: t("viewsMetric"),
+      value: formatCompactNumber(book.views || 0),
+    },
+    {
+      label: t("downloadsMetric"),
+      value: formatCompactNumber(book.downloads || 0),
+    },
+    {
+      label: Number(book.ratingCount || 0) > 0 ? t("ratingMetric") : t("aiScoreMetric"),
+      value: Number(book.ratingCount || 0) > 0
+        ? `${Number(book.ratingAverage || 0).toFixed(1)}`
+        : `${Math.max(0, Number(book.aiScore || 0))}`,
+    },
+  ];
+
+  shell.innerHTML = `
+    <div class="signal-header">
+      <span>${escapeHTML(t("marketplaceSignals"))}</span>
+    </div>
+    <div class="signal-grid">
+      ${metrics.map((metric) => `
+        <article class="signal-card">
+          <strong>${escapeHTML(String(metric.value || "--"))}</strong>
+          <span>${escapeHTML(metric.label)}</span>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderCheckoutConfidence(book = {}, access = {}) {
+  const shell = document.getElementById("checkoutConfidence");
+  if (!shell) {
+    return;
+  }
+
+  const isPaid = Number(book.price || 0) > 0;
+  const canDownload = Boolean(access?.canDownload);
+  const storedPrivilegedUser = isPrivilegedUser();
+  const hasPrivilegedAccess = Boolean(
+    isPaid
+    && canDownload
+    && !access?.isPurchased
+    && (access?.isOwner || access?.isAdmin)
+  );
+
+  let message = isPaid ? t("checkoutConfidencePaid") : t("checkoutConfidenceFree");
+  if (bookViewState.viewerMode.forceBuyerPreview && storedPrivilegedUser && isPaid) {
+    message = t("checkoutConfidenceBuyerPreview");
+  } else if (hasPrivilegedAccess && access?.isAdmin) {
+    message = t("checkoutConfidenceAdmin");
+  } else if (hasPrivilegedAccess) {
+    message = t("checkoutConfidenceCreator");
+  }
+
+  const badges = [
+    t("protectedCheckoutBadge"),
+    t("livePreviewBadge"),
+    book.aiStatus === "approved" ? t("approvalBadge") : "",
+    t("digitalDeliveryBadge"),
+  ].filter(Boolean);
+
+  shell.innerHTML = `
+    <div class="confidence-card">
+      <div class="confidence-copy">
+        <span class="confidence-kicker">${escapeHTML(t("checkoutConfidenceTitle"))}</span>
+        <p>${escapeHTML(message)}</p>
+      </div>
+      <div class="confidence-badges">
+        ${badges.map((badge) => `<span class="confidence-badge">${escapeHTML(badge)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderPreviewMeter(book = {}, access = {}) {
+  const shell = document.getElementById("previewMeter");
+  if (!shell) {
+    return;
+  }
+
+  const isPaid = Number(book.price || 0) > 0;
+  const canDownload = Boolean(access?.canDownload);
+  const previewPages = Math.max(Number(book.previewPages || 0), 0);
+  const pageCount = Math.max(Number(book.pageCount || 0), 0);
+  const percent = pageCount > 0
+    ? Math.max(2, Math.min(100, (previewPages / pageCount) * 100))
+    : (canDownload ? 100 : 12);
+
+  let message = t("previewMeterFree");
+  if (isPaid && !canDownload) {
+    message = previewPages > 0
+      ? fillTemplate(
+        pageCount > 0 ? t("previewMeterBuyer") : t("previewMeterBuyerUnknown"),
+        { count: previewPages, total: pageCount || previewPages }
+      )
+      : t("previewMeterBuyerUnknown").replace("{count}", "0");
+  } else if (canDownload) {
+    message = t("previewMeterFull");
+  }
+
+  shell.innerHTML = `
+    <div class="preview-meter-copy">
+      <strong>${escapeHTML(t("previewMeterTitle"))}</strong>
+      <span>${escapeHTML(message)}</span>
+    </div>
+    <div class="preview-meter-track" aria-hidden="true">
+      <div class="preview-meter-fill" style="width:${percent}%;"></div>
+    </div>
+  `;
 }
 
 function renderViewerFallback({
@@ -959,6 +1132,9 @@ function renderFallback(message) {
     deliveryPanel.innerHTML = "";
     deliveryPanel.classList.add("hidden");
   }
+  renderMarketplaceSignals({});
+  renderCheckoutConfidence({}, {});
+  renderPreviewMeter({}, {});
   renderViewerFallback({
     cover: "assets/covers/Ebook_AI.png",
     kicker: t("unavailable"),
@@ -1018,6 +1194,14 @@ function renderManualBook() {
   document.getElementById("bookPrice").textContent = t("free");
   document.getElementById("bookDescription").textContent =
     t("demoDescription");
+  renderMarketplaceSignals({
+    pageCount: 3,
+    views: 0,
+    downloads: 0,
+    aiScore: 100,
+    ratingCount: 0,
+  });
+  renderCheckoutConfidence({ price: 0, aiStatus: "approved" }, { canDownload: true });
   renderViewerPdf({
     src: pdfPath,
     cover: "assets/covers/Ebook_AI.png",
@@ -1036,6 +1220,7 @@ function renderManualBook() {
       canDownload: true,
     },
   });
+  renderPreviewMeter({ price: 0, previewPages: 3, pageCount: 3 }, { canDownload: true });
   renderReviewPlaceholder({
     summaryText: t("demoReviewSummary"),
     scoreText: t("demoMode"),
@@ -1243,6 +1428,8 @@ function renderBook(book, access) {
     : `${escapeHTML(book.type || "Book")} &middot; ${escapeHTML(book.category || "Book")} &middot; ${escapeHTML(t("by"))} ${escapeHTML(book.authorName || t("unknown"))}`;
   price.textContent = isPaid ? formatCurrency(book.price) : t("free");
   description.textContent = book.description || "";
+  renderMarketplaceSignals(book);
+  renderCheckoutConfidence(book, access);
   rememberRecentProduct(book);
   renderDeliveryPanel(book, access);
 
@@ -1256,6 +1443,7 @@ function renderBook(book, access) {
       book,
       access,
     });
+    renderPreviewMeter(book, access);
     setBookNote(
       canDownload
         ? t("instantAccessUnlocked")
@@ -1277,6 +1465,7 @@ function renderBook(book, access) {
       book,
       access,
     });
+    renderPreviewMeter(book, access);
     setBookNote(
       canDownload
         ? t("previewReadyDownload")
@@ -1299,6 +1488,7 @@ function renderBook(book, access) {
       book,
       access,
     });
+    renderPreviewMeter(book, access);
     setBookNote(t("previewUnavailableNote"), "warning");
   }
 
