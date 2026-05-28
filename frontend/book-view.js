@@ -1,6 +1,7 @@
 const API_BASE = window.API_BASE || "";
 const CHECKOUT_NOTICE_KEY = "ebook-market-checkout-notice";
 const RECENT_PRODUCTS_KEY = "marketplace-recent-products";
+const SAVED_PRODUCTS_KEY = "marketplace-saved-products";
 const bookViewState = {
   bookId: "",
   book: null,
@@ -46,6 +47,22 @@ const COPY = {
     livePreviewBadge: "Live preview",
     approvalBadge: "AI approved",
     digitalDeliveryBadge: "Digital delivery",
+    saveForLater: "Save For Later",
+    savedForLater: "Saved",
+    removedFromSaved: "Removed from saved products.",
+    addedToSaved: "Saved to your marketplace list.",
+    shareProduct: "Share Product",
+    linkCopied: "Product link copied.",
+    shareFailed: "Could not share this product right now.",
+    creatorSpotlight: "Creator spotlight",
+    creatorSpotlightCopy: "See who listed this product and jump into the creator storefront.",
+    viewCreator: "View Creator",
+    listedIn: "Listed in",
+    productLanguage: "Language",
+    productFormat: "Format",
+    assetStatus: "Asset status",
+    premiumAsset: "Premium asset",
+    standardAsset: "Standard asset",
     recommendationTitle: "Recommended for you",
     reviewsTitle: "Learner reviews",
     reviewRatingLabel: "Rating",
@@ -214,6 +231,22 @@ const COPY = {
     livePreviewBadge: "Live preview",
     approvalBadge: "AI approved",
     digitalDeliveryBadge: "Digital delivery",
+    saveForLater: "Save for later",
+    savedForLater: "Saved",
+    removedFromSaved: "Product saved list se hata diya gaya.",
+    addedToSaved: "Product aapki marketplace list me save ho gaya.",
+    shareProduct: "Share product",
+    linkCopied: "Product link copy ho gaya.",
+    shareFailed: "Abhi product share nahin ho pa raha.",
+    creatorSpotlight: "Creator spotlight",
+    creatorSpotlightCopy: "Yeh product kisne list kiya hai dekhiye aur creator storefront par jaiye.",
+    viewCreator: "Creator dekhiye",
+    listedIn: "Listed in",
+    productLanguage: "Language",
+    productFormat: "Format",
+    assetStatus: "Asset status",
+    premiumAsset: "Premium asset",
+    standardAsset: "Standard asset",
     recommendationTitle: "Aapke liye recommendations",
     reviewsTitle: "Learner reviews",
     reviewRatingLabel: "Rating",
@@ -481,6 +514,62 @@ function rememberRecentProduct(book) {
   } catch (error) {
     console.error("Could not remember recent product:", error);
   }
+}
+
+function loadStoredCollection(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === "object") : [];
+  } catch {
+    return [];
+  }
+}
+
+function buildSavedProductSnapshot(book = {}) {
+  return {
+    _id: String(book._id || book.id || ""),
+    title: book.title || "Product",
+    type: book.type || "Product",
+    category: book.category || "Book",
+    language: book.language || "",
+    price: Number(book.discountPrice || book.price || 0),
+    originalPrice: Number(book.originalPrice || book.price || 0),
+    authorName: book.authorName || "Creator",
+    bookAuthor: book.bookAuthor || "",
+    coverImage: book.coverUrl || book.cover || book.coverImage || "assets/covers/Ebook_AI.png",
+    isPremium: Boolean(book.isPremium),
+    isFeatured: Boolean(book.isFeatured),
+    ratingAverage: Number(book.ratingAverage || 0),
+    ratingCount: Number(book.ratingCount || 0),
+    recommendationReason: book.recommendationReason || "",
+    savedAt: new Date().toISOString(),
+  };
+}
+
+function isBookSaved(bookId) {
+  const safeId = String(bookId || "").trim();
+  if (!safeId) {
+    return false;
+  }
+  return loadStoredCollection(SAVED_PRODUCTS_KEY).some((item) => String(item?._id || "") === safeId);
+}
+
+function setSavedState(book, shouldSave) {
+  const snapshot = buildSavedProductSnapshot(book);
+  if (!snapshot._id) {
+    return false;
+  }
+
+  const current = loadStoredCollection(SAVED_PRODUCTS_KEY);
+  const next = shouldSave
+    ? [
+      snapshot,
+      ...current.filter((item) => String(item?._id || "") !== snapshot._id),
+    ].slice(0, 24)
+    : current.filter((item) => String(item?._id || "") !== snapshot._id);
+
+  localStorage.setItem(SAVED_PRODUCTS_KEY, JSON.stringify(next));
+  return true;
 }
 
 function bumpVisibleCartCount(delta = 1) {
@@ -785,6 +874,92 @@ function renderPreviewMeter(book = {}, access = {}) {
       <div class="preview-meter-fill" style="width:${percent}%;"></div>
     </div>
   `;
+}
+
+function renderCreatorSpotlight(book = {}) {
+  const shell = document.getElementById("creatorSpotlight");
+  if (!shell) {
+    return;
+  }
+
+  const creatorLink = buildCreatorLink(book.authorUsername);
+  const statusLabel = book.isPremium ? t("premiumAsset") : t("standardAsset");
+  const pills = [
+    { label: t("listedIn"), value: book.category || "Book" },
+    { label: t("productLanguage"), value: book.language || "English" },
+    { label: t("productFormat"), value: book.type || "Book" },
+    { label: t("assetStatus"), value: statusLabel },
+  ];
+
+  shell.innerHTML = `
+    <div class="creator-card">
+      <div class="creator-card-copy">
+        <span class="creator-kicker">${escapeHTML(t("creatorSpotlight"))}</span>
+        <strong>${escapeHTML(book.authorName || "Creator")}</strong>
+        <p>${escapeHTML(t("creatorSpotlightCopy"))}</p>
+      </div>
+      <div class="creator-pill-grid">
+        ${pills.map((pill) => `
+          <div class="creator-pill">
+            <span>${escapeHTML(pill.label)}</span>
+            <strong>${escapeHTML(String(pill.value || "--"))}</strong>
+          </div>
+        `).join("")}
+      </div>
+      ${creatorLink ? `<a class="creator-link" href="${escapeAttribute(creatorLink)}">${escapeHTML(t("viewCreator"))}</a>` : ""}
+    </div>
+  `;
+}
+
+function updateQuickActionButtons(book = {}) {
+  const saveBtn = document.getElementById("saveProductBtn");
+  const shareBtn = document.getElementById("shareProductBtn");
+  if (!saveBtn || !shareBtn || !book?._id) {
+    return;
+  }
+
+  const syncSaveLabel = () => {
+    const saved = isBookSaved(book._id);
+    saveBtn.textContent = saved ? t("savedForLater") : t("saveForLater");
+    saveBtn.classList.toggle("is-active", saved);
+  };
+
+  syncSaveLabel();
+
+  saveBtn.onclick = () => {
+    const currentlySaved = isBookSaved(book._id);
+    setSavedState(book, !currentlySaved);
+    syncSaveLabel();
+    setActionStatus(!currentlySaved ? t("addedToSaved") : t("removedFromSaved"), "success");
+  };
+
+  shareBtn.onclick = async () => {
+    const shareUrl = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: book.title || "Marketplace product",
+          text: book.description || "",
+          url: shareUrl,
+        });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = shareUrl;
+        textarea.setAttribute("readonly", "readonly");
+        textarea.style.position = "absolute";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setActionStatus(t("linkCopied"), "success");
+    } catch {
+      setActionStatus(t("shareFailed"), "error");
+    }
+  };
 }
 
 function renderViewerFallback({
@@ -1135,6 +1310,7 @@ function renderFallback(message) {
   renderMarketplaceSignals({});
   renderCheckoutConfidence({}, {});
   renderPreviewMeter({}, {});
+  renderCreatorSpotlight({});
   renderViewerFallback({
     cover: "assets/covers/Ebook_AI.png",
     kicker: t("unavailable"),
@@ -1202,6 +1378,14 @@ function renderManualBook() {
     ratingCount: 0,
   });
   renderCheckoutConfidence({ price: 0, aiStatus: "approved" }, { canDownload: true });
+  renderCreatorSpotlight({
+    authorName: "E-Book Market",
+    authorUsername: "",
+    category: "Demo",
+    language: "English",
+    type: "Book",
+    isPremium: false,
+  });
   renderViewerPdf({
     src: pdfPath,
     cover: "assets/covers/Ebook_AI.png",
@@ -1235,6 +1419,16 @@ function renderManualBook() {
   document.getElementById("secondaryBtn").onclick = () => {
     window.location.href = "explore.html";
   };
+  updateQuickActionButtons({
+    _id: "demo-side-hustles",
+    title: "Side Hustles for Students",
+    type: "Book",
+    category: "Demo",
+    language: "English",
+    price: 0,
+    authorName: "E-Book Market",
+    coverUrl: "assets/covers/Ebook_AI.png",
+  });
   setActionStatus("", "info");
   renderRecommendations([]);
 }
@@ -1430,7 +1624,9 @@ function renderBook(book, access) {
   description.textContent = book.description || "";
   renderMarketplaceSignals(book);
   renderCheckoutConfidence(book, access);
+  renderCreatorSpotlight(book);
   rememberRecentProduct(book);
+  updateQuickActionButtons(book);
   renderDeliveryPanel(book, access);
 
   if (isTextPreviewable) {
