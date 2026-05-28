@@ -452,25 +452,34 @@ function renderReviewFallback(books = []) {
 }
 
 function hydrateHeroCards(trendingBooks = [], newestBooks = []) {
+  const primary = document.getElementById("heroPrimaryCard");
   const secondary = document.getElementById("heroSecondaryCard");
   const tertiary = document.getElementById("heroTertiaryCard");
   const candidates = dedupeBooks([
     ...newestBooks,
     ...trendingBooks,
-  ]).slice(0, 2);
+  ]);
 
-  if (secondary && candidates[0]) {
-    applyHeroProductCard(secondary, candidates[0], {
+  if (primary && candidates[0]) {
+    applyHeroProductCard(primary, candidates[0], {
+      badge: candidates[0].isFeatured ? "FEATURED LIVE" : formatCurrencyOrFree(candidates[0].price),
+      action: "Open Book",
+      fallbackMeta: "Marketplace verified",
+    });
+  }
+
+  if (secondary && candidates[1]) {
+    applyHeroProductCard(secondary, candidates[1], {
       badge: "NEW DROP",
-      action: "Explore Now ->",
+      action: "Explore Now",
       fallbackMeta: "Live creator product",
     });
   }
 
-  if (tertiary && candidates[1]) {
-    applyHeroProductCard(tertiary, candidates[1], {
-      badge: candidates[1].isFeatured ? "FEATURED" : "LIVE PRODUCT",
-      action: "Open Book ->",
+  if (tertiary && candidates[2]) {
+    applyHeroProductCard(tertiary, candidates[2], {
+      badge: candidates[2].isFeatured ? "FEATURED" : "LIVE PRODUCT",
+      action: "Open Book",
       fallbackMeta: "Marketplace approved",
     });
   }
@@ -498,7 +507,7 @@ function applyHeroProductCard(card, book, options = {}) {
     small.textContent = options.fallbackMeta || `${formatCompactNumber(book.views || 0)} views`;
   }
   if (button) {
-    button.textContent = options.action || "Open Book ->";
+    button.textContent = options.action || "Open Book";
   }
 }
 

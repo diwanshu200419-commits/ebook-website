@@ -145,6 +145,25 @@ async function main() {
     upiId: paymentConfig.data.methods?.UPI?.upiId || "",
   });
 
+  const homepageResponse = await fetch(`${BASE_URL}/index.html`, { cache: "no-store" });
+  const homepageHtml = await homepageResponse.text();
+  assert(homepageResponse.ok, "Homepage request failed");
+  assert(homepageHtml.includes('id="heroPrimaryCard"'), "Homepage hero card missing");
+  assert(homepageHtml.includes('href="explore.html" class="book-card featured hero-tilt-card" id="heroPrimaryCard"'), "Homepage hero fallback link is not safe");
+  pushCheck("homepage fallback", true, {
+    status: homepageResponse.status,
+    heroFallbackSafe: true,
+  });
+
+  const homepageScriptResponse = await fetch(`${BASE_URL}/script.js`, { cache: "no-store" });
+  const homepageScript = await homepageScriptResponse.text();
+  assert(homepageScriptResponse.ok, "Homepage script request failed");
+  assert(homepageScript.includes('const primary = document.getElementById("heroPrimaryCard");'), "Homepage hero hydration is missing");
+  pushCheck("homepage hydration", true, {
+    status: homepageScriptResponse.status,
+    heroHydrationLive: true,
+  });
+
   console.log(JSON.stringify(report, null, 2));
 }
 
