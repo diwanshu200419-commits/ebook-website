@@ -3,10 +3,16 @@ const API_BASE = window.API_BASE || "";
 const HOMEPAGE_STATE = {
   trendingBooks: [],
   newestBooks: [],
+  summary: {
+    totalProducts: 0,
+    totalPaidProducts: 0,
+    totalCategories: 0,
+  },
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   initNavbar();
+  initPrimaryCtas();
   initVisualMotion();
   loadHomepageData();
 });
@@ -62,6 +68,57 @@ function initNavbar() {
   });
 }
 
+function getStoredSession() {
+  const token = localStorage.getItem("token");
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch {
+    user = null;
+  }
+
+  return { token, user };
+}
+
+function initPrimaryCtas() {
+  const { token, user } = getStoredSession();
+  const exploreBtn = document.getElementById("heroExploreBtn");
+  const creatorBtn = document.getElementById("heroCreatorBtn");
+  const creatorCtaBtn = document.getElementById("creatorCtaBtn");
+
+  if (exploreBtn) {
+    exploreBtn.href = token ? "explore.html" : "#featured";
+    exploreBtn.textContent = token ? "Open Marketplace" : "Explore Books";
+  }
+
+  if (creatorBtn) {
+    if (!token) {
+      creatorBtn.href = "register.html";
+      creatorBtn.textContent = "Become a Creator";
+    } else if (user?.role === "admin") {
+      creatorBtn.href = "admin/admin.html";
+      creatorBtn.textContent = "Open Admin";
+    } else {
+      creatorBtn.href = "dashboard/dashboard.html";
+      creatorBtn.textContent = "Open Dashboard";
+    }
+  }
+
+  if (creatorCtaBtn) {
+    if (!token) {
+      creatorCtaBtn.href = "register.html";
+      creatorCtaBtn.textContent = "Start Creating Now";
+    } else if (user?.role === "admin") {
+      creatorCtaBtn.href = "admin/admin.html";
+      creatorCtaBtn.textContent = "Open Admin Command Center";
+    } else {
+      creatorCtaBtn.href = "dashboard/upload.html";
+      creatorCtaBtn.textContent = "Launch Creator Studio";
+    }
+  }
+}
+
 function initVisualMotion() {
   refreshInteractiveCards();
 
@@ -106,20 +163,36 @@ async function loadHomepageData() {
 
     HOMEPAGE_STATE.trendingBooks = trendingBooks;
     HOMEPAGE_STATE.newestBooks = newestBooks;
+    HOMEPAGE_STATE.summary = buildHomepageSummary(trendingResponse, trendingBooks, newestBooks);
 
     renderCategories(trendingResponse.filters?.categories || []);
+    renderHeroMetrics(HOMEPAGE_STATE.summary);
     renderFeaturedBooks(buildFeaturedSelection(trendingBooks, newestBooks));
     renderFreshLaunches(buildFreshSelection(newestBooks, trendingBooks));
     hydrateHeroCards(trendingBooks, newestBooks);
     await renderReviewProof(buildFeedbackCandidates(trendingBooks, newestBooks));
+    setHeroStatus("Live marketplace rails are active and synced to approved catalog data.", "success");
   } catch (error) {
     console.error("Homepage data failed:", error);
     renderCategories([]);
+    renderHeroMetrics();
     renderFeaturedBooks([]);
     renderFreshLaunches([]);
     hydrateHeroCards([], []);
     renderReviewFallback();
+    setHeroStatus("Marketplace data is taking longer to sync. You can still explore the live catalog.", "warning");
   }
+}
+
+function buildHomepageSummary(response = {}, trendingBooks = [], newestBooks = []) {
+  const merged = dedupeBooks([...trendingBooks, ...newestBooks]);
+  const categories = Array.isArray(response.filters?.categories) ? response.filters.categories : [];
+
+  return {
+    totalProducts: Number(response.summary?.totalBooks || merged.length || 0),
+    totalPaidProducts: merged.filter((book) => Number(book.price || 0) > 0).length,
+    totalCategories: Number(response.summary?.totalCategories || categories.length || 0),
+  };
 }
 
 async function fetchJson(path) {
@@ -244,14 +317,38 @@ function renderCategories(categories = []) {
   }
 
   container.innerHTML = categories.slice(0, 8).map((category) => `
-    <div class="category-card">
+    <a class="category-card" href="explore.html?category=${encodeURIComponent(category.name || "")}">
       <div class="category-icon">${escapeHTML(iconMap[category.name] || String(category.name || "OT").slice(0, 2).toUpperCase())}</div>
       <h3>${escapeHTML(category.name)}</h3>
       <p>${Number(category.count || 0).toLocaleString("en-IN")} live books</p>
-    </div>
+    </a>
   `).join("");
 
   refreshInteractiveCards(container);
+}
+
+function renderHeroMetrics(summary = HOMEPAGE_STATE.summary) {
+  setMetric("heroMetricProducts", summary.totalProducts);
+  setMetric("heroMetricPaid", summary.totalPaidProducts);
+  setMetric("heroMetricCategories", summary.totalCategories);
+}
+
+function setMetric(id, value) {
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
+  element.textContent = Number(value || 0).toLocaleString("en-IN");
+}
+
+function setHeroStatus(message, tone = "info") {
+  const element = document.getElementById("heroStatus");
+  if (!element) {
+    return;
+  }
+
+  element.textContent = message;
+  element.className = `hero-status tone-${tone}`;
 }
 
 function renderFeaturedBooks(books = []) {
@@ -288,7 +385,7 @@ function renderFeaturedBooks(books = []) {
           <div class="featured-card-copy">
             <span class="card-kicker">${escapeHTML(book.isFeatured ? "Featured live" : "Marketplace live")}</span>
             <h3>${escapeHTML(book.title)}</h3>
-            <p>${escapeHTML(book.category || "Book")} • ${authorMarkup}</p>
+            <p>${escapeHTML(book.category || "Book")} - ${authorMarkup}</p>
             <div class="card-signal-row">
               <span class="rating-pill">${buildStarRow(book.ratingAverage)} ${escapeHTML(formatRatingLabel(book))}</span>
               <span class="mini-signal">${escapeHTML(formatCurrencyOrFree(book.price))}</span>
@@ -304,6 +401,7 @@ function renderFeaturedBooks(books = []) {
   }).join("");
 
   refreshInteractiveCards(container);
+  upgradeFeaturedCards(container);
 }
 
 function renderFreshLaunches(books = []) {
@@ -344,6 +442,7 @@ function renderFreshLaunches(books = []) {
   `).join("");
 
   refreshInteractiveCards(container);
+  upgradeFreshLaunchCards(container);
 }
 
 async function renderReviewProof(books = []) {
@@ -397,13 +496,14 @@ async function renderReviewProof(books = []) {
         <div>
           <strong>${escapeHTML(review.reviewer?.name || "Marketplace reader")}</strong>
           <p>${escapeHTML(book.title || "Marketplace product")}</p>
-          <p>${escapeHTML(book.category || "Digital product")} • ${escapeHTML(formatCurrencyOrFree(book.price))}</p>
+          <p>${escapeHTML(book.category || "Digital product")} - ${escapeHTML(formatCurrencyOrFree(book.price))}</p>
         </div>
       </div>
     </article>
   `).join("");
 
   refreshInteractiveCards(container);
+  upgradeReviewProofCards(container);
 }
 
 function renderReviewFallback(books = []) {
@@ -449,6 +549,176 @@ function renderReviewFallback(books = []) {
   `).join("");
 
   refreshInteractiveCards(container);
+  upgradeReviewProofCards(container);
+}
+
+function extractBookIdFromHref(href = "") {
+  try {
+    const target = new URL(href, window.location.origin);
+    return target.searchParams.get("id") || "";
+  } catch {
+    return "";
+  }
+}
+
+function bindHomepageProductActions(root = document) {
+  root.querySelectorAll("[data-home-cart-button]").forEach((button) => {
+    if (button.dataset.bound === "true") {
+      return;
+    }
+
+    button.dataset.bound = "true";
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      const bookId = button.getAttribute("data-home-cart-button");
+      if (!bookId) {
+        return;
+      }
+
+      const mode = (button.dataset.mode || "cart").toLowerCase();
+      if (mode === "open") {
+        window.location.href = `book_view.html?id=${encodeURIComponent(bookId)}`;
+        return;
+      }
+      if (mode === "cart-ready") {
+        window.location.href = "cart.html";
+        return;
+      }
+
+      await addHomepageCart(bookId, button);
+    });
+  });
+}
+
+function upgradeFeaturedCards(root = document) {
+  root.querySelectorAll(".featured-card").forEach((card) => {
+    const copyText = card.querySelector(".featured-card-copy p");
+    const footer = card.querySelector(".featured-card-actions");
+    const link = footer?.querySelector('a[href*="book_view.html?id="]');
+    if (copyText) {
+      copyText.innerHTML = copyText.innerHTML.replace(/â€¢|•/g, "-");
+    }
+    if (!footer || !link || footer.querySelector(".inline-actions")) {
+      return;
+    }
+
+    const bookId = extractBookIdFromHref(link.href);
+    const priceBadge = card.querySelector(".mini-signal");
+    const isPaid = !/free/i.test(priceBadge?.textContent || "");
+    const actions = document.createElement("div");
+    actions.className = "inline-actions";
+    link.parentNode?.insertBefore(actions, link);
+    actions.appendChild(link);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ghost-action-btn";
+    button.setAttribute("data-home-cart-button", bookId);
+    button.dataset.mode = isPaid ? "cart" : "open";
+    button.textContent = isPaid ? "Add To Cart" : "Open Free";
+    actions.appendChild(button);
+  });
+
+  bindHomepageProductActions(root);
+}
+
+function upgradeFreshLaunchCards(root = document) {
+  root.querySelectorAll(".launch-card").forEach((card) => {
+    const link = card.querySelector('.launch-copy a[href*="book_view.html?id="]');
+    if (!link || link.parentElement?.querySelector(".inline-actions")) {
+      return;
+    }
+
+    const bookId = extractBookIdFromHref(link.href);
+    const metaPrice = Array.from(card.querySelectorAll(".launch-meta span")).find((node) => /rs\.|free/i.test(node.textContent || ""));
+    const isPaid = !/free/i.test(metaPrice?.textContent || "");
+    const actions = document.createElement("div");
+    actions.className = "inline-actions";
+    link.parentNode?.insertBefore(actions, link);
+    actions.appendChild(link);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ghost-action-btn";
+    button.setAttribute("data-home-cart-button", bookId);
+    button.dataset.mode = isPaid ? "cart" : "open";
+    button.textContent = isPaid ? "Add To Cart" : "Open Free";
+    actions.appendChild(button);
+  });
+
+  bindHomepageProductActions(root);
+}
+
+function upgradeReviewProofCards(root = document) {
+  root.querySelectorAll(".review-proof-card").forEach((card) => {
+    card.querySelectorAll("p").forEach((paragraph) => {
+      paragraph.innerHTML = paragraph.innerHTML.replace(/â€¢|•/g, "-");
+    });
+
+    if (card.querySelector(".proof-link")) {
+      return;
+    }
+
+    const title = card.querySelector(".testimonial-author strong")?.textContent?.trim();
+    if (!title) {
+      return;
+    }
+
+    const match = [...HOMEPAGE_STATE.trendingBooks, ...HOMEPAGE_STATE.newestBooks].find((book) => String(book.title || "").trim() === title);
+    if (!match?._id) {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.className = "proof-link";
+    link.href = `book_view.html?id=${encodeURIComponent(match._id)}`;
+    link.textContent = "Open reviewed product";
+    card.appendChild(link);
+  });
+}
+
+async function addHomepageCart(bookId, button) {
+  const { token } = getStoredSession();
+  if (!token) {
+    setHeroStatus("Sign in to save paid products and continue to checkout.", "warning");
+    window.location.href = "login.html";
+    return;
+  }
+
+  const previousText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Adding...";
+
+  try {
+    const response = await fetch(`${API_BASE}/api/cart/add`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ bookId }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.message || "Unable to add this product to cart");
+    }
+
+    const alreadyInCart = Boolean(payload.alreadyInCart);
+    button.textContent = alreadyInCart ? "Already In Cart" : "Go To Cart";
+    button.dataset.mode = "cart-ready";
+    setHeroStatus(
+      alreadyInCart
+        ? "This product is already in your cart and ready for checkout."
+        : "Product added to cart. Your checkout flow is ready now.",
+      "success"
+    );
+  } catch (error) {
+    button.textContent = previousText;
+    setHeroStatus(error.message || "Unable to update your cart right now.", "warning");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function hydrateHeroCards(trendingBooks = [], newestBooks = []) {
@@ -502,7 +772,7 @@ function applyHeroProductCard(card, book, options = {}) {
   image.alt = book.title || "Marketplace product";
   price.textContent = options.badge || formatCurrencyOrFree(book.price);
   title.textContent = book.title || "Marketplace product";
-  copy.textContent = `${book.category || "Book"} • ${book.language || "English"}`;
+  copy.textContent = `${book.category || "Book"} - ${book.language || "English"}`;
   if (small) {
     small.textContent = options.fallbackMeta || `${formatCompactNumber(book.views || 0)} views`;
   }
@@ -535,14 +805,14 @@ function formatRatingLabel(book = {}) {
   const average = Number(book.ratingAverage || 0);
   const count = Number(book.ratingCount || 0);
   if (count > 0 && average > 0) {
-    return `${average.toFixed(1)} • ${count.toLocaleString("en-IN")} ratings`;
+    return `${average.toFixed(1)} - ${count.toLocaleString("en-IN")} ratings`;
   }
   return "Review signal warming";
 }
 
 function buildStarRow(rating = 0) {
   const safe = Math.max(0, Math.min(5, Math.round(Number(rating || 0))));
-  return Array.from({ length: 5 }, (_, index) => (index < safe ? "★" : "☆")).join("");
+  return Array.from({ length: 5 }, (_, index) => (index < safe ? "&#9733;" : "&#9734;")).join("");
 }
 
 function escapeHTML(value) {
