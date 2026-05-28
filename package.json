@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js"
+    "dev": "nodemon backend/server.js",
+    "smoke:marketplace": "node scripts/marketplace-smoke.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

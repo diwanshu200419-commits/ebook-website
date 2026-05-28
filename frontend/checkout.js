@@ -671,7 +671,7 @@ function renderCheckoutItems() {
 
 function renderMarketContext() {
   const manualEnabled = Boolean(state.paymentConfig?.manualCheckout?.enabled && state.market.manualCheckoutEnabled);
-  setText("checkoutMarketBadge", `${state.market.countryName} · ${state.market.currency}`);
+  setText("checkoutMarketBadge", `${state.market.countryName} - ${state.market.currency}`);
   setText("checkoutMarketMode", manualEnabled ? t("marketModeIndia") : t("marketModeGlobal"));
   setText(
     "checkoutMarketNote",

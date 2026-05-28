@@ -511,7 +511,7 @@ function updateMarketCopy(totalInInr = 0) {
   const baseTotal = formatBaseCurrency(totalInInr);
 
   setText("cartPlatformValue", manualEnabled ? t("platformHybrid") : t("platformStripe"));
-  setText("cartCurrencyValue", `${state.market.currency} · ${state.market.countryCode}`);
+  setText("cartCurrencyValue", `${state.market.currency} - ${state.market.countryCode}`);
   setText("cartTaxValue", state.paymentConfig?.stripe?.automaticTaxEnabled ? t("taxAuto") : t("taxOff"));
   setText(
     "cartHelperStripe",

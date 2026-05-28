@@ -351,7 +351,7 @@ function renderPopularCategories(categories) {
       <span>${formatCompactNumber(category.count || 0)} books</span>
       <span>${formatCompactNumber(category.count || 0)}x</span>
     </div>
-  `).join("").replace(/Ã‚Â·|Â·/g, "·");
+  `).join("");
 }
 
 function renderBookCollection() {
@@ -445,8 +445,8 @@ function renderTrendingCreators(creators) {
       <img class="trending-avatar" src="${escapeAttribute(resolveAssetUrl(creator.avatarUrl || creator.avatar || "", FALLBACK_AVATAR))}" alt="${escapeAttribute(creator.name || "Creator")}">
       <div class="trending-meta">
         <h3>${escapeHTML(creator.name || "Creator")}</h3>
-        <p>${escapeHTML(creator.badge || "Creator")} Â· @${escapeHTML(creator.username || "creator")}</p>
-        <strong>${formatCompactNumber(creator.stats?.followersCount || 0)} followers · ${formatCompactNumber(creator.stats?.totalBooks || 0)} books</strong>
+        <p>${escapeHTML(creator.badge || "Creator")} - @${escapeHTML(creator.username || "creator")}</p>
+        <strong>${formatCompactNumber(creator.stats?.followersCount || 0)} followers - ${formatCompactNumber(creator.stats?.totalBooks || 0)} books</strong>
       </div>
       <a class="trending-link" href="creator.html?username=${encodeURIComponent(creator.username || "")}">Open</a>
     </article>
