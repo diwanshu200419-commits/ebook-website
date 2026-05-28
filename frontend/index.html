@@ -3,305 +3,171 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="E-Book Market is an AI-powered marketplace where students, teachers, and creators sell ebooks, notes, prompts, templates, and digital products worldwide.">
-
+<meta name="description" content="E-Book Market is an AI-powered creator marketplace where students, teachers, freelancers, and digital creators sell ebooks, notes, prompts, templates, and knowledge products worldwide.">
 <title>E-Book Market | Knowledge Economy Platform</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-  <script src="config.js"></script>
-  <script src="seo.js"></script>
+<script src="config.js"></script>
+<script src="seo.js"></script>
 </head>
 
 <body>
 
-<!-- ================= NAVBAR ================= -->
 <header class="nav">
-
-<div class="logo">E-BOOK MARKET</div>
-
-<nav id="mainNav">
-
-<a href="index.html">Home</a>
-<a href="#marketplace">Marketplace</a>
-<a href="ai/ai-review.html">AI Tools</a>
-<a href="explore.html">My Library</a>
-<a href="dashboard/dashboard.html">Dashboard</a>
-
-<a class="btn-outline" href="login.html">Sign In</a>
-<a class="btn" href="register.html">Register</a>
-
-</nav>
-
+  <div class="logo">E-BOOK MARKET</div>
+  <nav id="mainNav">
+    <a href="index.html">Home</a>
+    <a href="#marketplace">Marketplace</a>
+    <a href="ai/ai-review.html">AI Tools</a>
+    <a href="explore.html">Explore</a>
+    <a class="btn-outline" href="login.html">Sign In</a>
+    <a class="btn" href="register.html">Register</a>
+  </nav>
 </header>
 
-
-<!-- ================= HERO ================= -->
-
 <section class="hero">
+  <div class="hero-left">
+    <p class="tag">THE FUTURE OF KNOWLEDGE ECONOMY</p>
 
-<div class="hero-left">
+    <h1>
+      World's Best <br>
+      <span>Knowledge Earning</span> <br>
+      Platform
+    </h1>
 
-<p class="tag">THE FUTURE OF KNOWLEDGE ECONOMY</p>
+    <p class="sub">
+      Create, publish, and earn from books, notes, prompts, templates, and AI-assisted digital products.
+      <strong>Built in India. Used worldwide.</strong>
+    </p>
 
-<h1>
-World’s Best <br>
-<span>Knowledge Earning</span> <br>
-Platform
-</h1>
+    <div class="actions">
+      <a href="#featured" class="btn big">Explore Books</a>
+      <a href="register.html" class="btn-outline big">Become a Creator</a>
+    </div>
 
-<p class="sub">
-
-Create, publish and earn from books, notes, comics and AI-assisted content.  
-
-<strong>Built in India. Used Worldwide.</strong>
-
-</p>
-
-<div class="actions">
-
-<a href="#featured" class="btn big">Explore Books</a>
-
-<a href="register.html" class="btn-outline big">
-Become a Creator
-</a>
-
-</div>
-
-<div class="hero-stats">
-  <div class="hero-stat">
-    <img src="assets/default-avatar.png" class="hero-avatars" alt="users">
-    <span>Creator-first uploads</span>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <img src="assets/default-avatar.png" class="hero-avatars" alt="Marketplace creators">
+        <span>Creator-first uploads</span>
+      </div>
+      <div class="hero-stat">
+        <span>5-star creator tools</span>
+        <span>Real purchase unlocks</span>
+      </div>
+    </div>
   </div>
-  <div class="hero-stat">
-    <span>⭐⭐⭐⭐⭐</span>
-    <span>Real purchase unlocks</span>
+
+  <div class="hero-right">
+    <div class="card-wrap" id="heroCardWrap">
+      <a href="book_view.html" class="book-card featured hero-tilt-card" id="heroPrimaryCard">
+        <img src="assets/covers/Ebook_AI.png" alt="Official preview">
+        <div class="overlay">
+          <span class="badge free">FREE • OFFICIAL</span>
+          <h3>Side Hustles for Students</h3>
+          <p>Business • Career • AI</p>
+          <button class="cta-btn">Read Now -></button>
+        </div>
+      </a>
+
+      <a href="explore.html" class="book-card locked hero-tilt-card" id="heroSecondaryCard">
+        <img src="assets/covers/ai.png" alt="Dynamic marketplace">
+        <div class="overlay">
+          <span class="price">REAL LISTINGS</span>
+          <h3>Dynamic Marketplace</h3>
+          <p>Only approved database books appear here.</p>
+          <small>Search, sort, and filter in real time.</small>
+          <button class="cta-btn">Explore Now -></button>
+        </div>
+      </a>
+
+      <a href="dashboard/upload.html" class="book-card locked hero-tilt-card" id="heroTertiaryCard">
+        <img src="assets/covers/topper-notes.png" alt="Creator upload studio">
+        <div class="overlay">
+          <span class="price">UPLOAD FLOW</span>
+          <h3>Creator Upload Studio</h3>
+          <p>Drag, drop, validate, and publish with moderation.</p>
+          <small>Creator dashboard sync included.</small>
+          <button class="cta-btn">Open Studio -></button>
+        </div>
+      </a>
+    </div>
   </div>
-</div>
-
-</div>
-
-
-<!-- RIGHT BOOK PREVIEW -->
-
-<div class="hero-right">
-
-<div class="card-wrap">
-
-<a href="book_view.html" class="book-card featured">
-<img src="assets/covers/Ebook_AI.png" alt="AI Side Hustles Book">
-<div class="overlay">
-
-<span class="badge free">FREE • OFFICIAL</span>
-
-<h3>Side Hustles for Students</h3>
-
-<p>Business • Career • AI</p>
-
-<button class="cta-btn">Read Now →</button>
-
-</div>
-</a>
-
-
-<a href="login.html" class="book-card locked">
-
-<img src="assets/covers/ai.png" alt="AI Beginner Book">
-
-<div class="overlay">
-
-<span class="price">₹199</span>
-
-<h3>AI for Beginners</h3>
-
-<p>Education • AI</p>
-
-<small>Login required</small>
-
-<button class="cta-btn">Unlock Now →</button>
-
-</div>
-
-</a>
-
-<a href="login.html" class="book-card locked">
-
-<img src="assets/covers/topper-notes.png" alt="Topper Notes">
-
-<div class="overlay">
-
-<span class="price">₹99</span>
-
-<h3>Topper's Notes</h3>
-
-<p>Handwritten • Study Notes</p>
-
-<small>Login required</small>
-
-<button class="cta-btn">Unlock Now →</button>
-
-</div>
-
-</a>
-
-</div>
-</div>
-
 </section>
 
-
-<!-- ================= HERO FEATURES ================= -->
 <section class="hero-features">
   <div class="hero-feature">
     <span class="hero-icon">📚</span>
-    <span>1000+ Books & Notes</span>
+    <span>Approved books only</span>
   </div>
   <div class="hero-feature">
     <span class="hero-icon">👥</span>
-    <span>50K+ Active Creators</span>
+    <span>Creator and reader dashboards</span>
   </div>
   <div class="hero-feature">
     <span class="hero-icon">🌍</span>
-    <span>180+ Countries</span>
+    <span>Responsive marketplace browsing</span>
   </div>
   <div class="hero-feature">
     <span class="hero-icon">💰</span>
-    <span>Earn Passive Income</span>
+    <span>Real earnings tracking</span>
   </div>
   <div class="hero-feature">
     <span class="hero-icon">🔒</span>
-    <span>Secure & Trusted</span>
+    <span>Protected downloads</span>
   </div>
   <div class="hero-feature">
     <span class="hero-icon">🤖</span>
-    <span>AI-Powered Smart Tools</span>
+    <span>Upload moderation workflow</span>
   </div>
 </section>
 
-
-<!-- ================= POPULAR CATEGORIES ================= -->
 <section class="categories" id="marketplace">
   <div class="section-header">
     <h2>Popular Categories</h2>
-    <a href="explore.html" class="view-all">View All →</a>
+    <a href="explore.html" class="view-all">View All -></a>
   </div>
-  <div class="categories-grid">
-    <div class="category-card">
-      <div class="category-icon">📊</div>
-      <h3>Business</h3>
-      <p>1.2K Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">🎓</div>
-      <h3>Education</h3>
-      <p>2.5K Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">🤖</div>
-      <h3>AI & Tech</h3>
-      <p>1.8K Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">✍️</div>
-      <h3>Handwritten</h3>
-      <p>1.1K Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">💬</div>
-      <h3>Comics</h3>
-      <p>800+ Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">🧠</div>
-      <h3>Self Help</h3>
-      <p>1.6K Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">💻</div>
-      <h3>Programming</h3>
-      <p>2.2K Books</p>
-    </div>
-    <div class="category-card">
-      <div class="category-icon">📝</div>
-      <h3>Exam Prep</h3>
-      <p>1.3K Books</p>
-    </div>
-  </div>
+  <div class="categories-grid"></div>
 </section>
 
-
-<!-- ================= TOP RATED BOOKS ================= -->
-<section class="top-books">
+<section class="top-books" id="featured">
   <div class="section-header">
-    <h2>Top Rated Books</h2>
-    <a href="explore.html" class="view-all">View All →</a>
+    <h2>Featured Marketplace Books</h2>
+    <a href="explore.html" class="view-all">View All -></a>
   </div>
   <div id="featuredApprovedList" class="featured-grid"></div>
 </section>
 
-
-<!-- ================= TESTIMONIALS ================= -->
-<section class="testimonials">
+<section class="fresh-launches" id="fresh-launches">
   <div class="section-header">
-    <h2>What Our Users Say</h2>
-    <a href="#" class="view-all">View All →</a>
+    <h2>Fresh Featured Drops</h2>
+    <a href="explore.html?sort=newest" class="view-all">Newest Live Products -></a>
   </div>
-  <div class="testimonials-grid">
-    <div class="testimonial-card">
-      <p>This platform changed the way I learn and earn. Best notes and AI tools in one place!</p>
-      <div class="testimonial-author">
-        <img src="assets/default-avatar.png" alt="user" class="testimonial-avatar">
-        <div>
-          <strong>Priya Sharma</strong>
-          <p>Student & Creator</p>
-          <p>⭐⭐⭐⭐⭐</p>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <p>I started selling my notes and now earning passive income every month.</p>
-      <div class="testimonial-author">
-        <img src="assets/default-avatar.png" alt="user" class="testimonial-avatar">
-        <div>
-          <strong>Rohit Verma</strong>
-          <p>Creator</p>
-          <p>⭐⭐⭐⭐⭐</p>
-        </div>
-      </div>
-    </div>
-    <div class="testimonial-card">
-      <p>AI tools are super helpful and the content quality is outstanding.</p>
-      <div class="testimonial-author">
-        <img src="assets/default-avatar.png" alt="user" class="testimonial-avatar">
-        <div>
-          <strong>Ananya Singh</strong>
-          <p>Education</p>
-          <p>⭐⭐⭐⭐⭐</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="launch-grid" id="newFeaturedList"></div>
 </section>
 
+<section class="testimonials">
+  <div class="section-header">
+    <h2>Real Learner Feedback</h2>
+    <a href="explore.html" class="view-all">Browse Reviews -></a>
+  </div>
+  <p class="proof-subtitle">Review proof is pulled from the real marketplace so buyers can see trust before purchase.</p>
+  <div class="testimonials-grid review-proof-grid" id="reviewProofList"></div>
+</section>
 
-<!-- ================= CREATOR CTA ================= -->
 <section class="creator-cta">
   <div class="creator-cta-content">
     <div class="creator-cta-left">
-      <img src="assets/default-avatar.png" alt="creator" class="creator-cta-img">
+      <img src="assets/default-avatar.png" alt="Creator community" class="creator-cta-img">
     </div>
     <div class="creator-cta-right">
-      <h2>Become a Creator & Earn</h2>
-      <p>Share your knowledge with the world and earn passive income. Upload books, notes or comics and track your earnings easily.</p>
-      <p class="creator-cta-sub">Join 50K+ creators already earning!</p>
-      <a href="register.html" class="btn big">Start Creating Now →</a>
+      <h2>Become a Creator and Earn</h2>
+      <p>Share your knowledge with the world and earn passive income. Upload books, notes, prompts, or AI products and track your revenue in one creator system.</p>
+      <p class="creator-cta-sub">Join the marketplace and launch your first digital product today.</p>
+      <a href="register.html" class="btn big">Start Creating Now -></a>
     </div>
   </div>
 </section>
 
-
-<!-- ================= FOOTER ================= -->
 <footer class="footer">
   <div class="footer-content">
     <div class="footer-column">
@@ -313,8 +179,8 @@ Become a Creator
       <a href="index.html">Home</a>
       <a href="explore.html">Marketplace</a>
       <a href="ai/ai-review.html">AI Tools</a>
-      <a href="login.html">My Library</a>
-      <a href="creator/creator.html">Become a Creator</a>
+      <a href="explore.html">Explore</a>
+      <a href="dashboard/dashboard.html">Dashboard</a>
     </div>
     <div class="footer-column">
       <h4>Company</h4>
@@ -335,18 +201,15 @@ Become a Creator
     <div class="footer-column">
       <h4>Use Our Web Site</h4>
       <div class="app-badges">
-        <img src="assets/default-avatar.png" alt="Play Store" class="app-badge">
-        
+        <img src="assets/default-avatar.png" alt="Web app" class="app-badge">
       </div>
     </div>
   </div>
   <div class="footer-bottom">
-    <p>© 2026 E-Book Market. All rights reserved. Made with ❤️ in India</p>
+    <p>&copy; 2026 E-Book Market. All rights reserved. Made in India for global creators.</p>
   </div>
 </footer>
 
-
 <script src="script.js"></script>
-
 </body>
 </html>
