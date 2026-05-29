@@ -3,6 +3,7 @@ const API_BASE = window.API_BASE || "";
 const HOMEPAGE_STATE = {
   trendingBooks: [],
   newestBooks: [],
+  creators: [],
   paymentConfig: null,
   summary: {
     totalProducts: 0,
@@ -164,23 +165,27 @@ function refreshInteractiveCards(scope = document) {
 
 async function loadHomepageData() {
   try {
-    const [trendingResponse, newestResponse, paymentConfig] = await Promise.all([
+    const [trendingResponse, newestResponse, creatorResponse, paymentConfig] = await Promise.all([
       fetchJson("/api/books?limit=8&sort=trending"),
       fetchJson("/api/books?limit=8"),
+      fetchJson("/api/creator/trending?limit=4").catch(() => ({ creators: [] })),
       fetchJson("/api/payments/config?country=IN&currency=INR").catch(() => null),
     ]);
 
     const trendingBooks = filterOfficialPreviewBooks(trendingResponse.books || []);
     const newestBooks = filterOfficialPreviewBooks(newestResponse.books || []);
+    const creators = Array.isArray(creatorResponse?.creators) ? creatorResponse.creators : [];
 
     HOMEPAGE_STATE.trendingBooks = trendingBooks;
     HOMEPAGE_STATE.newestBooks = newestBooks;
+    HOMEPAGE_STATE.creators = creators;
     HOMEPAGE_STATE.paymentConfig = paymentConfig;
     HOMEPAGE_STATE.summary = buildHomepageSummary(trendingResponse, trendingBooks, newestBooks);
 
     renderCategories(trendingResponse.filters?.categories || []);
     renderHeroMetrics(HOMEPAGE_STATE.summary);
     renderEarningsPlanner();
+    renderCreatorProof(creators);
     renderFeaturedBooks(buildFeaturedSelection(trendingBooks, newestBooks));
     renderFreshLaunches(buildFreshSelection(newestBooks, trendingBooks));
     hydrateHeroCards(trendingBooks, newestBooks);
@@ -191,6 +196,7 @@ async function loadHomepageData() {
     renderCategories([]);
     renderHeroMetrics();
     renderEarningsPlanner();
+    renderCreatorProof([]);
     renderFeaturedBooks([]);
     renderFreshLaunches([]);
     hydrateHeroCards([], []);
@@ -282,6 +288,82 @@ function renderEarningsPlanner() {
     ? `${rails} active now${paymentConfig?.upiId ? ` - ${paymentConfig.upiId}` : ""}`
     : "Marketplace rails sync after payment settings load";
   setText("plannerLiveRail", railText);
+}
+
+function renderCreatorProof(creators = []) {
+  const container = document.getElementById("creatorProofList");
+  if (!container) {
+    return;
+  }
+
+  if (!creators.length) {
+    container.innerHTML = `
+      <article class="creator-proof-card">
+        <div class="creator-proof-copy">
+          <span class="card-kicker">Creator network</span>
+          <h3>Creator proof will appear as more live profiles grow</h3>
+          <p>Once approved creators publish products and start building followers, their public earning signals will appear here automatically.</p>
+          <a class="proof-link" href="dashboard/upload.html">Launch creator studio</a>
+        </div>
+      </article>
+    `;
+    refreshInteractiveCards(container);
+    return;
+  }
+
+  container.innerHTML = creators.map((creator, index) => {
+    const stats = creator.stats || {};
+    const avatar = resolveAssetUrl(creator.avatarUrl || creator.avatar || creator.profileImage || "assets/default-avatar.png");
+    const profileLink = buildCreatorLink(creator.username);
+    const trustReason = creator.trustReason || creator.badge || "Live creator profile";
+    const bio = String(creator.bio || "This creator is building a real digital storefront with live products and audience signals.").slice(0, 170);
+
+    return `
+      <article class="creator-proof-card">
+        <div class="creator-proof-head">
+          <div class="creator-proof-identity">
+            <img src="${escapeAttribute(avatar)}" alt="${escapeAttribute(creator.name || "Creator")}" class="creator-proof-avatar">
+            <div>
+              <span class="card-kicker">${escapeHTML(index === 0 ? "Top creator" : "Creator spotlight")}</span>
+              <h3>${escapeHTML(creator.name || "Creator")}</h3>
+              <p>${escapeHTML(creator.username ? `@${creator.username}` : "Marketplace creator")} - ${escapeHTML(trustReason)}</p>
+            </div>
+          </div>
+          <span class="mini-signal">${escapeHTML(creator.badge || "Live")}</span>
+        </div>
+
+        <p class="creator-proof-bio">${escapeHTML(bio)}</p>
+
+        <div class="creator-proof-stats">
+          <div class="creator-proof-stat">
+            <small>Followers</small>
+            <strong>${escapeHTML(formatCompactNumber(stats.followersCount || 0))}</strong>
+          </div>
+          <div class="creator-proof-stat">
+            <small>Live products</small>
+            <strong>${escapeHTML(formatCompactNumber(stats.totalBooks || 0))}</strong>
+          </div>
+          <div class="creator-proof-stat">
+            <small>Total earned</small>
+            <strong>${escapeHTML(formatPlannerCurrency(stats.totalEarnings || 0, "INR"))}</strong>
+          </div>
+        </div>
+
+        <div class="card-signal-row">
+          <span class="rating-pill">${buildStarRow(stats.ratingAverage || 0)} ${escapeHTML(formatRatingSummary(stats.ratingAverage || 0, stats.ratingCount || 0))}</span>
+          <span class="mini-signal">${escapeHTML(formatCompactNumber(stats.totalSales || 0))} sales</span>
+          <span class="mini-signal">${escapeHTML(formatCompactNumber(stats.totalViews || 0))} views</span>
+        </div>
+
+        <div class="inline-actions">
+          <a href="${escapeAttribute(profileLink || "creator/creator.html")}">Open creator profile</a>
+          <a class="ghost-link" href="${escapeAttribute(profileLink || "creator/creator.html")}">View live catalog</a>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  refreshInteractiveCards(container);
 }
 
 function buildHomepageSummary(response = {}, trendingBooks = [], newestBooks = []) {
@@ -925,6 +1007,15 @@ function formatRatingLabel(book = {}) {
     return `${average.toFixed(1)} - ${count.toLocaleString("en-IN")} ratings`;
   }
   return "Review signal warming";
+}
+
+function formatRatingSummary(average = 0, count = 0) {
+  const safeAverage = Number(average || 0);
+  const safeCount = Number(count || 0);
+  if (safeCount > 0 && safeAverage > 0) {
+    return `${safeAverage.toFixed(1)} - ${safeCount.toLocaleString("en-IN")} ratings`;
+  }
+  return "rating signal";
 }
 
 function buildStarRow(rating = 0) {
