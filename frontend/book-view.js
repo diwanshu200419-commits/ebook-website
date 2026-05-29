@@ -2007,11 +2007,45 @@ async function loadBookView() {
       loadReviews(bookId),
       loadRecommendations(bookId),
     ]);
+    applyReviewIntent();
   } catch (error) {
     console.error(error);
     renderFallback(error.message || t("errorLoadingBook"));
     renderRecommendations([]);
   }
+}
+
+function applyReviewIntent() {
+  const params = new URLSearchParams(window.location.search);
+  const wantsReview = params.get("review") === "1" || window.location.hash === "#reviewForm";
+  if (!wantsReview) {
+    return;
+  }
+
+  const reviewSection = document.querySelector(".reviews");
+  const reviewForm = document.getElementById("reviewForm");
+  const reviewGate = document.getElementById("reviewGate");
+  const commentField = document.getElementById("reviewComment");
+  const target = reviewForm && !reviewForm.classList.contains("hidden")
+    ? reviewForm
+    : (reviewGate || reviewSection);
+
+  if (!target) {
+    return;
+  }
+
+  target.classList.add("review-intent-highlight");
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  if (commentField && reviewForm && !reviewForm.classList.contains("hidden")) {
+    window.setTimeout(() => {
+      commentField.focus();
+    }, 360);
+  }
+
+  window.setTimeout(() => {
+    target.classList.remove("review-intent-highlight");
+  }, 2400);
 }
 
 function resolveAssetUrl(value) {

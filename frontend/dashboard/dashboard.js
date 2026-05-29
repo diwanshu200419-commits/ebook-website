@@ -1,4 +1,5 @@
 const API_BASE = window.API_BASE || "";
+const DASHBOARD_NOTICE_KEY = "ebook-market-dashboard-notice";
 
 let dashboardChart = null;
 const dashboardState = {
@@ -18,6 +19,7 @@ async function initDashboard() {
   }
 
   dashboardState.token = token;
+  hydrateStoredDashboardNotice();
   setupLogout();
   setupUnlockModal();
 
@@ -127,6 +129,32 @@ function renderDashboard(data, token) {
   }
 
   finalizeDashboardRender();
+}
+
+function hydrateStoredDashboardNotice() {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_NOTICE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    localStorage.removeItem(DASHBOARD_NOTICE_KEY);
+    const payload = JSON.parse(raw);
+    const createdAt = Number(payload?.createdAt || 0);
+    if (createdAt && Date.now() - createdAt > 1000 * 60 * 60 * 24) {
+      return;
+    }
+
+    const message = String(payload?.message || "").trim();
+    if (!message) {
+      return;
+    }
+
+    dashboardState.notice = message;
+    dashboardState.noticeType = String(payload?.type || "success").trim() || "success";
+  } catch {
+    localStorage.removeItem(DASHBOARD_NOTICE_KEY);
+  }
 }
 
 function renderNavigation(viewer, data) {

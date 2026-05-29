@@ -56,6 +56,19 @@
       border-radius: 28px;
       display: grid;
       gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -90px auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.16), transparent 72%);
+      pointer-events: none;
     }
 
     .hero h1,
@@ -103,6 +116,108 @@
       gap: 12px;
     }
 
+    .order-glance,
+    .flow-strip,
+    .next-step-grid {
+      margin-top: 24px;
+    }
+
+    .order-glance {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .glance-card,
+    .flow-step,
+    .next-step-card {
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 42px rgba(15, 23, 42, 0.28);
+    }
+
+    .glance-card {
+      border-radius: 20px;
+      padding: 18px;
+      display: grid;
+      gap: 8px;
+      animation: riseIn 0.55s ease both;
+    }
+
+    .glance-card small,
+    .flow-step small,
+    .next-step-card small {
+      color: #93c5fd;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .glance-card strong {
+      font-size: 1.15rem;
+      line-height: 1.25;
+    }
+
+    .glance-card span {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.95rem;
+    }
+
+    .flow-strip {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .flow-step {
+      border-radius: 22px;
+      padding: 20px;
+      display: grid;
+      gap: 10px;
+      animation: riseIn 0.6s ease both;
+    }
+
+    .flow-step strong {
+      font-size: 1.05rem;
+      line-height: 1.35;
+    }
+
+    .flow-step p,
+    .next-step-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 0.95rem;
+    }
+
+    .next-step-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+
+    .next-step-card {
+      border-radius: 24px;
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      animation: riseIn 0.65s ease both;
+    }
+
+    .next-step-card h3 {
+      margin: 0;
+      font-family: "Space Grotesk", Inter, Arial, sans-serif;
+      font-size: 1.18rem;
+    }
+
+    .next-step-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
     .cta,
     .ghost {
       display: inline-flex;
@@ -133,6 +248,7 @@
     .product-card {
       border-radius: 24px;
       overflow: hidden;
+      animation: riseIn 0.7s ease both;
     }
 
     .product-card img {
@@ -234,6 +350,18 @@
       display: none !important;
     }
 
+    @keyframes riseIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     @media (max-width: 720px) {
       .shell {
         width: min(100% - 20px, 1100px);
@@ -246,7 +374,8 @@
       }
 
       .hero-actions,
-      .card-actions {
+      .card-actions,
+      .next-step-actions {
         flex-direction: column;
       }
 
@@ -267,8 +396,11 @@
         <a class="cta" href="dashboard/dashboard.html">Open dashboard</a>
         <a class="ghost" href="explore.html">Continue exploring</a>
       </div>
+      <div class="order-glance hidden" id="orderGlance"></div>
     </section>
 
+    <section class="flow-strip hidden" id="flowStrip"></section>
+    <section class="next-step-grid hidden" id="nextStepGrid"></section>
     <section class="products" id="unlockGrid"></section>
     <section class="empty-state" id="emptyState">
       Your unlocked products will appear here as soon as payment verification completes.
@@ -278,11 +410,15 @@
   <script>
     (async function () {
       const API_BASE = window.API_BASE || "";
+      const DASHBOARD_NOTICE_KEY = "ebook-market-dashboard-notice";
       const token = localStorage.getItem("token");
       const params = new URLSearchParams(window.location.search);
       const sessionId = params.get("session_id");
       const status = document.getElementById("status");
       const headline = document.getElementById("headline");
+      const orderGlance = document.getElementById("orderGlance");
+      const flowStrip = document.getElementById("flowStrip");
+      const nextStepGrid = document.getElementById("nextStepGrid");
       const unlockGrid = document.getElementById("unlockGrid");
       const emptyState = document.getElementById("emptyState");
 
@@ -303,17 +439,20 @@
         }
 
         const purchases = Array.isArray(data.purchases) ? data.purchases : [];
+        const summary = buildOrderSummary(purchases, sessionId);
         headline.textContent = "Payment confirmed";
         status.textContent = purchases.length
-          ? `${purchases.length} product unlock${purchases.length === 1 ? "" : "s"} are ready right now.`
+          ? `${purchases.length} product unlock${purchases.length === 1 ? "" : "s"} are ready right now. Total verified: ${formatCurrency(summary.totalAmount)}.`
           : "Payment verified. Your unlocks will appear in the dashboard shortly.";
         status.classList.add("success");
+        persistDashboardNotice(summary);
 
         if (!purchases.length) {
           emptyState.textContent = "Verification passed, but no product unlocks were returned yet. Open the dashboard to refresh your library.";
           return;
         }
 
+        hydrateSuccessExperience(summary, purchases);
         emptyState.classList.add("hidden");
         unlockGrid.innerHTML = purchases.map((purchase) => renderPurchaseCard(purchase, token)).join("");
       } catch (err) {
@@ -393,11 +532,118 @@
                   ? `<a class="ghost" href="${escapeAttribute(delivery.externalUrl)}" target="_blank" rel="noreferrer">Open delivery link</a>`
                   : ""
                 }
+                <a class="ghost" href="book_view.html?id=${encodeURIComponent(purchase.bookId)}&review=1#reviewForm">Leave verified review</a>
                 <a class="ghost" href="book_view.html?id=${encodeURIComponent(purchase.bookId)}">Open product page</a>
               </div>
             </div>
           </article>
         `;
+      }
+
+      function hydrateSuccessExperience(summary, purchases) {
+        orderGlance.classList.remove("hidden");
+        flowStrip.classList.remove("hidden");
+        nextStepGrid.classList.remove("hidden");
+
+        orderGlance.innerHTML = `
+          <article class="glance-card">
+            <small>Verified products</small>
+            <strong>${escapeHTML(String(summary.count))}</strong>
+            <span>${escapeHTML(summary.count === 1 ? "One product is unlocked in your library right now." : `${summary.count} products are unlocked and ready to use.`)}</span>
+          </article>
+          <article class="glance-card">
+            <small>Total paid</small>
+            <strong>${escapeHTML(formatCurrency(summary.totalAmount))}</strong>
+            <span>${escapeHTML(`${summary.creatorCount} creator${summary.creatorCount === 1 ? "" : "s"} were paid through this checkout.`)}</span>
+          </article>
+          <article class="glance-card">
+            <small>Payment reference</small>
+            <strong>${escapeHTML(summary.reference)}</strong>
+            <span>Keep this reference for buyer support or future payment verification.</span>
+          </article>
+          <article class="glance-card">
+            <small>Best next step</small>
+            <strong>${escapeHTML(summary.nextStepTitle)}</strong>
+            <span>${escapeHTML(summary.nextStepCopy)}</span>
+          </article>
+        `;
+
+        flowStrip.innerHTML = `
+          <article class="flow-step">
+            <small>Step 1</small>
+            <strong>Payment verified</strong>
+            <p>Your payment was recorded successfully and tied to your marketplace account.</p>
+          </article>
+          <article class="flow-step">
+            <small>Step 2</small>
+            <strong>Unlock granted</strong>
+            <p>${escapeHTML(summary.count === 1 ? "Your product is unlocked for download, preview, and dashboard access." : "Every selected product is now unlocked for download, preview, and dashboard access.")}</p>
+          </article>
+          <article class="flow-step">
+            <small>Step 3</small>
+            <strong>Trust loop starts now</strong>
+            <p>Download the file, use the product, then leave a verified review so the creator and storefront gain real social proof.</p>
+          </article>
+        `;
+
+        const firstPurchase = purchases[0] || {};
+        nextStepGrid.innerHTML = `
+          <article class="next-step-card">
+            <small>Buyer next step</small>
+            <h3>Open your library and start using the purchase</h3>
+            <p>Your dashboard is now the source of truth for unlocked downloads, delivery notes, and future access to this order.</p>
+            <div class="next-step-actions">
+              <a class="cta" href="dashboard/dashboard.html">Open dashboard</a>
+              <a class="ghost" href="${escapeAttribute(`book_view.html?id=${encodeURIComponent(firstPurchase.bookId || "")}`)}">Open product</a>
+            </div>
+          </article>
+          <article class="next-step-card">
+            <small>Marketplace trust</small>
+            <h3>Leave a verified review after use</h3>
+            <p>Real feedback helps buyers trust the listing and helps creators build a marketplace profile that actually converts.</p>
+            <div class="next-step-actions">
+              <a class="cta" href="${escapeAttribute(`book_view.html?id=${encodeURIComponent(firstPurchase.bookId || "")}&review=1#reviewForm`)}">Write review</a>
+              <a class="ghost" href="explore.html">Keep exploring</a>
+            </div>
+          </article>
+        `;
+      }
+
+      function buildOrderSummary(purchases, fallbackReference) {
+        const creatorNames = new Set();
+        let totalAmount = 0;
+
+        purchases.forEach((purchase) => {
+          totalAmount += Number(purchase.amount || 0);
+          const creatorName = String(purchase.authorName || "").trim();
+          if (creatorName) {
+            creatorNames.add(creatorName);
+          }
+        });
+
+        const count = purchases.length;
+        return {
+          count,
+          totalAmount,
+          creatorCount: creatorNames.size,
+          reference: String(purchases[0]?.transactionId || fallbackReference || "Processing").trim(),
+          nextStepTitle: count > 1 ? "Download and review your bundle" : "Download and review your product",
+          nextStepCopy: count > 1
+            ? "Open the dashboard to see every unlocked asset in one place, then leave feedback after using them."
+            : "Open the product page, use the file, and come back with a verified review once you have real feedback.",
+        };
+      }
+
+      function persistDashboardNotice(summary) {
+        try {
+          localStorage.setItem(DASHBOARD_NOTICE_KEY, JSON.stringify({
+            message: `${summary.count} product${summary.count === 1 ? "" : "s"} unlocked successfully. Verified payment: ${formatCurrency(summary.totalAmount)}.`,
+            type: "success",
+            createdAt: Date.now(),
+          }));
+        } catch {
+          // Ignore storage write issues on locked-down browsers.
+        }
       }
 
       function normalizeDelivery(delivery = {}) {
