@@ -14,17 +14,83 @@ const HOMEPAGE_STATE = {
 
 const CREATOR_SHARE_RATE = 0.8;
 const PLATFORM_SHARE_RATE = 0.2;
+const UPLOAD_DRAFT_KEY = "ebook-market-upload-draft";
 const PLANNER_CURRENCIES = {
   INR: { code: "INR", locale: "en-IN" },
   USD: { code: "USD", locale: "en-US" },
   EUR: { code: "EUR", locale: "en-IE" },
   GBP: { code: "GBP", locale: "en-GB" },
 };
+const LAUNCH_TRACKS = [
+  {
+    key: "student-notes",
+    badge: "Student path",
+    title: "Sell handwritten notes and study packs",
+    description: "Perfect for semester toppers, exam notes, revision packs, and subject summaries that students buy before tests.",
+    type: "Notes",
+    category: "Education",
+    subcategory: "Exam Notes",
+    language: "English",
+    price: "199",
+    tags: ["notes", "exam", "study pack", "students"],
+    titleTemplate: "Topper Exam Notes Pack",
+    descriptionTemplate: "High-conversion study notes with concise explanations, chapter breakdowns, and revision-ready summaries for students.",
+    deliveryInstructions: "Add subject coverage, exam target, and what makes these notes better than classroom notes.",
+  },
+  {
+    key: "teacher-ebook",
+    badge: "Teacher path",
+    title: "Launch an ebook or teaching handbook",
+    description: "Designed for teachers, trainers, and educators publishing premium ebooks, workbooks, and practical learning guides.",
+    type: "Book",
+    category: "Education",
+    subcategory: "Teaching Guide",
+    language: "English",
+    price: "499",
+    tags: ["ebook", "teacher", "guide", "learning"],
+    titleTemplate: "Teaching Guide for Practical Learning",
+    descriptionTemplate: "A polished ebook that packages your teaching knowledge into a downloadable product learners can buy worldwide.",
+    deliveryInstructions: "Show the target learner, learning outcome, and why this book is worth paying for.",
+  },
+  {
+    key: "ai-prompts",
+    badge: "AI creator",
+    title: "Package AI prompts into a paid digital asset",
+    description: "For prompt engineers, AI creators, and side hustlers selling ready-to-use prompt packs, workflows, and launch systems.",
+    type: "Prompt",
+    category: "AI",
+    subcategory: "Prompt Pack",
+    language: "English",
+    price: "299",
+    tags: ["ai prompts", "chatgpt", "automation", "creator tools"],
+    titleTemplate: "AI Prompt Pack for Creators",
+    descriptionTemplate: "A curated prompt pack that helps buyers create faster, automate repetitive work, and launch outputs with less guesswork.",
+    promptText: "Prompt 1:\nPrompt 2:\nPrompt 3:\n",
+    deliveryInstructions: "List the exact outcomes buyers will get from the prompt pack and include usage instructions.",
+  },
+  {
+    key: "freelancer-template",
+    badge: "Freelancer path",
+    title: "Monetize templates, kits, and client resources",
+    description: "Best for freelancers selling proposal templates, code starter kits, branding systems, and ready-to-use digital packs.",
+    type: "Template",
+    category: "Business",
+    subcategory: "Client Template",
+    language: "English",
+    price: "799",
+    tags: ["template", "freelancer", "client work", "digital kit"],
+    titleTemplate: "Freelancer Client Template Kit",
+    descriptionTemplate: "A reusable digital template kit that saves buyers time and helps them deliver professional work faster.",
+    deliveryIncludes: "Proposal template, onboarding checklist, workflow file, editable assets",
+    deliveryInstructions: "Explain what files are included, who should buy this kit, and how fast it can save them time.",
+  },
+];
 
 document.addEventListener("DOMContentLoaded", () => {
   initNavbar();
   initPrimaryCtas();
   initEarningsPlanner();
+  renderLaunchTracks();
   initVisualMotion();
   loadHomepageData();
 });
@@ -364,6 +430,101 @@ function renderCreatorProof(creators = []) {
   }).join("");
 
   refreshInteractiveCards(container);
+}
+
+function renderLaunchTracks() {
+  const container = document.getElementById("launchTrackList");
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = LAUNCH_TRACKS.map((track) => `
+    <article class="launch-track-card">
+      <div class="launch-track-copy">
+        <span class="card-kicker">${escapeHTML(track.badge)}</span>
+        <h3>${escapeHTML(track.title)}</h3>
+        <p>${escapeHTML(track.description)}</p>
+      </div>
+
+      <div class="card-signal-row">
+        <span class="mini-signal">${escapeHTML(track.type)}</span>
+        <span class="mini-signal">${escapeHTML(track.category)}</span>
+        <span class="mini-signal">${escapeHTML(formatCurrencyOrFree(track.price))}</span>
+      </div>
+
+      <div class="launch-track-meta">
+        <small>Suggested title</small>
+        <strong>${escapeHTML(track.titleTemplate)}</strong>
+      </div>
+
+      <div class="inline-actions">
+        <button type="button" class="btn-outline launch-track-btn" data-launch-track="${escapeAttribute(track.key)}" data-launch-mode="upload">Prepare Draft</button>
+        <button type="button" class="ghost-action-btn launch-track-btn" data-launch-track="${escapeAttribute(track.key)}" data-launch-mode="review">Review With AI</button>
+      </div>
+    </article>
+  `).join("");
+
+  bindLaunchTrackActions(container);
+  refreshInteractiveCards(container);
+}
+
+function bindLaunchTrackActions(root = document) {
+  root.querySelectorAll("[data-launch-track]").forEach((button) => {
+    if (button.dataset.bound === "true") {
+      return;
+    }
+
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      const trackKey = button.getAttribute("data-launch-track");
+      const mode = button.getAttribute("data-launch-mode") || "upload";
+      const track = LAUNCH_TRACKS.find((entry) => entry.key === trackKey);
+      if (!track) {
+        return;
+      }
+
+      const { token, user } = getStoredSession();
+      const draft = {
+        title: track.titleTemplate,
+        type: track.type,
+        category: track.category,
+        subcategory: track.subcategory || "",
+        language: track.language || "English",
+        price: track.price || "",
+        originalPrice: track.price || "",
+        previewPages: "3",
+        bookAuthor: user?.name || "",
+        promptText: track.promptText || "",
+        deliveryIncludes: track.deliveryIncludes || "",
+        externalUrl: "",
+        deliveryInstructions: track.deliveryInstructions || "",
+        isPremium: Number(track.price || 0) > 0,
+        isFeatured: false,
+        description: track.descriptionTemplate,
+        copyright: true,
+        tags: Array.isArray(track.tags) ? track.tags : [],
+      };
+
+      localStorage.setItem(UPLOAD_DRAFT_KEY, JSON.stringify(draft));
+
+      if (mode === "review") {
+        window.location.href = "ai/ai-review.html";
+        return;
+      }
+
+      if (!token) {
+        window.location.href = "register.html";
+        return;
+      }
+
+      if (user?.role === "admin" || user?.role === "creator" || user?.role === "author") {
+        window.location.href = "dashboard/upload.html";
+        return;
+      }
+
+      window.location.href = "dashboard/dashboard.html";
+    });
+  });
 }
 
 function buildHomepageSummary(response = {}, trendingBooks = [], newestBooks = []) {
