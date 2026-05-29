@@ -141,6 +141,101 @@
   </div>
 </section>
 
+<section class="earnings-planner" id="earnings-planner">
+  <div class="planner-shell">
+    <div class="planner-copy">
+      <span class="card-kicker">Creator Earnings Planner</span>
+      <h2>See what your first digital product can actually earn</h2>
+      <p>Model your pricing, monthly sales, creator payout, and annual upside with the same 80/20 marketplace split used on the platform. This is built for students, creators, teachers, and AI sellers who want a real income path, not a fake demo.</p>
+
+      <div class="planner-trust-list">
+        <div class="planner-trust-item">
+          <strong>80%</strong>
+          <span>Creator payout share on paid products</span>
+        </div>
+        <div class="planner-trust-item">
+          <strong>3-page</strong>
+          <span>Protected preview before full paid unlock</span>
+        </div>
+        <div class="planner-trust-item">
+          <strong>Live rails</strong>
+          <span>UPI, GPay, cart, checkout, and proof flow running now</span>
+        </div>
+      </div>
+
+      <div class="planner-market-live">
+        <div>
+          <small>Marketplace readiness</small>
+          <strong id="plannerLiveCatalog">Syncing live catalog...</strong>
+        </div>
+        <div>
+          <small>Current payout rails</small>
+          <strong id="plannerLiveRail">Checking payment rails...</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="planner-card">
+      <div class="planner-card-top">
+        <div>
+          <span class="card-kicker">Real launch math</span>
+          <h3>What would you earn?</h3>
+        </div>
+        <a href="register.html" class="btn-outline" id="plannerLaunchBtn">Launch Creator Studio</a>
+      </div>
+
+      <div class="planner-form">
+        <label class="planner-field">
+          <span>Sell in</span>
+          <select id="plannerCurrency">
+            <option value="INR">INR</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </label>
+
+        <label class="planner-field">
+          <span>Product price</span>
+          <input id="plannerPrice" type="number" min="0" step="1" value="499">
+        </label>
+
+        <label class="planner-field planner-field-wide">
+          <span>Expected monthly sales</span>
+          <div class="planner-sales-row">
+            <input id="plannerSales" type="number" min="1" step="1" value="25">
+            <input id="plannerSalesRange" type="range" min="1" max="200" step="1" value="25">
+          </div>
+        </label>
+      </div>
+
+      <div class="planner-results">
+        <article class="planner-result-card">
+          <small>Creator earns / sale</small>
+          <strong id="plannerCreatorPerSale">Rs. 0</strong>
+        </article>
+        <article class="planner-result-card">
+          <small>Platform fee / sale</small>
+          <strong id="plannerPlatformPerSale">Rs. 0</strong>
+        </article>
+        <article class="planner-result-card">
+          <small>Monthly creator payout</small>
+          <strong id="plannerMonthlyPayout">Rs. 0</strong>
+        </article>
+        <article class="planner-result-card">
+          <small>Annual creator payout</small>
+          <strong id="plannerAnnualPayout">Rs. 0</strong>
+        </article>
+      </div>
+
+      <div class="planner-story">
+        <p id="plannerBuyerPrice">Buyers pay Rs. 499 for this product.</p>
+        <p id="plannerInsight">At this pricing, the product is modeled as a real paid listing with creator payout and platform revenue split automatically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="categories" id="marketplace">
   <div class="section-header">
     <h2>Popular Categories</h2>

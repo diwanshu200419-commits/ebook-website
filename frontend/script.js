@@ -3,6 +3,7 @@ const API_BASE = window.API_BASE || "";
 const HOMEPAGE_STATE = {
   trendingBooks: [],
   newestBooks: [],
+  paymentConfig: null,
   summary: {
     totalProducts: 0,
     totalPaidProducts: 0,
@@ -10,9 +11,19 @@ const HOMEPAGE_STATE = {
   },
 };
 
+const CREATOR_SHARE_RATE = 0.8;
+const PLATFORM_SHARE_RATE = 0.2;
+const PLANNER_CURRENCIES = {
+  INR: { code: "INR", locale: "en-IN" },
+  USD: { code: "USD", locale: "en-US" },
+  EUR: { code: "EUR", locale: "en-IE" },
+  GBP: { code: "GBP", locale: "en-GB" },
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   initNavbar();
   initPrimaryCtas();
+  initEarningsPlanner();
   initVisualMotion();
   loadHomepageData();
 });
@@ -153,9 +164,10 @@ function refreshInteractiveCards(scope = document) {
 
 async function loadHomepageData() {
   try {
-    const [trendingResponse, newestResponse] = await Promise.all([
+    const [trendingResponse, newestResponse, paymentConfig] = await Promise.all([
       fetchJson("/api/books?limit=8&sort=trending"),
       fetchJson("/api/books?limit=8"),
+      fetchJson("/api/payments/config?country=IN&currency=INR").catch(() => null),
     ]);
 
     const trendingBooks = filterOfficialPreviewBooks(trendingResponse.books || []);
@@ -163,10 +175,12 @@ async function loadHomepageData() {
 
     HOMEPAGE_STATE.trendingBooks = trendingBooks;
     HOMEPAGE_STATE.newestBooks = newestBooks;
+    HOMEPAGE_STATE.paymentConfig = paymentConfig;
     HOMEPAGE_STATE.summary = buildHomepageSummary(trendingResponse, trendingBooks, newestBooks);
 
     renderCategories(trendingResponse.filters?.categories || []);
     renderHeroMetrics(HOMEPAGE_STATE.summary);
+    renderEarningsPlanner();
     renderFeaturedBooks(buildFeaturedSelection(trendingBooks, newestBooks));
     renderFreshLaunches(buildFreshSelection(newestBooks, trendingBooks));
     hydrateHeroCards(trendingBooks, newestBooks);
@@ -176,12 +190,98 @@ async function loadHomepageData() {
     console.error("Homepage data failed:", error);
     renderCategories([]);
     renderHeroMetrics();
+    renderEarningsPlanner();
     renderFeaturedBooks([]);
     renderFreshLaunches([]);
     hydrateHeroCards([], []);
     renderReviewFallback();
     setHeroStatus("Marketplace data is taking longer to sync. You can still explore the live catalog.", "warning");
   }
+}
+
+function initEarningsPlanner() {
+  const plannerCurrency = document.getElementById("plannerCurrency");
+  const plannerPrice = document.getElementById("plannerPrice");
+  const plannerSales = document.getElementById("plannerSales");
+  const plannerSalesRange = document.getElementById("plannerSalesRange");
+  const plannerLaunchBtn = document.getElementById("plannerLaunchBtn");
+
+  if (!plannerCurrency || !plannerPrice || !plannerSales || !plannerSalesRange) {
+    return;
+  }
+
+  const syncSales = (value) => {
+    const safeValue = Math.max(1, Number(value || 1));
+    plannerSales.value = safeValue;
+    plannerSalesRange.value = safeValue;
+    renderEarningsPlanner();
+  };
+
+  plannerCurrency.addEventListener("change", () => renderEarningsPlanner());
+  plannerPrice.addEventListener("input", () => renderEarningsPlanner());
+  plannerSales.addEventListener("input", () => syncSales(plannerSales.value));
+  plannerSalesRange.addEventListener("input", () => syncSales(plannerSalesRange.value));
+
+  const { token, user } = getStoredSession();
+  if (plannerLaunchBtn) {
+    if (!token) {
+      plannerLaunchBtn.href = "register.html";
+      plannerLaunchBtn.textContent = "Start creator account";
+    } else if (user?.role === "admin") {
+      plannerLaunchBtn.href = "admin/admin.html";
+      plannerLaunchBtn.textContent = "Open admin command center";
+    } else {
+      plannerLaunchBtn.href = "dashboard/upload.html";
+      plannerLaunchBtn.textContent = "Launch creator studio";
+    }
+  }
+
+  renderEarningsPlanner();
+}
+
+function renderEarningsPlanner() {
+  const plannerCurrency = document.getElementById("plannerCurrency");
+  const plannerPrice = document.getElementById("plannerPrice");
+  const plannerSales = document.getElementById("plannerSales");
+
+  if (!plannerCurrency || !plannerPrice || !plannerSales) {
+    return;
+  }
+
+  const currency = plannerCurrency.value in PLANNER_CURRENCIES ? plannerCurrency.value : "INR";
+  const price = Math.max(0, Number(plannerPrice.value || 0));
+  const monthlySales = Math.max(1, Number(plannerSales.value || 1));
+  const creatorPerSale = price * CREATOR_SHARE_RATE;
+  const platformPerSale = price * PLATFORM_SHARE_RATE;
+  const monthlyCreatorPayout = creatorPerSale * monthlySales;
+  const annualCreatorPayout = monthlyCreatorPayout * 12;
+
+  setText("plannerCreatorPerSale", formatPlannerCurrency(creatorPerSale, currency));
+  setText("plannerPlatformPerSale", formatPlannerCurrency(platformPerSale, currency));
+  setText("plannerMonthlyPayout", formatPlannerCurrency(monthlyCreatorPayout, currency));
+  setText("plannerAnnualPayout", formatPlannerCurrency(annualCreatorPayout, currency));
+  setText("plannerBuyerPrice", `Buyers pay ${formatPlannerCurrency(price, currency)} for this product.`);
+
+  const paidListings = HOMEPAGE_STATE.summary.totalPaidProducts || 0;
+  const liveProducts = HOMEPAGE_STATE.summary.totalProducts || 0;
+  const categories = HOMEPAGE_STATE.summary.totalCategories || 0;
+
+  const insight = price <= 0
+    ? "Free products are great for audience growth, but paid products are what turn your creator profile into a real earnings machine."
+    : `At ${monthlySales.toLocaleString("en-IN")} sales per month, you keep ${formatPlannerCurrency(monthlyCreatorPayout, currency)} monthly and ${formatPlannerCurrency(annualCreatorPayout, currency)} yearly on the marketplace.`;
+  setText("plannerInsight", insight);
+
+  setText(
+    "plannerLiveCatalog",
+    `${liveProducts.toLocaleString("en-IN")} live products - ${paidListings.toLocaleString("en-IN")} paid listings - ${categories.toLocaleString("en-IN")} active categories`
+  );
+
+  const paymentConfig = HOMEPAGE_STATE.paymentConfig;
+  const rails = Array.isArray(paymentConfig?.availableMethods) ? paymentConfig.availableMethods.join(", ") : "";
+  const railText = rails
+    ? `${rails} active now${paymentConfig?.upiId ? ` - ${paymentConfig.upiId}` : ""}`
+    : "Marketplace rails sync after payment settings load";
+  setText("plannerLiveRail", railText);
 }
 
 function buildHomepageSummary(response = {}, trendingBooks = [], newestBooks = []) {
@@ -794,11 +894,28 @@ function formatCurrencyOrFree(value) {
   return amount > 0 ? `Rs. ${amount.toLocaleString("en-IN")}` : "FREE";
 }
 
+function formatPlannerCurrency(value, currency = "INR") {
+  const meta = PLANNER_CURRENCIES[currency] || PLANNER_CURRENCIES.INR;
+  return new Intl.NumberFormat(meta.locale, {
+    style: "currency",
+    currency: meta.code,
+    maximumFractionDigits: meta.code === "INR" ? 0 : 2,
+  }).format(Number(value || 0));
+}
+
 function formatCompactNumber(value) {
   return Number(value || 0).toLocaleString("en-IN", {
     notation: "compact",
     maximumFractionDigits: 1,
   });
+}
+
+function setText(id, value) {
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
+  element.textContent = value;
 }
 
 function formatRatingLabel(book = {}) {
