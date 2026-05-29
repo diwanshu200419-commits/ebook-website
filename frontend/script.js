@@ -4,6 +4,7 @@ const HOMEPAGE_STATE = {
   trendingBooks: [],
   newestBooks: [],
   creators: [],
+  dashboard: null,
   paymentConfig: null,
   summary: {
     totalProducts: 0,
@@ -89,6 +90,7 @@ const LAUNCH_TRACKS = [
 document.addEventListener("DOMContentLoaded", () => {
   initNavbar();
   initPrimaryCtas();
+  hydrateCommandDeck();
   initEarningsPlanner();
   renderLaunchTracks();
   initVisualMotion();
@@ -193,6 +195,295 @@ function initPrimaryCtas() {
     } else {
       creatorCtaBtn.href = "dashboard/upload.html";
       creatorCtaBtn.textContent = "Launch Creator Studio";
+    }
+  }
+}
+
+async function hydrateCommandDeck() {
+  const titleEl = document.getElementById("commandDeckTitle");
+  const bodyEl = document.getElementById("commandDeckBody");
+  const statusEl = document.getElementById("commandDeckStatus");
+  const panelEl = document.getElementById("commandDeckPanel");
+
+  if (!titleEl || !bodyEl || !statusEl || !panelEl) {
+    return;
+  }
+
+  const { token, user } = getStoredSession();
+  const draft = readSavedUploadDraft();
+
+  if (!token) {
+    renderGuestCommandDeck({ titleEl, bodyEl, statusEl, panelEl, draft });
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/dashboard/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to load account command deck");
+    }
+
+    HOMEPAGE_STATE.dashboard = data;
+    renderMemberCommandDeck({ titleEl, bodyEl, statusEl, panelEl, draft, data, user });
+  } catch (error) {
+    console.error("Homepage command deck failed:", error);
+    renderCommandDeckFallback({ titleEl, bodyEl, statusEl, panelEl, draft, user });
+  }
+}
+
+function renderGuestCommandDeck({ titleEl, bodyEl, statusEl, panelEl, draft }) {
+  titleEl.textContent = draft?.title
+    ? "Your creator draft is saved locally and ready to launch"
+    : "Start as a buyer, grow into a creator, and monetize from one platform";
+  bodyEl.textContent = draft?.title
+    ? "You already have a prepared draft on this device. Create your account, open the upload studio, and continue from where you left off."
+    : "Guests can explore real products now, and once you register the same marketplace opens upload, AI review, earnings, and creator dashboards.";
+  statusEl.textContent = draft?.title
+    ? "Draft found locally. Account setup unlocks upload and AI review."
+    : "Guest mode is active. Register to unlock creator workflows.";
+  statusEl.className = "hero-status tone-warning";
+
+  panelEl.innerHTML = `
+    <div class="command-deck-grid">
+      <article class="command-metric-card">
+        <small>Marketplace mode</small>
+        <strong>Guest</strong>
+        <span>Browse the live catalog and prepare your creator launch path.</span>
+      </article>
+      <article class="command-metric-card">
+        <small>Saved draft</small>
+        <strong>${escapeHTML(draft?.title || "No saved draft")}</strong>
+        <span>${escapeHTML(draft?.type ? `${draft.type} - ${formatCurrencyOrFree(draft.price || 0)}` : "Use the launch paths below to create a ready-to-publish draft.")}</span>
+      </article>
+      <article class="command-draft-card">
+        <small>Fastest next step</small>
+        <strong>${escapeHTML(draft?.title ? "Create account and continue publishing" : "Pick a launch path and register")}</strong>
+        <span>${escapeHTML(draft?.deliveryInstructions || "You can move from homepage to creator launch in one flow.")}</span>
+      </article>
+    </div>
+    <div class="command-actions">
+      <a class="btn" href="register.html">Create Creator Account</a>
+      <a class="btn-outline" href="explore.html">Open Marketplace</a>
+      <a class="ghost-link" href="ai/ai-review.html">Open Free AI Review</a>
+    </div>
+  `;
+
+  bindCommandDeckActions(panelEl);
+}
+
+function renderMemberCommandDeck({ titleEl, bodyEl, statusEl, panelEl, draft, data, user }) {
+  const role = String(data.profile?.role || user?.role || data.viewer || "reader").toLowerCase();
+  const isCreatorLike = ["creator", "author", "admin"].includes(role) || data.viewer === "creator";
+  const creatorStats = data.creatorStats || {};
+  const readerStats = data.readerStats || {};
+
+  if (isCreatorLike) {
+    titleEl.textContent = role === "admin"
+      ? "Your marketplace operations are live"
+      : "Your creator workspace is live and ready to earn";
+    bodyEl.textContent = role === "admin"
+      ? "Move between moderation, payment ops, live catalog control, and creator launch surfaces from one command layer."
+      : "Resume your saved draft, open the AI review studio, monitor earnings, and keep shipping live digital products without losing momentum.";
+    statusEl.textContent = draft?.title
+      ? `Saved draft ready: ${draft.title}`
+      : "No saved creator draft right now. You can start a new launch path in one click.";
+    statusEl.className = `hero-status ${draft?.title ? "tone-success" : ""}`.trim();
+
+    panelEl.innerHTML = `
+      <div class="command-deck-grid">
+        <article class="command-metric-card">
+          <small>Live products</small>
+          <strong>${escapeHTML(formatCompactNumber(creatorStats.totalBooks || 0))}</strong>
+          <span>${escapeHTML(formatCompactNumber(creatorStats.totalDownloads || 0))} downloads across your creator catalog</span>
+        </article>
+        <article class="command-metric-card">
+          <small>Wallet ready</small>
+          <strong>${escapeHTML(formatPlannerCurrency(creatorStats.walletBalance || 0, "INR"))}</strong>
+          <span>${escapeHTML(formatPlannerCurrency(creatorStats.monthlyEarnings || 0, "INR"))} earned this month</span>
+        </article>
+        <article class="command-draft-card">
+          <small>Saved draft</small>
+          <strong>${escapeHTML(draft?.title || "No saved draft yet")}</strong>
+          <span>${escapeHTML(draft?.type ? `${draft.type} - ${formatCurrencyOrFree(draft.price || 0)} - ${draft.tags?.length || 0} tags` : "Use the launch paths below to prefill a new product draft.")}</span>
+        </article>
+      </div>
+      <div class="command-actions">
+        <a class="btn" href="${role === "admin" ? "admin/admin.html" : "dashboard/upload.html"}">${role === "admin" ? "Open Admin Command Center" : draft?.title ? "Resume Draft In Upload" : "Open Upload Studio"}</a>
+        <a class="btn-outline" href="ai/ai-review.html">Run Free AI Review</a>
+        <a class="ghost-link" href="${role === "admin" ? "admin/admin.html#reports" : "dashboard/earning.html"}">${role === "admin" ? "Open Growth Reports" : "Open Earnings"}</a>
+      </div>
+    `;
+    bindCommandDeckActions(panelEl);
+    return;
+  }
+
+  titleEl.textContent = "You are one step away from turning into a creator";
+  bodyEl.textContent = "Your reader account is live. You can keep buying products, or switch on creator mode and continue into upload, AI review, and earnings without starting over.";
+  statusEl.textContent = draft?.title
+    ? `Draft ready for creator activation: ${draft.title}`
+    : "Reader mode is active. Creator mode unlocks upload and earnings.";
+  statusEl.className = `hero-status ${draft?.title ? "tone-success" : "tone-warning"}`.trim();
+
+  panelEl.innerHTML = `
+    <div class="command-deck-grid">
+      <article class="command-metric-card">
+        <small>Unlocked products</small>
+        <strong>${escapeHTML(formatCompactNumber(readerStats.downloadsUnlocked || 0))}</strong>
+        <span>${escapeHTML(formatCompactNumber(readerStats.totalPurchased || 0))} completed purchases on your account</span>
+      </article>
+      <article class="command-metric-card">
+        <small>Total spent</small>
+        <strong>${escapeHTML(formatPlannerCurrency(readerStats.totalSpent || 0, "INR"))}</strong>
+        <span>${escapeHTML(formatCompactNumber(readerStats.bookmarksCount || 0))} saved ideas waiting in your marketplace loop</span>
+      </article>
+      <article class="command-draft-card">
+        <small>Saved creator draft</small>
+        <strong>${escapeHTML(draft?.title || "No saved draft yet")}</strong>
+        <span>${escapeHTML(draft?.type ? `${draft.type} - ${formatCurrencyOrFree(draft.price || 0)}` : "Choose a launch path and the site will prepare your first creator draft automatically.")}</span>
+      </article>
+    </div>
+    <div class="command-actions">
+      <button class="btn" type="button" data-activate-creator="true" data-next="${draft?.title ? "dashboard/upload.html" : "dashboard/dashboard.html"}">${draft?.title ? "Enable Creator Mode And Resume Draft" : "Enable Creator Mode"}</button>
+      <a class="btn-outline" href="dashboard/dashboard.html">Open Reader Dashboard</a>
+      <a class="ghost-link" href="explore.html">Explore Marketplace</a>
+      <a class="ghost-link" href="ai/ai-review.html">Open Free AI Review</a>
+    </div>
+    <div class="command-inline-status" id="commandInlineStatus">${escapeHTML(draft?.title ? "We found a creator draft on this device. One click will activate creator mode and open the upload studio." : "Creator mode can be activated instantly from here, then you can upload books, notes, prompts, and templates.")}</div>
+  `;
+
+  bindCommandDeckActions(panelEl);
+}
+
+function renderCommandDeckFallback({ titleEl, bodyEl, statusEl, panelEl, draft, user }) {
+  titleEl.textContent = "Your live command deck is warming up";
+  bodyEl.textContent = "The homepage could not load your full workspace snapshot right away, but your next creator steps are still available.";
+  statusEl.textContent = "Dashboard sync took longer than expected. Quick actions are still available.";
+  statusEl.className = "hero-status tone-warning";
+
+  panelEl.innerHTML = `
+    <div class="command-deck-grid">
+      <article class="command-metric-card">
+        <small>Role detected</small>
+        <strong>${escapeHTML(String(user?.role || "member").toUpperCase())}</strong>
+        <span>Open your workspace directly while live stats reconnect.</span>
+      </article>
+      <article class="command-draft-card">
+        <small>Saved draft</small>
+        <strong>${escapeHTML(draft?.title || "No saved draft yet")}</strong>
+        <span>${escapeHTML(draft?.type ? `${draft.type} - ${formatCurrencyOrFree(draft.price || 0)}` : "Choose a launch path and the site will prepare a new product draft.")}</span>
+      </article>
+    </div>
+    <div class="command-actions">
+      <a class="btn" href="${user?.role === "admin" ? "admin/admin.html" : "dashboard/dashboard.html"}">Open Workspace</a>
+      <a class="btn-outline" href="dashboard/upload.html">Open Upload Studio</a>
+      <a class="ghost-link" href="explore.html">Explore Marketplace</a>
+    </div>
+  `;
+
+  bindCommandDeckActions(panelEl);
+}
+
+function readSavedUploadDraft() {
+  try {
+    const raw = localStorage.getItem(UPLOAD_DRAFT_KEY);
+    if (!raw) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function bindCommandDeckActions(panelEl) {
+  if (!panelEl) {
+    return;
+  }
+
+  panelEl.querySelectorAll("[data-activate-creator]").forEach((button) => {
+    if (button.dataset.commandBound === "true") {
+      return;
+    }
+
+    button.dataset.commandBound = "true";
+    button.addEventListener("click", async () => {
+      await activateCreatorMode(button);
+    });
+  });
+}
+
+async function activateCreatorMode(button) {
+  const { token, user } = getStoredSession();
+  if (!token) {
+    window.location.href = "register.html";
+    return;
+  }
+
+  const nextUrl = button?.dataset?.next || "dashboard/upload.html";
+  const previousText = button.textContent;
+  const inlineStatus = document.getElementById("commandInlineStatus");
+  const commandStatus = document.getElementById("commandDeckStatus");
+
+  button.disabled = true;
+  button.textContent = "Enabling creator mode...";
+
+  if (inlineStatus) {
+    inlineStatus.textContent = "Activating creator mode and preparing your live publishing workspace...";
+  }
+
+  if (commandStatus) {
+    commandStatus.textContent = "Creator mode activation is running...";
+    commandStatus.className = "hero-status tone-warning";
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/creator/activate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message || "Unable to activate creator mode");
+    }
+
+    const nextUser = {
+      ...(user || {}),
+      role: payload.role || "creator",
+    };
+    localStorage.setItem("user", JSON.stringify(nextUser));
+
+    if (inlineStatus) {
+      inlineStatus.textContent = "Creator mode is active. Redirecting you into your next launch step...";
+    }
+
+    if (commandStatus) {
+      commandStatus.textContent = "Creator mode is live. Opening your creator workspace now.";
+      commandStatus.className = "hero-status tone-success";
+    }
+
+    window.setTimeout(() => {
+      window.location.href = nextUrl;
+    }, 280);
+  } catch (error) {
+    button.disabled = false;
+    button.textContent = previousText;
+
+    if (inlineStatus) {
+      inlineStatus.textContent = error.message || "Creator mode could not be enabled right now.";
+    }
+
+    if (commandStatus) {
+      commandStatus.textContent = error.message || "Unable to activate creator mode right now.";
+      commandStatus.className = "hero-status tone-warning";
     }
   }
 }
