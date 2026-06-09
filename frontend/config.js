@@ -83,4 +83,39 @@
   window.BACKEND_ORIGIN = backendOrigin;
   window.API_BASE = isLocalHost || isFilePreview ? backendOrigin : "";
   window.getFrontendReturnUrl = buildPreferredFrontendReturnUrl;
+  window.STORE_CONTACT = {
+    phoneDisplay: "+91 98765 43210",
+    phoneDigits: "919876543210",
+    phoneHref: "tel:+919876543210",
+    whatsappUrl: "https://wa.me/919876543210",
+  };
+  window.buildStoreWhatsAppUrl = function buildStoreWhatsAppUrl(message) {
+    var contact = window.STORE_CONTACT || {};
+    var base = String(contact.whatsappUrl || "").trim();
+    if (!base) {
+      return "";
+    }
+
+    var text = String(message || "").trim();
+    if (!text) {
+      return base;
+    }
+
+    return base + "?text=" + encodeURIComponent(text);
+  };
+
+  if (!window.__EBOOK_ANALYTICS_SCRIPT_REQUESTED__) {
+    window.__EBOOK_ANALYTICS_SCRIPT_REQUESTED__ = true;
+    try {
+      var currentScript = document.currentScript;
+      var analyticsSrc = currentScript && currentScript.src
+        ? new URL("analytics.js", currentScript.src).toString()
+        : "analytics.js";
+      var analyticsScript = document.createElement("script");
+      analyticsScript.src = analyticsSrc;
+      document.head.appendChild(analyticsScript);
+    } catch (error) {
+      console.error("Analytics bootstrap failed:", error);
+    }
+  }
 })();

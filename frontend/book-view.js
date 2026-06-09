@@ -32,18 +32,18 @@ const COPY = {
     downloadsMetric: "Downloads",
     aiScoreMetric: "AI score",
     ratingMetric: "Rating",
-    checkoutConfidenceTitle: "Checkout confidence",
-    checkoutConfidencePaid: "Buyers pay first, then the full file unlocks after approval.",
+    checkoutConfidenceTitle: "Order support",
+    checkoutConfidencePaid: "Paid products are confirmed over WhatsApp or phone before the full file is shared.",
     checkoutConfidenceFree: "This free product unlocks instantly for signed-in readers.",
     checkoutConfidenceAdmin: "You are in moderation access. Buyer paywall stays active outside this session.",
     checkoutConfidenceCreator: "You are in creator access. Buyer paywall stays active outside this session.",
-    checkoutConfidenceBuyerPreview: "Buyer preview mode is active, so this page is showing the real pre-purchase experience.",
+    checkoutConfidenceBuyerPreview: "Buyer preview mode is active, so this page is showing the public view before order confirmation.",
     previewMeterTitle: "Preview access",
-    previewMeterBuyer: "{count} of {total} pages are open before payment.",
-    previewMeterBuyerUnknown: "{count} preview pages are open before payment.",
+    previewMeterBuyer: "{count} of {total} pages are open before order confirmation.",
+    previewMeterBuyerUnknown: "{count} preview pages are open before order confirmation.",
     previewMeterFull: "Full file is unlocked in this session.",
     previewMeterFree: "This product is free, so the full reading experience is available.",
-    protectedCheckoutBadge: "Protected checkout",
+    protectedCheckoutBadge: "Guided order flow",
     livePreviewBadge: "Live preview",
     approvalBadge: "AI approved",
     digitalDeliveryBadge: "Digital delivery",
@@ -88,7 +88,7 @@ const COPY = {
     previewUnlockedBadge: "Full access unlocked",
     previewFreeBadge: "Open preview",
     previewTextBadge: "Live sample",
-    previewLockedAccessBadge: "Full unlock after payment",
+    previewLockedAccessBadge: "Full access after confirmation",
     previewOpenAccessBadge: "Preview open now",
     previewPagesBadge: "{count}-page preview",
     previewAllPagesBadge: "Full reading view",
@@ -96,7 +96,7 @@ const COPY = {
     previewPagesSupportUnknown: "Previewing the opening {count} pages only. Buy the product to unlock the complete file.",
     previewUnlockedSupport: "You have full access to this product, including the complete file and preview reader.",
     previewFreeSupport: "This product is free to access, so the full preview is available inside the reader.",
-    previewTextSupport: "This product shows a live text sample before purchase. The full text unlocks after payment.",
+    previewTextSupport: "This product shows a live text sample before ordering. The full text unlocks after confirmation.",
     previewFallbackSupport: "The preview reader is unavailable right now, so the cover is shown instead while access stays protected.",
     previewCouldNotLoad: "Preview could not be loaded, so the book thumbnail is shown instead.",
     ratingsPlaceholder: "Ratings and written reviews will appear here once the live product loads.",
@@ -134,11 +134,11 @@ const COPY = {
     download: "Download",
     explore: "Explore",
     addingToCart: "Adding this book to your cart...",
-    addedToCart: "Added to cart. Redirecting you to checkout options...",
+    addedToCart: "Added to cart. Redirecting you to your order options...",
     unableToAddToCart: "Unable to add to cart",
     deliverySuffix: "Delivery",
     digitalDelivery: "Digital delivery",
-    buyersUnlockLink: "Buyers unlock the delivery link after purchase approval.",
+    buyersUnlockLink: "Buyers unlock the delivery link after order confirmation.",
     free: "FREE",
     untitled: "Untitled",
     unknown: "Unknown",
@@ -147,10 +147,10 @@ const COPY = {
     previewExcerpt: "Preview excerpt",
     instantAccessUnlocked: "Instant-access delivery is unlocked for this product.",
     buyToUnlockFullContent: "This product includes instant text delivery. Buy to unlock the full content.",
-    paymentRequired: "Payment required",
-    signInToPurchase: "Sign in to purchase",
-    paidTitleMessage: "Use Buy Now or Add to Cart to unlock this paid title. The full download opens after payment approval.",
-    paidBookSignInMessage: "This is a paid book. Sign in first, then continue to checkout or add it to your cart.",
+    paymentRequired: "Order confirmation required",
+    signInToPurchase: "Sign in to continue",
+    paidTitleMessage: "Use WhatsApp or the phone number to order this paid title. Full access is shared after confirmation.",
+    paidBookSignInMessage: "This is a paid book. Contact us on WhatsApp or phone to order it.",
     lockedUntilPurchase: "Paid books stay locked until purchase. Showing the cover thumbnail instead of a broken preview.",
     previewFallbackDownload: "Your download is still available below. The inline preview is not available right now.",
     previewFallbackCover: "The inline preview is not available right now, so the book cover is shown instead.",
@@ -161,14 +161,17 @@ const COPY = {
     previewUnavailableNote: "Preview unavailable. Showing the cover thumbnail instead.",
     openProduct: "Open Product",
     unlockText: "Unlock Text",
-    signInToBuy: "Sign In to Buy",
-    buyNow: "Buy Now",
-    startingDirectCheckout: "Preparing secure checkout...",
-    directCheckoutUnavailable: "Secure checkout is not available right now.",
-    directCheckoutFallback: "Stripe card checkout is temporarily unavailable. Redirecting you to manual proof checkout for this product.",
-    creatorUnlockedMessage: "You are viewing this product with creator access, so it is unlocked for you. Buyers still need to complete payment before download.",
-    adminUnlockedMessage: "You are viewing this product with admin access, so it is unlocked for moderation. Buyers still need to complete payment before download.",
-    buyerFlowProtected: "Buyer checkout remains protected",
+    signInToBuy: "WhatsApp to Buy",
+    buyNow: "WhatsApp to Buy",
+    callNow: "Call Now",
+    openingWhatsApp: "Opening WhatsApp...",
+    callingNow: "Calling {phone}...",
+    startingDirectCheckout: "Opening WhatsApp...",
+    directCheckoutUnavailable: "WhatsApp could not be opened right now.",
+    directCheckoutFallback: "WhatsApp could not be opened right now. Use the phone number to contact the store.",
+    creatorUnlockedMessage: "You are viewing this product with creator access, so it is unlocked for you. Buyers still need order confirmation before download.",
+    adminUnlockedMessage: "You are viewing this product with admin access, so it is unlocked for moderation. Buyers still need order confirmation before download.",
+    buyerFlowProtected: "Buyer order flow remains protected",
     buyerPreviewFlow: "Buyer Preview Flow",
     buyerPreviewModeMessage: "Buyer preview mode is active. This is the protected storefront view regular buyers see before purchase.",
     returnToAdminAccess: "Return to Admin Access",
@@ -216,18 +219,18 @@ const COPY = {
     downloadsMetric: "Downloads",
     aiScoreMetric: "AI score",
     ratingMetric: "Rating",
-    checkoutConfidenceTitle: "Checkout confidence",
-    checkoutConfidencePaid: "Buyers pehle payment karte hain, phir approval ke baad full file unlock hoti hai.",
+    checkoutConfidenceTitle: "Order support",
+    checkoutConfidencePaid: "Paid products WhatsApp ya phone ke through confirm hote hain, uske baad full file share ki jati hai.",
     checkoutConfidenceFree: "Yeh free product signed-in readers ke liye turant unlock ho jata hai.",
     checkoutConfidenceAdmin: "Aap moderation access me hain. Is session ke bahar buyer paywall active rahega.",
     checkoutConfidenceCreator: "Aap creator access me hain. Is session ke bahar buyer paywall active rahega.",
-    checkoutConfidenceBuyerPreview: "Buyer preview mode active hai, isliye yeh page real pre-purchase experience dikha raha hai.",
+    checkoutConfidenceBuyerPreview: "Buyer preview mode active hai, isliye yeh page order confirmation se pehle ka public view dikha raha hai.",
     previewMeterTitle: "Preview access",
-    previewMeterBuyer: "Payment se pehle {total} me se {count} pages open hain.",
-    previewMeterBuyerUnknown: "Payment se pehle {count} preview pages open hain.",
+    previewMeterBuyer: "Order confirmation se pehle {total} me se {count} pages open hain.",
+    previewMeterBuyerUnknown: "Order confirmation se pehle {count} preview pages open hain.",
     previewMeterFull: "Is session me full file unlocked hai.",
     previewMeterFree: "Yeh product free hai, isliye full reading experience available hai.",
-    protectedCheckoutBadge: "Protected checkout",
+    protectedCheckoutBadge: "Guided order flow",
     livePreviewBadge: "Live preview",
     approvalBadge: "AI approved",
     digitalDeliveryBadge: "Digital delivery",
@@ -272,7 +275,7 @@ const COPY = {
     previewUnlockedBadge: "Full access unlocked",
     previewFreeBadge: "Open preview",
     previewTextBadge: "Live sample",
-    previewLockedAccessBadge: "Payment ke baad full unlock",
+    previewLockedAccessBadge: "Confirmation ke baad full access",
     previewOpenAccessBadge: "Preview abhi open hai",
     previewPagesBadge: "{count}-page preview",
     previewAllPagesBadge: "Full reading view",
@@ -280,7 +283,7 @@ const COPY = {
     previewPagesSupportUnknown: "Sirf shuru ke {count} pages preview me dikh rahe hain. Puri file unlock karne ke liye product buy kijiye.",
     previewUnlockedSupport: "Aapke paas is product ka full access hai, isliye complete file aur preview reader dono available hain.",
     previewFreeSupport: "Yeh product free access me hai, isliye full preview reader ke andar available hai.",
-    previewTextSupport: "Yeh product purchase se pehle live text sample dikhata hai. Full text payment ke baad unlock hoga.",
+    previewTextSupport: "Yeh product order se pehle live text sample dikhata hai. Full text confirmation ke baad unlock hoga.",
     previewFallbackSupport: "Preview reader abhi unavailable hai, isliye cover dikhaya ja raha hai aur access protected rahega.",
     previewCouldNotLoad: "Preview load nahin hua, isliye book thumbnail dikhaya ja raha hai.",
     ratingsPlaceholder: "Live product load hone ke baad ratings aur written reviews yahan dikhengi.",
@@ -318,11 +321,11 @@ const COPY = {
     download: "Download",
     explore: "Explore",
     addingToCart: "Yeh book aapke cart me add ho rahi hai...",
-    addedToCart: "Cart me add ho gayi. Checkout options par redirect kiya ja raha hai...",
+    addedToCart: "Cart me add ho gayi. Order options par redirect kiya ja raha hai...",
     unableToAddToCart: "Cart me add nahin ho paaya",
     deliverySuffix: "Delivery",
     digitalDelivery: "Digital delivery",
-    buyersUnlockLink: "Buyers purchase approval ke baad delivery link unlock karte hain.",
+    buyersUnlockLink: "Buyers order confirmation ke baad delivery link unlock karte hain.",
     free: "FREE",
     untitled: "Untitled",
     unknown: "Unknown",
@@ -331,10 +334,10 @@ const COPY = {
     previewExcerpt: "Preview excerpt",
     instantAccessUnlocked: "Is product ke liye instant-access delivery unlock ho chuki hai.",
     buyToUnlockFullContent: "Is product me instant text delivery hai. Full content unlock karne ke liye buy kijiye.",
-    paymentRequired: "Payment required",
-    signInToPurchase: "Purchase ke liye sign in kijiye",
-    paidTitleMessage: "Is paid title ko unlock karne ke liye Buy Now ya Add to Cart use kijiye. Full download payment approval ke baad khulega.",
-    paidBookSignInMessage: "Yeh paid book hai. Pehle sign in kijiye, phir checkout continue kijiye ya cart me add kijiye.",
+    paymentRequired: "Order confirmation required",
+    signInToPurchase: "Continue karne ke liye sign in kijiye",
+    paidTitleMessage: "Is paid title ko order karne ke liye WhatsApp ya phone number use kijiye. Full access confirmation ke baad share hoga.",
+    paidBookSignInMessage: "Yeh paid book hai. Order karne ke liye hume WhatsApp ya phone par contact kijiye.",
     lockedUntilPurchase: "Paid books purchase tak locked rehti hain. Broken preview ki jagah cover thumbnail dikhaya ja raha hai.",
     previewFallbackDownload: "Aapka download neeche available hai. Inline preview abhi available nahin hai.",
     previewFallbackCover: "Inline preview abhi available nahin hai, isliye book cover dikhaya ja raha hai.",
@@ -345,14 +348,17 @@ const COPY = {
     previewUnavailableNote: "Preview unavailable hai. Book cover dikhaya ja raha hai.",
     openProduct: "Product kholiye",
     unlockText: "Text unlock kijiye",
-    signInToBuy: "Buy karne ke liye sign in kijiye",
-    buyNow: "Buy now",
-    startingDirectCheckout: "Secure checkout prepare ho raha hai...",
-    directCheckoutUnavailable: "Secure checkout abhi available nahin hai.",
-    directCheckoutFallback: "Stripe card checkout abhi unavailable hai. Is product ke liye aapko manual proof checkout par bheja ja raha hai.",
-    creatorUnlockedMessage: "Aap is product ko creator access ke saath dekh rahe hain, isliye yeh aapke liye unlocked hai. Buyers ko download se pehle payment complete karna hoga.",
-    adminUnlockedMessage: "Aap is product ko admin access ke saath dekh rahe hain, isliye yeh moderation ke liye unlocked hai. Buyers ko download se pehle payment complete karna hoga.",
-    buyerFlowProtected: "Buyer checkout protected rahega",
+    signInToBuy: "WhatsApp se order kijiye",
+    buyNow: "WhatsApp se order kijiye",
+    callNow: "Abhi call kijiye",
+    openingWhatsApp: "WhatsApp khola ja raha hai...",
+    callingNow: "{phone} par call ki ja rahi hai...",
+    startingDirectCheckout: "WhatsApp khola ja raha hai...",
+    directCheckoutUnavailable: "Abhi WhatsApp open nahin ho pa raha hai.",
+    directCheckoutFallback: "Abhi WhatsApp open nahin ho raha. Store se baat karne ke liye phone number use kijiye.",
+    creatorUnlockedMessage: "Aap is product ko creator access ke saath dekh rahe hain, isliye yeh aapke liye unlocked hai. Buyers ko download se pehle order confirmation chahiye hogi.",
+    adminUnlockedMessage: "Aap is product ko admin access ke saath dekh rahe hain, isliye yeh moderation ke liye unlocked hai. Buyers ko download se pehle order confirmation chahiye hogi.",
+    buyerFlowProtected: "Buyer order flow protected rahega",
     buyerPreviewFlow: "Buyer preview flow",
     buyerPreviewModeMessage: "Buyer preview mode active hai. Yeh wahi protected storefront view hai jo regular buyers purchase se pehle dekhte hain.",
     returnToAdminAccess: "Admin access par wapas jaiye",
@@ -633,6 +639,75 @@ function formatCompactNumber(value) {
     notation: "compact",
     maximumFractionDigits: 1,
   });
+}
+
+function getStoreContactDetails() {
+  return window.STORE_CONTACT || {
+    phoneDisplay: "+91 98765 43210",
+    phoneHref: "tel:+919876543210",
+    whatsappUrl: "https://wa.me/919876543210",
+  };
+}
+
+function buildProductLeadMessage(book = {}) {
+  const title = book.title || "Book";
+  const price = Number(book.price || 0) > 0 ? formatCurrency(book.price) : t("free");
+  const lines = [
+    `Hello E-Book Market, I want to order this book: ${title}`,
+    `Price: ${price}`,
+    `Page: ${window.location.href}`,
+  ];
+
+  if (book.authorName) {
+    lines.splice(1, 0, `Creator: ${book.authorName}`);
+  }
+
+  return lines.join("\n");
+}
+
+function openProductWhatsAppLead(book = {}) {
+  const url = typeof window.buildStoreWhatsAppUrl === "function"
+    ? window.buildStoreWhatsAppUrl(buildProductLeadMessage(book))
+    : "";
+
+  if (!url) {
+    setActionStatus(t("directCheckoutUnavailable"), "error");
+    return;
+  }
+
+  if (typeof window.trackStoreContactIntent === "function") {
+    window.trackStoreContactIntent("whatsapp", {
+      itemId: String(book._id || book.id || ""),
+      itemName: book.title || "Digital product",
+      itemCount: 1,
+      value: Number(book.price || 0),
+      sourcePage: "/book_view.html",
+    });
+  }
+
+  setActionStatus(t("openingWhatsApp"), "info");
+  const popup = window.open(url, "_blank", "noopener");
+  if (!popup) {
+    window.location.href = url;
+  }
+}
+
+function callStoreForOrder() {
+  const contact = getStoreContactDetails();
+  const book = bookViewState.book || {};
+  if (typeof window.trackStoreContactIntent === "function") {
+    window.trackStoreContactIntent("phone", {
+      itemId: String(book._id || book.id || ""),
+      itemName: book.title || "Digital product",
+      itemCount: 1,
+      value: Number(book.price || 0),
+      sourcePage: "/book_view.html",
+    });
+  }
+  setActionStatus(fillTemplate(t("callingNow"), {
+    phone: contact.phoneDisplay || "+91 98765 43210",
+  }), "info");
+  window.location.href = contact.phoneHref || "tel:+919876543210";
 }
 
 function formatReviewDate(value) {
@@ -1461,6 +1536,24 @@ async function addToCart(bookId) {
     } else if (data.added !== false) {
       bumpVisibleCartCount(1);
     }
+
+    const book = bookViewState.book && String(bookViewState.book._id || "") === String(bookId || "")
+      ? bookViewState.book
+      : { _id: bookId };
+    if (typeof window.trackAnalyticsEvent === "function") {
+      window.trackAnalyticsEvent("add_to_cart", {
+        currency: "INR",
+        value: Number(book.price || 0),
+        items: [
+          {
+            item_id: String(book._id || bookId || ""),
+            item_name: book.title || "Digital product",
+            item_category: book.category || book.type || "Digital product",
+          },
+        ],
+      });
+    }
+
     setActionStatus(t("addedToCart"), "success");
     window.setTimeout(() => {
       window.location.href = "cart.html";
@@ -1470,48 +1563,15 @@ async function addToCart(bookId) {
   }
 }
 
-async function startDirectStripeCheckout(bookId) {
-  const token = getToken();
-  if (!token) {
-    redirectToLogin();
-    return;
-  }
-
-  const market = getStoredBuyerMarket();
-  setActionStatus(t("startingDirectCheckout"), "info");
+function startDirectStripeCheckout(bookId) {
+  const currentBook = bookViewState.book && String(bookViewState.book._id || "") === String(bookId || "")
+    ? bookViewState.book
+    : { _id: bookId };
 
   try {
-    const response = await fetch(`${API_BASE}/api/payments/create-checkout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        bookId,
-        country: market.country,
-        currency: market.currency,
-      }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || t("directCheckoutUnavailable"));
-    }
-
-    if (data.checkoutMode === "manual_fallback" && data.url) {
-      persistCheckoutNotice(data.message || t("directCheckoutFallback"), "warning");
-      window.location.href = data.url;
-      return;
-    }
-
-    if (data.url) {
-      window.location.href = data.url;
-      return;
-    }
-
-    setActionStatus(data.message || t("directCheckoutUnavailable"), "warning");
+    openProductWhatsAppLead(currentBook);
   } catch (error) {
-    setActionStatus(error.message || t("directCheckoutUnavailable"), "error");
+    setActionStatus(error?.message || t("directCheckoutFallback"), "error");
   }
 }
 
@@ -1697,9 +1757,6 @@ function renderBook(book, access) {
     downloadBtn.onclick = () => {
       window.location.href = downloadUrl;
     };
-  } else if (isPaid && !token) {
-    downloadBtn.textContent = t("signInToBuy");
-    downloadBtn.onclick = redirectToLogin;
   } else if (isPaid) {
     downloadBtn.textContent = t("buyNow");
     downloadBtn.onclick = () => {
@@ -1729,8 +1786,8 @@ function renderBook(book, access) {
       cartBtn.onclick = () => toggleBuyerPreviewMode(true);
     } else if (isPaid && !canDownload) {
       cartBtn.style.display = "block";
-      cartBtn.textContent = token ? t("addToCart") : t("signInToAdd");
-      cartBtn.onclick = token ? () => addToCart(book._id) : redirectToLogin;
+      cartBtn.textContent = t("callNow");
+      cartBtn.onclick = callStoreForOrder;
     } else {
       cartBtn.style.display = "none";
     }

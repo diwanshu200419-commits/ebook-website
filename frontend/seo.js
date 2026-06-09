@@ -1,7 +1,7 @@
 (function () {
   var DEFAULT_SITE_NAME = "E-Book Market";
   var DEFAULT_SITE_ORIGIN = "https://ebook-website-theta-nine.vercel.app";
-  var DEFAULT_IMAGE = "/assets/covers/ai.png";
+  var DEFAULT_IMAGE = "/assets/covers/Ebook_AI.png";
   var DEFAULT_THEME_COLOR = "#050816";
   var DEFAULT_LOCALE = "en_IN";
   var DEFAULT_ROBOTS = "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
@@ -32,9 +32,9 @@
       schemaType: "CollectionPage",
     },
     "/book_view.html": {
-      title: "Digital Product | E-Book Market",
-      description: "Preview and buy digital books, notes, prompts, and creator products on E-Book Market.",
-      keywords: "digital product, ebook preview, buy study notes, AI digital product",
+      title: "Buy Ebooks, Study Notes, and Digital Products | E-Book Market",
+      description: "Preview and order ebooks, study notes, prompts, and creator-made digital products on E-Book Market.",
+      keywords: "buy ebooks online, study notes marketplace, digital product preview, creator products, ebook store",
       path: "/book_view.html",
       type: "product",
       schemaType: "Product",
@@ -126,6 +126,60 @@
       path: "/site.html",
       type: "article",
       schemaType: "WebPage",
+    },
+    "/login.html": {
+      title: "Sign In | E-Book Market",
+      description: "Sign in to your E-Book Market account to manage purchases, creator tools, and dashboard access.",
+      keywords: "ebook market login, creator sign in, buyer account",
+      path: "/login.html",
+      type: "website",
+      schemaType: "WebPage",
+      noindex: true,
+    },
+    "/register.html": {
+      title: "Create Account | E-Book Market",
+      description: "Create your E-Book Market account to buy digital products, publish ebooks, and grow as a creator.",
+      keywords: "ebook market register, create creator account, buy ebooks account",
+      path: "/register.html",
+      type: "website",
+      schemaType: "WebPage",
+      noindex: true,
+    },
+    "/cart.html": {
+      title: "Cart | E-Book Market",
+      description: "Review the digital products in your cart before contacting E-Book Market on WhatsApp or phone.",
+      keywords: "ebook market cart, digital product cart, whatsapp order cart",
+      path: "/cart.html",
+      type: "website",
+      schemaType: "WebPage",
+      noindex: true,
+    },
+    "/checkout.html": {
+      title: "Order Support | E-Book Market",
+      description: "Review your selected books and contact E-Book Market on WhatsApp or phone for manual order confirmation.",
+      keywords: "ebook order support, whatsapp order, digital product checkout help",
+      path: "/checkout.html",
+      type: "website",
+      schemaType: "WebPage",
+      noindex: true,
+    },
+    "/success.html": {
+      title: "Order Success | E-Book Market",
+      description: "Your E-Book Market order has been confirmed successfully.",
+      keywords: "order success, ebook market confirmation",
+      path: "/success.html",
+      type: "website",
+      schemaType: "WebPage",
+      noindex: true,
+    },
+    "/cancel.html": {
+      title: "Order Cancelled | E-Book Market",
+      description: "Your E-Book Market order was cancelled before confirmation.",
+      keywords: "order cancelled, ebook market cart",
+      path: "/cancel.html",
+      type: "website",
+      schemaType: "WebPage",
+      noindex: true,
     },
   };
 
@@ -422,6 +476,21 @@
 
   window.applySeo = applySeo;
   window.buildSeoAbsoluteUrl = buildAbsoluteUrl;
+
+  if (!window.__EBOOK_ANALYTICS_SCRIPT_REQUESTED__) {
+    window.__EBOOK_ANALYTICS_SCRIPT_REQUESTED__ = true;
+    try {
+      var currentScript = document.currentScript;
+      var analyticsSrc = currentScript && currentScript.src
+        ? new URL("analytics.js", currentScript.src).toString()
+        : "analytics.js";
+      var analyticsScript = document.createElement("script");
+      analyticsScript.src = analyticsSrc;
+      document.head.appendChild(analyticsScript);
+    } catch (error) {
+      console.error("Analytics bootstrap failed:", error);
+    }
+  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {

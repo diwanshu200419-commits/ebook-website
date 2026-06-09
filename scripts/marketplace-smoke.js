@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 
 const BASE_URL = (process.env.MARKETPLACE_BASE_URL || "https://ebook-website-theta-nine.vercel.app").replace(/\/$/, "");
+const API_URL = (process.env.MARKETPLACE_API_BASE_URL || BASE_URL).replace(/\/$/, "");
+const FRONTEND_URL = (process.env.MARKETPLACE_FRONTEND_URL || BASE_URL).replace(/\/$/, "");
 const BOOK_ID = process.env.SMOKE_BOOK_ID || "6a15cf8a120f0f9b32a6069c";
 const PASSWORD = process.env.SMOKE_TEST_PASSWORD || "Testpass123";
 
@@ -32,6 +34,8 @@ async function main() {
   const email = `smoke-${Date.now()}-${crypto.randomBytes(2).toString("hex")}@example.com`;
   const report = {
     baseUrl: BASE_URL,
+    apiUrl: API_URL,
+    frontendUrl: FRONTEND_URL,
     bookId: BOOK_ID,
     email,
     checks: [],
@@ -41,7 +45,7 @@ async function main() {
     report.checks.push({ name, passed, details });
   };
 
-  const register = await fetchJson(`${BASE_URL}/api/auth/register`, {
+  const register = await fetchJson(`${API_URL}/api/auth/register`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -63,7 +67,7 @@ async function main() {
     authorization: `Bearer ${token}`,
   };
 
-  const book = await fetchJson(`${BASE_URL}/api/books/${BOOK_ID}`);
+  const book = await fetchJson(`${API_URL}/api/books/${BOOK_ID}`);
   assert(book.ok && book.data.book, "Book lookup failed");
   assert(book.data.access?.canPreview === true, "Paid book preview should be enabled");
   assert(book.data.access?.canDownload === false, "Paid book should not download before purchase");
@@ -75,7 +79,7 @@ async function main() {
     previewPages: book.data.book.previewPages,
   });
 
-  const downloadBeforePay = await fetchJson(`${BASE_URL}/api/books/${BOOK_ID}/download`, {
+  const downloadBeforePay = await fetchJson(`${API_URL}/api/books/${BOOK_ID}/download`, {
     headers: authHeaders,
   });
   assert(downloadBeforePay.status === 403, "Download should be blocked before purchase");
@@ -84,7 +88,7 @@ async function main() {
     message: downloadBeforePay.data.message,
   });
 
-  const addToCart = await fetchJson(`${BASE_URL}/api/cart/add`, {
+  const addToCart = await fetchJson(`${API_URL}/api/cart/add`, {
     method: "POST",
     headers: {
       ...authHeaders,
@@ -99,7 +103,7 @@ async function main() {
     message: addToCart.data.message,
   });
 
-  const cart = await fetchJson(`${BASE_URL}/api/cart`, {
+  const cart = await fetchJson(`${API_URL}/api/cart`, {
     headers: authHeaders,
   });
   assert(cart.ok && Array.isArray(cart.data.items) && cart.data.items.length === 1, "Cart should contain one item");
@@ -110,7 +114,7 @@ async function main() {
     total: cart.data.total,
   });
 
-  const checkout = await fetchJson(`${BASE_URL}/api/payments/create-checkout-cart`, {
+  const checkout = await fetchJson(`${API_URL}/api/payments/create-checkout-cart`, {
     method: "POST",
     headers: {
       ...authHeaders,
@@ -134,7 +138,7 @@ async function main() {
     message: checkout.data.message || null,
   });
 
-  const paymentConfig = await fetchJson(`${BASE_URL}/api/payments/config?country=IN&currency=INR`);
+  const paymentConfig = await fetchJson(`${API_URL}/api/payments/config?country=IN&currency=INR`);
   assert(paymentConfig.ok && paymentConfig.data.success, "Payment config failed");
   assert(paymentConfig.data.manualCheckout?.enabled === true, "Manual checkout should be enabled");
   assert(paymentConfig.data.methods?.UPI?.upiId, "UPI ID should be configured");
@@ -145,7 +149,7 @@ async function main() {
     upiId: paymentConfig.data.methods?.UPI?.upiId || "",
   });
 
-  const homepageResponse = await fetch(`${BASE_URL}/index.html`, { cache: "no-store" });
+  const homepageResponse = await fetch(`${FRONTEND_URL}/index.html`, { cache: "no-store" });
   const homepageHtml = await homepageResponse.text();
   assert(homepageResponse.ok, "Homepage request failed");
   assert(homepageHtml.includes('id="heroPrimaryCard"'), "Homepage hero card missing");
@@ -155,7 +159,7 @@ async function main() {
     heroFallbackSafe: true,
   });
 
-  const homepageScriptResponse = await fetch(`${BASE_URL}/script.js`, { cache: "no-store" });
+  const homepageScriptResponse = await fetch(`${FRONTEND_URL}/script.js`, { cache: "no-store" });
   const homepageScript = await homepageScriptResponse.text();
   assert(homepageScriptResponse.ok, "Homepage script request failed");
   assert(homepageScript.includes('const primary = document.getElementById("heroPrimaryCard");'), "Homepage hero hydration is missing");
@@ -172,6 +176,8 @@ main().catch((error) => {
     JSON.stringify(
       {
         baseUrl: BASE_URL,
+        apiUrl: API_URL,
+        frontendUrl: FRONTEND_URL,
         bookId: BOOK_ID,
         error: error.message,
       },

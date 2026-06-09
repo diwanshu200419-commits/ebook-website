@@ -547,7 +547,7 @@ async function loadHomepageData() {
     renderFreshLaunches(buildFreshSelection(newestBooks, trendingBooks));
     hydrateHeroCards(trendingBooks, newestBooks);
     await renderReviewProof(buildFeedbackCandidates(trendingBooks, newestBooks));
-    setHeroStatus("Live marketplace rails are active and synced to approved catalog data.", "success");
+    setHeroStatus("Live marketplace data is active and buyer order support is ready.", "success");
   } catch (error) {
     console.error("Homepage data failed:", error);
     renderCategories([]);
@@ -1314,7 +1314,7 @@ function upgradeReviewProofCards(root = document) {
 async function addHomepageCart(bookId, button) {
   const { token } = getStoredSession();
   if (!token) {
-    setHeroStatus("Sign in to save paid products and continue to checkout.", "warning");
+    setHeroStatus("Sign in to save paid products and continue to your order options.", "warning");
     window.location.href = "login.html";
     return;
   }
@@ -1339,12 +1339,12 @@ async function addHomepageCart(bookId, button) {
     }
 
     const alreadyInCart = Boolean(payload.alreadyInCart);
-    button.textContent = alreadyInCart ? "Already In Cart" : "Go To Cart";
+    button.textContent = alreadyInCart ? "Already In Cart" : "Open Cart";
     button.dataset.mode = "cart-ready";
     setHeroStatus(
       alreadyInCart
-        ? "This product is already in your cart and ready for checkout."
-        : "Product added to cart. Your checkout flow is ready now.",
+        ? "This product is already in your cart and ready to order."
+        : "Product added to cart. Your order options are ready now.",
       "success"
     );
   } catch (error) {

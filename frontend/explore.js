@@ -48,7 +48,7 @@ const COPY = {
   English: {
     heroEyebrow: "AI marketplace for students, creators, teachers, and freelancers",
     heroTitle: "Discover digital products built for <span>earning online</span>.",
-    heroCopy: "Explore notes, ebooks, prompts, templates, and creator-made knowledge products with an India-ready purchase flow and real monetization rails.",
+    heroCopy: "Explore notes, ebooks, prompts, templates, and creator-made knowledge products with manual order support and real monetization rails.",
     heroCartCta: "Go To Cart",
     heroDashboardCta: "Launch Creator Hub",
     pulseTitle: "Marketplace Pulse",
@@ -369,7 +369,7 @@ Object.assign(COPY.Hindi, {
 Object.assign(COPY.Hindi, COPY.English, {
   heroEyebrow: "Students, creators, teachers aur freelancers ke liye AI marketplace",
   heroTitle: "Digital products khojiye jo <span>online earning</span> ke liye bane hain.",
-  heroCopy: "Notes, ebooks, prompts, templates aur creator-made knowledge products ko India-ready payment flow ke saath explore kijiye.",
+  heroCopy: "Notes, ebooks, prompts, templates aur creator-made knowledge products ko manual order support ke saath explore kijiye.",
   heroCartCta: "Cart kholiye",
   heroDashboardCta: "Creator Hub kholiye",
   pulseTitle: "Marketplace Pulse",

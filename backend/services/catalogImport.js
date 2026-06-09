@@ -51,11 +51,17 @@ const EXCLUDED_LIBRARY_FILENAMES = new Set([
   "computer-networking.-principles-protocols-and-practice-olivier-bonaventure.pdf",
   "full-networking.pdf.pdf",
 ]);
-const MARKETPLACE_SYNC_INTERVAL_MS = 15000;
+// Folder-based catalog imports do not need sub-minute freshness, and a short
+// interval can block storefront requests while previews are regenerated.
+const MARKETPLACE_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const MARKETPLACE_OWNER_EMAIL = "marketplace-library@ebook.local";
 
 let marketplaceSyncPromise = null;
 let marketplaceSyncCompletedAt = 0;
+
+function hasMarketplaceCatalogSynced() {
+  return marketplaceSyncCompletedAt > 0;
+}
 
 function normalizeFilenameKey(filename = "") {
   return path.basename(String(filename || "")).toLowerCase();
@@ -1027,6 +1033,7 @@ module.exports = {
   BUILTIN_LIBRARY,
   ensureCatalogBookIsStored,
   getImportableLibraryCatalog,
+  hasMarketplaceCatalogSynced,
   importBuiltinLibraryForCreator,
   syncProjectCatalogToMarketplace,
   purgeOfficialPreviewCatalogBooks,

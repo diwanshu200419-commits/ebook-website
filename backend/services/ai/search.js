@@ -5,7 +5,10 @@ const BookAI = require("../../models/BookAI");
 const Payment = require("../../models/Payment");
 const User = require("../../models/user");
 const { serializeBook } = require("../bookData");
-const { syncProjectCatalogToMarketplace } = require("../catalogImport");
+const {
+  hasMarketplaceCatalogSynced,
+  syncProjectCatalogToMarketplace,
+} = require("../catalogImport");
 const {
   buildPublicMarketplaceDiscoveryFilter,
 } = require("../../utils/marketplaceVisibility");
@@ -198,10 +201,18 @@ async function searchApprovedBooks({
   language = "",
   userId = "",
 }) {
-  try {
-    await syncProjectCatalogToMarketplace();
-  } catch (error) {
-    console.error("Marketplace catalog sync error:", error.message);
+  // Keep the first-ever catalog request safe on a fresh boot, but avoid
+  // blocking normal storefront browsing on repeated background imports.
+  if (!hasMarketplaceCatalogSynced()) {
+    try {
+      await syncProjectCatalogToMarketplace();
+    } catch (error) {
+      console.error("Marketplace catalog sync error:", error.message);
+    }
+  } else {
+    void syncProjectCatalogToMarketplace().catch((error) => {
+      console.error("Marketplace catalog sync error:", error.message);
+    });
   }
 
   const safePage = Math.max(parseInt(page, 10) || 1, 1);

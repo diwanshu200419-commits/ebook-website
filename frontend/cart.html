@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Review the digital products in your cart before sending your order on WhatsApp or calling E-Book Market." />
+  <meta name="robots" content="noindex,nofollow" />
   <title>Cart | E-Book Market</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="marketplace.css" />
   <script src="config.js"></script>
+  <script src="seo.js"></script>
   <script src="marketplace-shell.js?v=20260527-cart-real"></script>
 </head>
 <body class="marketplace-body">
@@ -19,7 +22,7 @@
           <span class="marketplace-brand-mark">AI</span>
           <span class="marketplace-brand-copy">
             <strong>E-Book Market</strong>
-            <span>Checkout stack for Indian youth creators</span>
+            <span>Manual order support for digital books</span>
           </span>
         </a>
 
@@ -45,10 +48,10 @@
     <main class="marketplace-main">
       <section class="hero-panel">
         <div>
-          <span class="hero-eyebrow" id="cartHeroEyebrow">Revenue-ready checkout flow</span>
-          <h1 class="hero-title" id="cartHeroTitle">Your purchase cart for <span>knowledge products</span>.</h1>
+          <span class="hero-eyebrow" id="cartHeroEyebrow">Contact-first order support</span>
+          <h1 class="hero-title" id="cartHeroTitle">Your book cart for <span>WhatsApp ordering</span>.</h1>
           <p class="hero-copy" id="cartHeroCopy">
-            Review digital products, compare Stripe and UPI checkout options, and move from discovery to creator earnings without breaking the flow.
+            Review the books you want, then send the cart on WhatsApp or call the store team to confirm access and delivery.
           </p>
         </div>
 
@@ -73,8 +76,8 @@
           <section class="surface-panel">
             <div class="panel-header">
               <div>
-                <h2 id="cartOrderTitle">Your order</h2>
-                <p id="cartOrderCopy">Everything here will unlock after card payment or manual proof verification.</p>
+                <h2 id="cartOrderTitle">Your selected books</h2>
+                <p id="cartOrderCopy">No online payment is collected here. We confirm paid-book orders through WhatsApp or phone.</p>
               </div>
               <a class="marketplace-ghost-button" id="cartAddMoreLink" href="explore.html">Add more products</a>
             </div>
@@ -84,8 +87,8 @@
 
           <aside class="summary-panel">
             <div>
-              <h3 class="section-title" id="cartSummaryTitle">Checkout summary</h3>
-              <p class="micro-copy" id="cartSummaryCopy">Choose the payment flow that fits your audience and operations.</p>
+              <h3 class="section-title" id="cartSummaryTitle">Contact summary</h3>
+              <p class="micro-copy" id="cartSummaryCopy">Send your full cart on WhatsApp or call the store team for a manual confirmation.</p>
             </div>
 
             <div class="summary-strip">
@@ -93,45 +96,36 @@
               <strong id="cartSummaryCount">--</strong>
             </div>
 
-            <div class="field-shell">
-              <label for="marketCountrySelect" id="cartMarketLabel">Buyer market</label>
-              <select id="marketCountrySelect"></select>
-            </div>
-
             <div class="summary-row">
               <span id="cartSubtotalRowLabel">Subtotal</span>
               <strong id="cartTotal">--</strong>
             </div>
             <div class="summary-row">
-              <span id="cartPlatformLabel">Platform checkout</span>
-              <strong id="cartPlatformValue">Secure</strong>
+              <span id="cartContactLabel">WhatsApp</span>
+              <strong id="cartContactValue">+91 98765 43210</strong>
             </div>
             <div class="summary-row">
-              <span id="cartCurrencyRowLabel">Checkout currency</span>
-              <strong id="cartCurrencyValue">INR</strong>
-            </div>
-            <div class="summary-row">
-              <span id="cartTaxRowLabel">Tax handling</span>
-              <strong id="cartTaxValue">Checkout</strong>
+              <span id="cartResponseLabel">Order flow</span>
+              <strong id="cartResponseValue">WhatsApp + Call</strong>
             </div>
             <div class="summary-row total">
-              <span id="cartTotalLabel">Total to pay</span>
+              <span id="cartTotalLabel">Selected total</span>
               <strong id="cartSummaryTotal">--</strong>
             </div>
 
-            <p class="inline-note" id="cartMarketNote">Checkout pricing is localized from the creator's INR base price.</p>
+            <p class="inline-note" id="cartMarketNote">The cart total and selected titles are added to the WhatsApp message automatically.</p>
 
             <hr />
 
             <div class="summary-actions">
-              <button id="checkoutBtn" class="marketplace-button" type="button">Checkout With Stripe</button>
-              <button id="manualCheckoutBtn" class="marketplace-ghost-button" type="button">Manual UPI Checkout</button>
+              <button id="checkoutBtn" class="marketplace-button" type="button">Send on WhatsApp</button>
+              <button id="manualCheckoutBtn" class="marketplace-ghost-button" type="button">Call to Order</button>
               <button id="clearBtn" class="marketplace-ghost-button" type="button">Clear Cart</button>
             </div>
 
             <div class="helper-list">
-              <div class="helper-item" id="cartHelperStripe">Stripe gives instant unlocks through the automated payment pipeline.</div>
-              <div class="helper-item" id="cartHelperManual">Manual checkout now supports multi-item UPI proof submission for Indian buyers.</div>
+              <div class="helper-item" id="cartHelperStripe">We include every cart title and the total in your WhatsApp message for faster confirmation.</div>
+              <div class="helper-item" id="cartHelperManual">Call the same number if you want quick help, bundle support, or WhatsApp is not opening.</div>
             </div>
 
             <p id="cartMessage" class="status-message"></p>

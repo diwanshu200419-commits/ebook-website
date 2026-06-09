@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Manual Checkout | E-Book Market</title>
+  <meta name="description" content="Review selected books and contact E-Book Market on WhatsApp or phone for manual order confirmation." />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Order Support | E-Book Market</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="marketplace.css?v=20260527-founder-rails" />
   <script src="config.js?v=20260527-founder-rails"></script>
+  <script src="seo.js"></script>
   <script src="marketplace-shell.js?v=20260527-cart-real"></script>
 </head>
 <body class="marketplace-body">
@@ -19,7 +22,7 @@
           <span class="marketplace-brand-mark">AI</span>
           <span class="marketplace-brand-copy">
             <strong>E-Book Market</strong>
-            <span>UPI-first checkout for student buyers</span>
+            <span>Manual order support for digital books</span>
           </span>
         </a>
 
@@ -29,7 +32,7 @@
           <nav class="marketplace-links">
             <a class="marketplace-link" href="index.html">Home</a>
             <a class="marketplace-link" href="explore.html">Explore</a>
-            <a class="marketplace-link is-active" href="checkout.html">Manual Checkout</a>
+            <a class="marketplace-link is-active" href="checkout.html">Order Help</a>
           </nav>
 
           <div class="marketplace-actions">
@@ -45,10 +48,10 @@
     <main class="marketplace-main">
       <section class="hero-panel">
         <div>
-          <span class="hero-eyebrow" id="checkoutHeroEyebrow">India-ready proof checkout</span>
-          <h1 class="hero-title" id="checkoutHeroTitle">Submit one payment proof for <span>multiple products</span>.</h1>
+          <span class="hero-eyebrow" id="checkoutHeroEyebrow">Contact-first order help</span>
+          <h1 class="hero-title" id="checkoutHeroTitle">Send your selected books on <span>WhatsApp</span>.</h1>
           <p class="hero-copy" id="checkoutHeroCopy">
-            Select the items you want to pay for, scan the QR, pay the exact total, and upload one screenshot plus UTR so the order can be approved as a batch.
+            Review the books you want, then message or call the store team to confirm price, access, and delivery.
           </p>
         </div>
 
@@ -58,12 +61,12 @@
             <strong id="selectedCount">--</strong>
           </article>
           <article class="hero-stat-card">
-            <span id="checkoutTotalLabel">Manual order total</span>
-            <strong id="selectedTotal">₹0</strong>
+            <span id="checkoutTotalLabel">Selected total</span>
+            <strong id="selectedTotal">Rs. 0</strong>
           </article>
           <article class="hero-stat-card">
-            <span id="checkoutReviewSpeedLabel">Review speed</span>
-            <strong id="checkoutReviewSpeedValue">Preparing</strong>
+            <span id="checkoutReviewSpeedLabel">Response channel</span>
+            <strong id="checkoutReviewSpeedValue">WhatsApp + Call</strong>
           </article>
         </div>
       </section>
@@ -73,8 +76,8 @@
           <section class="surface-panel">
             <div class="panel-header">
               <div>
-                <h2 id="checkoutSelectTitle">Select products for this payment</h2>
-                <p id="orderHint">All paid products are pre-selected. Deselect anything you are not paying for in this order.</p>
+                <h2 id="checkoutSelectTitle">Choose books to include</h2>
+                <p id="orderHint">Your paid cart items are preselected. Uncheck any title you do not want to include.</p>
               </div>
               <a class="marketplace-ghost-button" id="checkoutEditCartLink" href="cart.html">Edit Cart</a>
             </div>
@@ -84,66 +87,47 @@
 
           <aside class="summary-panel">
             <div>
-              <h3 class="section-title" id="checkoutProofTitle">Submit payment proof</h3>
-              <p class="micro-copy" id="checkoutProofCopy">Works for UPI, Google Pay, and PayPal QR based payments.</p>
+              <h3 class="section-title" id="checkoutProofTitle">Contact to order</h3>
+              <p class="micro-copy" id="checkoutProofCopy">No online payment is collected on this page. Orders are confirmed manually through WhatsApp or phone.</p>
             </div>
 
             <div class="summary-strip">
-              <span id="checkoutMarketBadge">India · INR</span>
-              <strong id="checkoutMarketMode">UPI-first</strong>
+              <span id="checkoutMarketBadge">WhatsApp support</span>
+              <strong id="checkoutMarketMode">+91 98765 43210</strong>
             </div>
-            <p class="inline-note" id="checkoutMarketNote">Manual proof checkout is designed for India-first orders. Global buyers should use Stripe card checkout from the cart or product page.</p>
+            <p class="inline-note" id="checkoutMarketNote">We confirm price, availability, and delivery manually through chat or phone.</p>
 
             <div class="payment-founder-card">
-              <span class="hero-eyebrow compact">Founder payment owner</span>
-              <strong id="checkoutFounderMerchant">E-Book Market</strong>
-              <p class="inline-note" id="checkoutFounderSupport">Save your real founder payment note from admin settings so buyers know where they are paying.</p>
-            </div>
-
-            <div class="field-shell">
-              <label for="methodSelect" id="paymentMethodLabel">Payment method</label>
-              <select id="methodSelect">
-                <option value="UPI">UPI</option>
-                <option value="GPay">GPay</option>
-                <option value="PayPal">PayPal</option>
-              </select>
+              <span class="hero-eyebrow compact">Order contact</span>
+              <strong id="checkoutFounderMerchant">+91 98765 43210</strong>
+              <p class="inline-note" id="checkoutFounderSupport">Reach the store team on WhatsApp or call the phone number below.</p>
             </div>
 
             <div class="payment-preview">
               <div>
-                <strong id="payInfo">Loading payment instructions...</strong>
-                <p class="inline-note" id="paymentMethodState"></p>
-                <p class="inline-note" id="amountInfo">Pay exact amount: ₹0</p>
+                <strong id="payInfo">Preparing order summary...</strong>
+                <p class="inline-note" id="paymentMethodState">Preparing contact options...</p>
+                <p class="inline-note" id="amountInfo">Preparing selected total...</p>
               </div>
 
               <div class="summary-strip">
-                <span id="upiIdLabel">UPI ID is included in the QR code</span>
-                <button id="copyUpiBtn" class="marketplace-ghost-button" type="button">Copy UPI ID</button>
+                <span id="upiIdLabel">+91 98765 43210</span>
+                <button id="copyUpiBtn" class="marketplace-ghost-button" type="button">Copy Number</button>
               </div>
 
               <div class="payment-qr-frame">
-                <img id="qrImage" alt="Payment QR" />
+                <img id="qrImage" alt="Selected book cover" />
               </div>
 
-              <a id="payNowBtn" class="marketplace-button payment-action-btn" href="#" target="_self" rel="noopener">Pay in selected app</a>
-              <p class="inline-note" id="payNowHint">Use this on mobile to open the payment app with the exact amount filled in.</p>
+              <a id="payNowBtn" class="marketplace-button payment-action-btn" href="#" target="_blank" rel="noopener">Open WhatsApp</a>
+              <p class="inline-note" id="payNowHint">The selected books and total will be added to your WhatsApp message automatically.</p>
 
               <div class="proof-tip" id="proofTip">
-                Use the exact same UTR or reference number that appears in the proof screenshot. One proof now covers every selected product in this order.
+                Use the same number if WhatsApp does not open or you want faster order help.
               </div>
             </div>
 
-            <div class="field-shell">
-              <label for="transactionId" id="transactionLabel">Transaction ID / UTR</label>
-              <input id="transactionId" type="text" placeholder="Enter the payment reference visible in your UPI or PayPal app" />
-            </div>
-
-            <div class="field-shell">
-              <label for="screenshot" id="screenshotLabel">Payment screenshot</label>
-              <input id="screenshot" type="file" accept="image/*" />
-            </div>
-
-            <button id="submitBtn" class="marketplace-button" type="button">Submit Proof For Verification</button>
+            <button id="submitBtn" class="marketplace-ghost-button" type="button">Call Now</button>
             <p id="status" class="status-message"></p>
           </aside>
         </div>
@@ -151,6 +135,6 @@
     </main>
   </div>
 
-  <script src="checkout.js?v=20260527-cart-real2"></script>
+  <script src="checkout.js?v=20260602-contact-flow"></script>
 </body>
 </html>
